@@ -82,7 +82,6 @@ export class HUD {
     if (typeof this.narrowMq.addEventListener === 'function') {
       this.narrowMq.addEventListener('change', syncViewport);
     } else {
-      // Safari < 14
       (this.narrowMq as MediaQueryList).addListener(syncViewport);
     }
     this.syncInventoryForViewport();
@@ -212,37 +211,54 @@ export class HUD {
   drawMinimap(
     playerX: number,
     playerZ: number,
+    playerRotY: number,
     markers: { x: number; z: number; color: string }[],
   ): void {
     const ctx = this.minimapCtx;
     const w = this.minimap.width;
     const h = this.minimap.height;
-    ctx.fillStyle = '#1a2a18';
+    const cx = w / 2;
+    const cy = h / 2;
+    const radius = Math.min(w, h) / 2 - 1;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // Circular clip
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.clip();
+
+    // Soft grass gradient fill
+    const grad = ctx.createRadialGradient(cx, cy, 4, cx, cy, radius);
+    grad.addColorStop(0, '#2a3e24');
+    grad.addColorStop(0.65, '#1a2a18');
+    grad.addColorStop(1, '#121c10');
+    ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
 
-    // Grass noise
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 36; i++) {
       ctx.fillStyle = i % 2 ? '#243820' : '#1e301c';
-      ctx.fillRect((i * 37) % w, (i * 53) % h, 8, 8);
+      ctx.fillRect((i * 41) % w, (i * 59) % h, 7, 7);
     }
 
     const scale = 3.2;
-    const cx = w / 2;
-    const cy = h / 2;
-
     for (const m of markers) {
       const mx = cx + (m.x - playerX) * scale;
       const my = cy + (m.z - playerZ) * scale;
-      if (mx < 2 || my < 2 || mx > w - 2 || my > h - 2) continue;
+      const dx = mx - cx;
+      const dy = my - cy;
+      if (dx * dx + dy * dy > (radius - 4) * (radius - 4)) continue;
       ctx.fillStyle = m.color;
       ctx.beginPath();
       ctx.arc(mx, my, 3, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // Player arrow
+    // Player arrow (facing)
     ctx.save();
     ctx.translate(cx, cy);
+    ctx.rotate(playerRotY);
     ctx.fillStyle = '#f0d070';
     ctx.beginPath();
     ctx.moveTo(0, -6);
@@ -253,9 +269,33 @@ export class HUD {
     ctx.fill();
     ctx.restore();
 
-    ctx.strokeStyle = '#6b5420';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(1, 1, w - 2, h - 2);
+    ctx.restore();
+
+    // Compass ring + N accent (outside clip)
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius - 0.5, 0, Math.PI * 2);
+    ctx.strokeStyle = '#8a6a28';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius - 3, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(212,168,75,0.35)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // North pip
+    ctx.fillStyle = '#e8c060';
+    ctx.beginPath();
+    ctx.moveTo(cx, 6);
+    ctx.lineTo(cx + 5, 14);
+    ctx.lineTo(cx - 5, 14);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#f0d070';
+    ctx.font = 'bold 11px Segoe UI, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('N', cx, 26);
   }
 }
 

@@ -141,22 +141,29 @@ html, body {
   position: relative;
   width: 148px;
   height: 148px;
-  border: 2px solid var(--gold-dim);
-  border-radius: 4px;
-  box-shadow: 0 0 12px rgba(0,0,0,0.65), inset 0 0 20px rgba(0,0,0,0.4);
-  background: #1a2418;
-  overflow: hidden;
+  border-radius: 50%;
+  border: 3px solid var(--gold-dim);
+  box-shadow:
+    0 0 0 2px rgba(20, 14, 6, 0.85),
+    0 0 14px rgba(0,0,0,0.7),
+    inset 0 0 18px rgba(0,0,0,0.45);
+  background:
+    radial-gradient(circle at 50% 8%, rgba(232,192,96,0.35), transparent 28%),
+    #1a2418;
+  overflow: visible;
 }
 
 #minimap {
   width: 100%;
   height: 100%;
   display: block;
+  border-radius: 50%;
+  clip-path: circle(50% at 50% 50%);
 }
 
 #minimap-label {
   position: absolute;
-  bottom: 2px;
+  bottom: -18px;
   left: 0;
   right: 0;
   text-align: center;
@@ -164,6 +171,29 @@ html, body {
   color: var(--gold);
   text-shadow: 0 1px 2px #000;
   letter-spacing: 0.04em;
+  pointer-events: none;
+}
+
+#compass-ring {
+  pointer-events: none;
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1px solid rgba(212,168,75,0.4);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.35);
+}
+
+#compass-n {
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 14px;
+  background: linear-gradient(180deg, #f0d070, #a87820);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  z-index: 2;
+  filter: drop-shadow(0 1px 2px #000);
 }
 
 /* —— Skills button —— */
@@ -643,4 +673,30 @@ html, body {
   #btn-inventory { display: none !important; }
   #inv-close { display: none !important; }
   #inventory { display: block; }
+}
+
+
+/* —— Floating XP / damage (Phase 1.5 VFX) —— */
+#vfx-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 15;
+}
+
+.float-xp {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  text-shadow:
+    0 0 4px #000,
+    0 1px 2px #000,
+    1px 1px 0 #000,
+    -1px -1px 0 #000;
+  white-space: nowrap;
+  will-change: transform, opacity;
 }

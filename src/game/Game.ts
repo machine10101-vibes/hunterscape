@@ -1,14 +1,21 @@
 import * as THREE from 'three';
 import { HUD } from '../ui/HUD';
 import {
+  createBarrel,
+  createBedroll,
   createCampfire,
+  createCrate,
   createDummy,
   createGround,
   createPlayerMesh,
   createRock,
+  createSkyDome,
   createTent,
   createTree,
+  flashDummy,
+  setPlayerTool,
 } from '../rendering/meshes';
+import { VFX } from '../rendering/vfx';
 import { loadSave, writeSave } from './Persistence';
 import {
   ITEM_META,
@@ -41,6 +48,15 @@ const ATTACK_RANGE = 1.8;
 const MOVE_SPEED = 4.2;
 const SAVE_EVERY = 3;
 
+const SKILL_SHORT: Record<SkillId, string> = {
+  constitution: 'Constitution',
+  attack: 'Attack',
+  strength: 'Strength',
+  defence: 'Defence',
+  woodcutting: 'Woodcutting',
+  mining: 'Mining',
+};
+
 export class Game {
   private renderer: THREE.WebGLRenderer;
   private scene: THREE.Scene;
@@ -50,6 +66,7 @@ export class Game {
   private pointer = new THREE.Vector2();
   private clock = new THREE.Clock();
   private hud: HUD;
+  private vfx: VFX;
   private save: SaveData;
   private objects: WorldObject[] = [];
   private ground: THREE.Mesh;
@@ -61,6 +78,11 @@ export class Game {
   private camLook = new THREE.Vector3();
   private dummyTarget: WorldObject | null = null;
   private running = true;
+  private sun!: THREE.DirectionalLight;
+  private rim!: THREE.DirectionalLight;
+  private pendingGather: { obj: WorldObject; duration: number; label: string } | null = null;
+  private pendingCombat = false;
+  private toolSwing = 0;
 
   constructor(canvas: HTMLCanvasElement) {
     this.save = loadSave();
@@ -71,14 +93,18 @@ export class Game {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.setClearColor(0x87a0c0);
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.setClearColor(0x87a8c8);
 
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.Fog(0x87a0c0, 28, 55);
+    this.scene.fog = new THREE.Fog(0x9ab0c4, 32, 62);
 
-    this.camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 120);
+    this.camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 140);
 
     this.setupLights();
+    this.scene.add(createSkyDome(70));
     this.ground = createGround(48);
     this.scene.add(this.ground);
     this.buildWorld();
@@ -87,9 +113,17 @@ export class Game {
     this.player.position.set(this.save.x, 0, this.save.z);
     this.scene.add(this.player);
 
+    const app = document.getElementById('app') ?? document.body;
+    this.vfx = new VFX(this.scene, this.camera, app);
+
     this.moveMarker = new THREE.Mesh(
       new THREE.RingGeometry(0.25, 0.38, 24),
-      new THREE.MeshBasicMaterial({ color: 0xd4a84b, transparent: true, opacity: 0.85, side: THREE.DoubleSide }),
+      new THREE.MeshBasicMaterial({
+        color: 0xd4a84b,
+        transparent: true,
+        opacity: 0.85,
+        side: THREE.DoubleSide,
+      }),
     );
     this.moveMarker.rotation.x = -Math.PI / 2;
     this.moveMarker.position.y = 0.05;
@@ -110,24 +144,34 @@ export class Game {
   }
 
   private setupLights(): void {
-    const hemi = new THREE.HemisphereLight(0xc8d8f0, 0x3a5a28, 0.85);
+    const hemi = new THREE.HemisphereLight(0xd0e4ff, 0x3a4a22, 0.55);
     this.scene.add(hemi);
-    const sun = new THREE.DirectionalLight(0xfff0d0, 1.15);
-    sun.position.set(12, 22, 8);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
-    sun.shadow.camera.near = 2;
-    sun.shadow.camera.far = 50;
-    sun.shadow.camera.left = -20;
-    sun.shadow.camera.right = 20;
-    sun.shadow.camera.top = 20;
-    sun.shadow.camera.bottom = -20;
-    this.scene.add(sun);
-    this.scene.add(new THREE.AmbientLight(0x405060, 0.35));
+
+    this.sun = new THREE.DirectionalLight(0xfff2d8, 1.35);
+    this.sun.position.set(14, 24, 10);
+    this.sun.castShadow = true;
+    this.sun.shadow.mapSize.set(2048, 2048);
+    this.sun.shadow.bias = -0.00035;
+    this.sun.shadow.normalBias = 0.03;
+    this.sun.shadow.radius = 2.5;
+    this.sun.shadow.camera.near = 2;
+    this.sun.shadow.camera.far = 55;
+    this.sun.shadow.camera.left = -22;
+    this.sun.shadow.camera.right = 22;
+    this.sun.shadow.camera.top = 22;
+    this.sun.shadow.camera.bottom = -22;
+    this.scene.add(this.sun);
+    this.scene.add(this.sun.target);
+
+    // Cool rim / fill opposite the sun for silhouette pop
+    this.rim = new THREE.DirectionalLight(0x88aacc, 0.45);
+    this.rim.position.set(-10, 8, -12);
+    this.scene.add(this.rim);
+
+    this.scene.add(new THREE.AmbientLight(0x304050, 0.28));
   }
 
   private buildWorld(): void {
-    // Tent + campfire near spawn
     const tent = createTent();
     tent.position.set(-3.5, 0, -1.5);
     this.scene.add(tent);
@@ -136,25 +180,70 @@ export class Game {
     fire.position.set(-1.2, 0, -0.5);
     this.scene.add(fire);
 
-    // Decorative rocks / stumps
+    const crate = createCrate();
+    crate.position.set(-2.4, 0, -2.2);
+    crate.rotation.y = 0.3;
+    this.scene.add(crate);
+
+    const barrel = createBarrel();
+    barrel.position.set(-4.2, 0, -0.4);
+    this.scene.add(barrel);
+
+    const barrel2 = createBarrel();
+    barrel2.position.set(-4.55, 0, 0.15);
+    barrel2.rotation.y = 0.6;
+    this.scene.add(barrel2);
+
+    const bed = createBedroll();
+    bed.position.set(-2.8, 0, 0.4);
+    bed.rotation.y = -0.4;
+    this.scene.add(bed);
+
+    // Decorative bushes with soft shadow
     const border = [
-      [-8, -6], [8, -7], [-10, 4], [9, 5], [0, -10], [-6, 8], [6, 9],
+      [-8, -6],
+      [8, -7],
+      [-10, 4],
+      [9, 5],
+      [0, -10],
+      [-6, 8],
+      [6, 9],
+      [10, 0],
+      [-11, -2],
     ];
     for (const [x, z] of border) {
-      const bush = new THREE.Mesh(
-        new THREE.SphereGeometry(0.45 + Math.random() * 0.2, 6, 4),
-        new THREE.MeshStandardMaterial({ color: 0x2a5a28, flatShading: true }),
+      const bush = new THREE.Group();
+      const a = new THREE.Mesh(
+        new THREE.SphereGeometry(0.4 + Math.random() * 0.2, 7, 5),
+        new THREE.MeshStandardMaterial({ color: 0x2a5a28, flatShading: true, roughness: 0.95 }),
       );
-      bush.position.set(x, 0.3, z);
-      bush.castShadow = true;
+      a.position.y = 0.35;
+      a.castShadow = true;
+      bush.add(a);
+      const b = new THREE.Mesh(
+        new THREE.SphereGeometry(0.28, 6, 4),
+        new THREE.MeshStandardMaterial({ color: 0x3a6a30, flatShading: true }),
+      );
+      b.position.set(0.25, 0.3, 0.1);
+      b.castShadow = true;
+      bush.add(b);
+      bush.position.set(x, 0, z);
       this.scene.add(bush);
     }
 
-    // Trees
     const treeSpots: [number, number][] = [
-      [4.5, -3], [6.2, -1.5], [7.5, 1], [5.5, 3.5], [3, 5],
-      [-5, 4], [-7, 2], [-6.5, -3.5], [2, -6], [-2.5, -7],
-      [8, -5], [-8.5, -1],
+      [4.5, -3],
+      [6.2, -1.5],
+      [7.5, 1],
+      [5.5, 3.5],
+      [3, 5],
+      [-5, 4],
+      [-7, 2],
+      [-6.5, -3.5],
+      [2, -6],
+      [-2.5, -7],
+      [8, -5],
+      [-8.5, -1],
     ];
     treeSpots.forEach(([x, z], i) => {
       const mesh = createTree(i);
@@ -171,7 +260,6 @@ export class Game {
       });
     });
 
-    // Rocks
     const rockSpots: { x: number; z: number; ore: 'copper' | 'tin' }[] = [
       { x: -4, z: 6.5, ore: 'copper' },
       { x: -2.5, z: 7.5, ore: 'copper' },
@@ -195,7 +283,6 @@ export class Game {
       });
     });
 
-    // Training dummy
     const dummyMesh = createDummy();
     dummyMesh.position.set(2.5, 0, -2.5);
     this.scene.add(dummyMesh);
@@ -210,21 +297,10 @@ export class Game {
     };
     this.objects.push(dummy);
     this.dummyTarget = dummy;
-
-    // Path rings near camp
-    const pathMat = new THREE.MeshStandardMaterial({ color: 0x6b5a3a, roughness: 1, flatShading: true });
-    for (let i = 0; i < 8; i++) {
-      const p = new THREE.Mesh(new THREE.CircleGeometry(0.55, 8), pathMat);
-      p.rotation.x = -Math.PI / 2;
-      p.position.set(-0.3 + i * 0.35, 0.02, 0.8 - i * 0.15);
-      p.receiveShadow = true;
-      this.scene.add(p);
-    }
   }
 
   private bindInput(canvas: HTMLCanvasElement): void {
     const onPointer = (ev: PointerEvent) => {
-      // Ignore HUD clicks
       const t = ev.target as HTMLElement;
       if (t !== canvas) return;
       this.pointer.x = (ev.clientX / window.innerWidth) * 2 - 1;
@@ -251,12 +327,11 @@ export class Game {
   private handleWorldClick(): void {
     this.raycaster.setFromCamera(this.pointer, this.camera);
 
-    // Interactables first
     const hitMeshes: THREE.Object3D[] = [];
     for (const o of this.objects) {
       if (o.depleted && o.kind !== 'dummy') continue;
       o.mesh.traverse((c) => {
-        if ((c as THREE.Mesh).isMesh) hitMeshes.push(c);
+        if ((c as THREE.Mesh).isMesh && c.name !== 'outline') hitMeshes.push(c);
       });
     }
     const hits = this.raycaster.intersectObjects(hitMeshes, false);
@@ -270,7 +345,6 @@ export class Game {
       }
     }
 
-    // Ground move
     const groundHits = this.raycaster.intersectObject(this.ground);
     if (groundHits.length > 0) {
       const p = groundHits[0].point;
@@ -282,6 +356,7 @@ export class Game {
     if (obj.kind === 'dummy') {
       this.hud.chat('You ready your bronze sword against the training dummy.', 'combat');
       this.activity = { type: 'combat', target: obj, cooldown: 0 };
+      setPlayerTool(this.player, 'sword');
       this.hud.showTarget('Training Dummy', obj.hp / obj.maxHp);
       return;
     }
@@ -314,23 +389,21 @@ export class Game {
       const nx = obj.mesh.position.x - (dx / dist) * (GATHER_RANGE * 0.85);
       const nz = obj.mesh.position.z - (dz / dist) * (GATHER_RANGE * 0.85);
       this.startMove(nx, nz);
-      // Queue gather after arrive via checking in update — store pending
       this.pendingGather = { obj, duration, label };
       return;
     }
     this.faceToward(obj.mesh.position.x, obj.mesh.position.z);
     this.activity = { type: 'gather', target: obj, elapsed: 0, duration, label };
+    setPlayerTool(this.player, obj.kind === 'tree' ? 'hatchet' : 'pickaxe');
     this.hud.showProgress(label, 0);
   }
 
-  private pendingGather: { obj: WorldObject; duration: number; label: string } | null = null;
-
   private startMove(x: number, z: number): void {
-    // Clamp to playable area
     const lim = 14;
     x = Math.max(-lim, Math.min(lim, x));
     z = Math.max(-lim, Math.min(lim, z));
     this.activity = { type: 'move', tx: x, tz: z };
+    setPlayerTool(this.player, null);
     this.moveMarker.position.set(x, 0.05, z);
     this.moveMarker.visible = true;
     this.hud.hideProgress();
@@ -385,8 +458,6 @@ export class Game {
         break;
     }
   }
-
-  private pendingCombat = false;
 
   private nearest(kind: InteractKind): WorldObject | null {
     let best: WorldObject | null = null;
@@ -492,6 +563,11 @@ export class Game {
     sk.xp += amount;
     sk.level = levelFromXp(sk.xp);
     this.hud.chat(`+${amount} ${skill} XP`, 'xp');
+    this.vfx.spawnXp(
+      this.player.position,
+      amount,
+      SKILL_SHORT[skill],
+    );
     if (sk.level > old) {
       this.hud.chat(`Congratulations! Your ${skill} level is now ${sk.level}.`, 'xp');
       if (skill === 'constitution') {
@@ -502,14 +578,12 @@ export class Game {
   }
 
   private update(dt: number): void {
-    // Soft regen
     this.save.stamina = Math.min(100, this.save.stamina + dt * 4);
     this.save.focus = Math.min(100, this.save.focus + dt * 2);
     if (this.save.hp < this.save.maxHp) {
       this.save.hp = Math.min(this.save.maxHp, this.save.hp + dt * 1.5);
     }
 
-    // Respawn resources
     const now = performance.now() / 1000;
     for (const o of this.objects) {
       if (o.depleted && o.kind !== 'dummy' && now >= o.respawnAt) {
@@ -527,13 +601,20 @@ export class Game {
       }
     }
 
-    // Campfire flicker
     this.scene.traverse((obj) => {
       if (obj.name === 'flame') {
         obj.scale.y = 0.9 + Math.sin(now * 8) * 0.15;
         obj.rotation.y += dt * 2;
       }
+      if (obj.name === 'flameGlow') {
+        const s = 0.9 + Math.sin(now * 6) * 0.2;
+        obj.scale.setScalar(s);
+      }
     });
+
+    // Follow sun target to player for stable shadows
+    this.sun.target.position.set(this.player.position.x, 0, this.player.position.z);
+    this.sun.target.updateMatrixWorld();
 
     if (this.activity.type === 'move') {
       const { tx, tz } = this.activity;
@@ -545,7 +626,6 @@ export class Game {
         this.player.position.z = tz;
         this.moveMarker.visible = false;
         this.activity = { type: 'idle' };
-        // Bob stop
         this.player.position.y = 0;
         if (this.pendingGather) {
           const p = this.pendingGather;
@@ -567,19 +647,32 @@ export class Game {
       const act = this.activity;
       if (act.target.depleted) {
         this.activity = { type: 'idle' };
+        setPlayerTool(this.player, null);
         this.hud.hideProgress();
       } else if (this.distTo(act.target) > GATHER_RANGE + 0.35) {
         this.activity = { type: 'idle' };
+        setPlayerTool(this.player, null);
         this.hud.hideProgress();
         this.hud.chat('You move too far away.', 'system');
       } else {
         act.elapsed += dt;
         this.hud.showProgress(act.label, act.elapsed / act.duration);
-        // Chop bob
-        this.player.rotation.y += Math.sin(now * 12) * 0.002;
+        this.toolSwing += dt;
+        const root = this.player.getObjectByName('toolRoot');
+        if (root) {
+          root.rotation.x = Math.sin(this.toolSwing * 10) * 0.45;
+        }
+        // Mid-gather chip/sparks bursts
+        if (Math.floor(act.elapsed * 3) !== Math.floor((act.elapsed - dt) * 3)) {
+          const p = act.target.mesh.position.clone();
+          p.y = 0.6;
+          if (act.target.kind === 'tree') this.vfx.spawnWoodchips(p, 3);
+          else this.vfx.spawnMineSparks(p, 4);
+        }
         if (act.elapsed >= act.duration) {
           this.completeGather(act.target);
           this.activity = { type: 'idle' };
+          setPlayerTool(this.player, null);
           this.hud.hideProgress();
         }
       }
@@ -589,23 +682,32 @@ export class Game {
       this.hud.showTarget('Training Dummy', Math.max(0, target.hp) / target.maxHp);
       if (target.hp <= 0) {
         this.activity = { type: 'idle' };
+        setPlayerTool(this.player, null);
         this.hud.hideTarget();
         return;
       }
       if (this.distTo(target) > ATTACK_RANGE + 0.4) {
         this.activity = { type: 'idle' };
+        setPlayerTool(this.player, null);
         this.hud.hideTarget();
         this.hud.chat('You step out of range.', 'combat');
         return;
       }
       this.faceToward(target.mesh.position.x, target.mesh.position.z);
       act.cooldown -= dt;
+      const root = this.player.getObjectByName('toolRoot');
+      if (root && act.cooldown > 1.2) {
+        root.rotation.x = -Math.sin((1.6 - act.cooldown) * 8) * 0.6;
+      }
       if (act.cooldown <= 0) {
         act.cooldown = 1.6;
         this.swingAtDummy(target);
       }
+    } else {
+      setPlayerTool(this.player, null);
     }
 
+    this.vfx.update(dt);
     this.updateCamera(dt);
 
     this.save.x = this.player.position.x;
@@ -616,7 +718,6 @@ export class Game {
       this.persist();
     }
 
-    // Orbs + minimap each frame (cheap)
     this.hud.setOrbs(this.save.hp, this.save.maxHp, this.save.focus, this.save.stamina);
     this.drawMinimapMarkers();
   }
@@ -626,6 +727,7 @@ export class Game {
       if (!this.addItem('whisper_logs', 1)) return;
       this.grantXp('woodcutting', 25);
       this.hud.chat('You chop some Whisper Logs.', 'loot');
+      this.vfx.spawnWoodchips(obj.mesh.position.clone().setY(1.0), 14);
       obj.depleted = true;
       obj.mesh.visible = false;
       obj.respawnAt = performance.now() / 1000 + 12;
@@ -634,6 +736,7 @@ export class Game {
       if (!this.addItem(ore, 1)) return;
       this.grantXp('mining', 28);
       this.hud.chat(`You mine some ${ITEM_META[ore].name}.`, 'loot');
+      this.vfx.spawnMineSparks(obj.mesh.position.clone().setY(0.6), 16);
       obj.depleted = true;
       obj.mesh.visible = false;
       obj.respawnAt = performance.now() / 1000 + 14;
@@ -655,7 +758,10 @@ export class Game {
     this.grantXp('attack', 12);
     this.grantXp('strength', 8);
     this.grantXp('constitution', 4);
-    // Tiny recoil damage for feedback
+    this.vfx.spawnHitSparks(target.mesh.position.clone(), 14);
+    this.vfx.spawnDamage(target.mesh.position, dmg);
+    flashDummy(target.mesh);
+
     const recoil = Math.random() < 0.15 ? 1 : 0;
     if (recoil) {
       this.save.hp = Math.max(1, this.save.hp - recoil);
@@ -663,7 +769,6 @@ export class Game {
     } else {
       this.hud.chat(`You hit the training dummy for ${dmg} damage.`, 'combat');
     }
-    // Punch animation
     target.mesh.rotation.z = (Math.random() - 0.5) * 0.15;
     setTimeout(() => {
       target.mesh.rotation.z = 0;
@@ -675,6 +780,7 @@ export class Game {
       this.hud.chat('The training dummy collapses! It will be repaired shortly.', 'combat');
       this.grantXp('defence', 15);
       this.activity = { type: 'idle' };
+      setPlayerTool(this.player, null);
       this.hud.hideTarget();
     } else {
       this.hud.showTarget('Training Dummy', target.hp / target.maxHp);
@@ -702,9 +808,8 @@ export class Game {
       else if (o.kind === 'rock') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#888' });
       else markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#c43c3c' });
     }
-    // Camp
     markers.push({ x: -1.2, z: -0.5, color: '#ff8844' });
-    this.hud.drawMinimap(this.player.position.x, this.player.position.z, markers);
+    this.hud.drawMinimap(this.player.position.x, this.player.position.z, this.player.rotation.y, markers);
   }
 
   private refreshUI(): void {
