@@ -58,6 +58,8 @@ export const ITEM_META: Record<
   camp_rations: { name: 'Camp Rations', icon: '🍖', stackable: true },
   yeti_fur: { name: 'Yeti Fur', icon: '🧣', stackable: true },
   frost_claw: { name: 'Frost Claw', icon: '🧊', stackable: true },
+  orc_tooth: { name: 'Orc Tooth', icon: '🦷', stackable: true },
+  scout_leather: { name: 'Scout Leather', icon: '🦺', stackable: true },
 };
 
 /** Classic-style XP curve approximation */

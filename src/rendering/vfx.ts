@@ -65,6 +65,12 @@ export class VFX {
     emissiveIntensity: 0.8,
     flatShading: true,
   });
+  private spearMat = new THREE.MeshStandardMaterial({
+    color: 0xc8d0a0,
+    emissive: 0x88aa44,
+    emissiveIntensity: 0.9,
+    flatShading: true,
+  });
 
   constructor(scene: THREE.Scene, camera: THREE.Camera, overlayParent: HTMLElement) {
     this.scene = scene;
@@ -243,6 +249,30 @@ export class VFX {
     }
   }
 
+
+  /** Spear thrust streaks for Orc Scout melee */
+  spawnSpearThrust(origin: THREE.Vector3, count = 8): void {
+    for (let i = 0; i < count; i++) {
+      const mesh = new THREE.Mesh(
+        new THREE.ConeGeometry(0.04, 0.22 + Math.random() * 0.12, 4),
+        this.spearMat,
+      );
+      mesh.position.copy(origin);
+      mesh.position.y += 0.9 + Math.random() * 0.5;
+      const a = (i / count) * Math.PI * 0.6 - 0.3;
+      mesh.rotation.z = a;
+      mesh.rotation.x = Math.PI / 2;
+      this.scene.add(mesh);
+      this.particles.push({
+        mesh,
+        vel: new THREE.Vector3(Math.sin(a) * 3.2, 0.4 + Math.random(), Math.cos(a) * 3.2),
+        life: 0,
+        maxLife: 0.28 + Math.random() * 0.15,
+        gravity: 2,
+        spin: 10,
+      });
+    }
+  }
   update(dt: number): void {
     // Particles
     for (let i = this.particles.length - 1; i >= 0; i--) {

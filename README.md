@@ -1,6 +1,6 @@
 # Hunterscape
 
-Browser fantasy adventure set in the **Whisperwood** — start at **Thornrest Camp**, chop timber, mine ore, spar with the training dummy, and face the **Frost Yeti** in the north-east clearing.
+Browser fantasy adventure set in the **Whisperwood** — start at **Thornrest Camp**, chop timber, mine ore, spar with the training dummy, face the **Frost Yeti** in the north-east clearing, and duel the **Orc Scout** on the south-west trail.
 
 Original world, names, and art (procedural Three.js). Visual layout inspired by classic elevated fantasy MMO HUDs.
 
@@ -13,9 +13,10 @@ Original world, names, and art (procedural Three.js). Visual layout inspired by 
 - RS3-inspired HUD: chat, action bar, inventory, minimap, HP / Focus / Stamina orbs, skills panel
 - Woodcutting (Whisperwood trees → Whisper Logs)
 - Mining (copper & tin rocks)
-- Combat vs training dummy (Attack / Strength / Defence / Constitution XP)
+- Combat vs training dummy, Frost Yeti, and Orc Scout (Attack / Strength / Defence / Constitution XP)
 - Inventory + tools; progress saved in `localStorage`
 - Desktop + mobile (touch-friendly)
+- Studio-style low-poly character/monster art with richer world lighting
 
 ## Develop
 
@@ -40,7 +41,7 @@ Production base path is `/hunterscape/` for GitHub Pages.
 | Input | Action |
 |--------|--------|
 | Click / tap ground | Walk |
-| Click / tap tree, rock, dummy | Gather or fight |
+| Click / tap tree, rock, dummy, yeti, orc | Gather or fight |
 | Action bar 1–5 / keys 1–5 | Attack, Chop, Mine, Eat, Examine |
 | Skills button / `K` | Toggle skills |
 | Inventory rations | Click to eat |

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { HUD } from '../ui/HUD';
 import {
+  animateOrcSpear,
   animateYetiSwipe,
   createBarrel,
   createBedroll,
@@ -8,10 +9,13 @@ import {
   createCrate,
   createDummy,
   createFrostYeti,
+  createGodRays,
   createGround,
+  createOrcScout,
   createPlayerMesh,
   createRock,
   createSkyDome,
+  createSnowProps,
   createTent,
   createTree,
   flashDummy,
@@ -26,7 +30,7 @@ import {
   type SkillId,
 } from './types';
 
-type InteractKind = 'tree' | 'rock' | 'dummy' | 'yeti';
+type InteractKind = 'tree' | 'rock' | 'dummy' | 'yeti' | 'orc';
 
 interface WorldObject {
   kind: InteractKind;
@@ -49,12 +53,20 @@ const GATHER_RANGE = 1.6;
 const ATTACK_RANGE = 1.8;
 const YETI_ATTACK_RANGE = 2.3;
 const YETI_AGGRO_RADIUS = 5.5;
+const ORC_ATTACK_RANGE = 2.05;
+const ORC_AGGRO_RADIUS = 5.0;
 const MOVE_SPEED = 4.2;
 const SAVE_EVERY = 3;
 const YETI_MAX_HP = 80;
 const YETI_RESPAWN_SEC = 28;
 const YETI_DMG_MIN = 5;
 const YETI_DMG_MAX = 10;
+const ORC_MAX_HP = 62;
+const ORC_RESPAWN_SEC = 22;
+const ORC_DMG_MIN = 4;
+const ORC_DMG_MAX = 8;
+const ORC_HOME = { x: -6.2, z: -4.8 };
+const YETI_HOME = { x: 4.2, z: 7.2 };
 
 const SKILL_SHORT: Record<SkillId, string> = {
   constitution: 'Constitution',
@@ -89,6 +101,10 @@ export class Game {
   private yetiAttackCd = 0;
   private yetiSwipeT = 0;
   private yetiAggroed = false;
+  private orcTarget: WorldObject | null = null;
+  private orcAttackCd = 0;
+  private orcSwipeT = 0;
+  private orcAggroed = false;
   private running = true;
   private sun!: THREE.DirectionalLight;
   private rim!: THREE.DirectionalLight;
@@ -107,11 +123,11 @@ export class Game {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
-    this.renderer.setClearColor(0x87a8c8);
+    this.renderer.toneMappingExposure = 1.12;
+    this.renderer.setClearColor(0x7aa0c0);
 
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.Fog(0x9ab0c4, 32, 62);
+    this.scene.fog = new THREE.FogExp2(0x9ab0c0, 0.018);
 
     this.camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 140);
 
@@ -150,6 +166,7 @@ export class Game {
     this.hud.chat('Welcome to Thornrest Camp in the Whisperwood.', 'system');
     this.hud.chat('Tap the ground to walk. Chop trees, mine rocks, or spar with the training dummy.', 'system');
     this.hud.chat('A Frost Yeti stalks the north-east clearing — keep your distance until you are ready.', 'combat');
+    this.hud.chat('An Orc Scout prowls the south-west trail — spear ready, leather and tooth to loot.', 'combat');
     this.hud.chat('Your progress is saved in this browser.', 'system');
 
     window.addEventListener('resize', () => this.onResize());
@@ -157,31 +174,36 @@ export class Game {
   }
 
   private setupLights(): void {
-    const hemi = new THREE.HemisphereLight(0xd0e4ff, 0x3a4a22, 0.55);
+    const hemi = new THREE.HemisphereLight(0xd8ecff, 0x3a4a22, 0.62);
     this.scene.add(hemi);
 
-    this.sun = new THREE.DirectionalLight(0xfff2d8, 1.35);
-    this.sun.position.set(14, 24, 10);
+    this.sun = new THREE.DirectionalLight(0xfff0d0, 1.55);
+    this.sun.position.set(16, 26, 12);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(2048, 2048);
-    this.sun.shadow.bias = -0.00035;
-    this.sun.shadow.normalBias = 0.03;
-    this.sun.shadow.radius = 2.5;
+    this.sun.shadow.bias = -0.0003;
+    this.sun.shadow.normalBias = 0.035;
+    this.sun.shadow.radius = 3.2;
     this.sun.shadow.camera.near = 2;
-    this.sun.shadow.camera.far = 55;
-    this.sun.shadow.camera.left = -22;
-    this.sun.shadow.camera.right = 22;
-    this.sun.shadow.camera.top = 22;
-    this.sun.shadow.camera.bottom = -22;
+    this.sun.shadow.camera.far = 58;
+    this.sun.shadow.camera.left = -24;
+    this.sun.shadow.camera.right = 24;
+    this.sun.shadow.camera.top = 24;
+    this.sun.shadow.camera.bottom = -24;
     this.scene.add(this.sun);
     this.scene.add(this.sun.target);
 
     // Cool rim / fill opposite the sun for silhouette pop
-    this.rim = new THREE.DirectionalLight(0x88aacc, 0.45);
-    this.rim.position.set(-10, 8, -12);
+    this.rim = new THREE.DirectionalLight(0x99bbee, 0.55);
+    this.rim.position.set(-12, 9, -14);
     this.scene.add(this.rim);
 
-    this.scene.add(new THREE.AmbientLight(0x304050, 0.28));
+    // Warm fill from camp side
+    const fill = new THREE.DirectionalLight(0xffd8a8, 0.28);
+    fill.position.set(-6, 6, 4);
+    this.scene.add(fill);
+
+    this.scene.add(new THREE.AmbientLight(0x384858, 0.32));
   }
 
   private buildWorld(): void {
@@ -316,7 +338,7 @@ export class Game {
 
     // Frost Yeti — north-east clearing off camp (visible, not on spawn)
     const yetiMesh = createFrostYeti();
-    yetiMesh.position.set(4.2, 0, 7.2);
+    yetiMesh.position.set(YETI_HOME.x, 0, YETI_HOME.z);
     yetiMesh.rotation.y = Math.PI * 0.85; // face roughly toward camp
     this.scene.add(yetiMesh);
     const yeti: WorldObject = {
@@ -330,6 +352,64 @@ export class Game {
     };
     this.objects.push(yeti);
     this.yetiTarget = yeti;
+
+    // Snowy ground props around yeti clearing
+    this.scene.add(createSnowProps());
+
+    // Orc Scout — south-west clearing (different area than Yeti)
+    const orcMesh = createOrcScout();
+    orcMesh.position.set(ORC_HOME.x, 0, ORC_HOME.z);
+    orcMesh.rotation.y = Math.PI * 0.25;
+    this.scene.add(orcMesh);
+    const orc: WorldObject = {
+      kind: 'orc',
+      mesh: orcMesh,
+      id: 'orc_0',
+      hp: ORC_MAX_HP,
+      maxHp: ORC_MAX_HP,
+      depleted: false,
+      respawnAt: 0,
+    };
+    this.objects.push(orc);
+    this.orcTarget = orc;
+
+    // Soft god-rays-lite over the clearing
+    this.scene.add(createGodRays());
+
+    // Denser camp props
+    const crate2 = createCrate();
+    crate2.position.set(-3.6, 0, -2.6);
+    crate2.rotation.y = -0.5;
+    this.scene.add(crate2);
+    const barrel3 = createBarrel();
+    barrel3.position.set(-1.8, 0, -2.4);
+    this.scene.add(barrel3);
+    const bed2 = createBedroll();
+    bed2.position.set(-3.9, 0, 0.9);
+    bed2.rotation.y = 0.8;
+    this.scene.add(bed2);
+    // Decorative stump + lantern-like emissive orb near fire
+    const stump = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.22, 0.28, 0.35, 7),
+      new THREE.MeshStandardMaterial({ color: 0x4a3014, flatShading: true, roughness: 0.9 }),
+    );
+    stump.position.set(0.4, 0.18, -1.6);
+    stump.castShadow = true;
+    this.scene.add(stump);
+    const lantern = new THREE.Mesh(
+      new THREE.SphereGeometry(0.08, 8, 6),
+      new THREE.MeshStandardMaterial({
+        color: 0xffcc66,
+        emissive: 0xffaa33,
+        emissiveIntensity: 1.2,
+        flatShading: true,
+      }),
+    );
+    lantern.position.set(-0.2, 0.85, -1.8);
+    this.scene.add(lantern);
+    const lanternLight = new THREE.PointLight(0xffaa55, 0.55, 6);
+    lanternLight.position.copy(lantern.position);
+    this.scene.add(lanternLight);
   }
 
   private bindInput(canvas: HTMLCanvasElement): void {
@@ -362,7 +442,7 @@ export class Game {
 
     const hitMeshes: THREE.Object3D[] = [];
     for (const o of this.objects) {
-      if (o.depleted && o.kind !== 'dummy' && o.kind !== 'yeti') continue;
+      if (o.depleted && o.kind !== 'dummy' && o.kind !== 'yeti' && o.kind !== 'orc') continue;
       o.mesh.traverse((c) => {
         if ((c as THREE.Mesh).isMesh && c.name !== 'outline') hitMeshes.push(c);
       });
@@ -393,6 +473,15 @@ export class Game {
       }
       this.beginCombat(obj, 'You ready your bronze sword against the Frost Yeti!');
       this.yetiAggroed = true;
+      return;
+    }
+    if (obj.kind === 'orc') {
+      if (obj.depleted || obj.hp <= 0) {
+        this.hud.chat('The Orc Scout lies slain. Another will take its place.', 'system');
+        return;
+      }
+      this.beginCombat(obj, 'You ready your bronze sword against the Orc Scout!');
+      this.orcAggroed = true;
       return;
     }
     if (obj.kind === 'dummy') {
@@ -427,8 +516,19 @@ export class Game {
 
   private combatName(obj: WorldObject): string {
     if (obj.kind === 'yeti') return 'Frost Yeti';
+    if (obj.kind === 'orc') return 'Orc Scout';
     if (obj.kind === 'dummy') return 'Training Dummy';
     return obj.kind;
+  }
+
+  private isMonster(obj: WorldObject): boolean {
+    return obj.kind === 'yeti' || obj.kind === 'orc';
+  }
+
+  private monsterAttackRange(obj: WorldObject): number {
+    if (obj.kind === 'yeti') return YETI_ATTACK_RANGE;
+    if (obj.kind === 'orc') return ORC_ATTACK_RANGE;
+    return ATTACK_RANGE;
   }
 
   private beginCombat(obj: WorldObject, chat: string): void {
@@ -443,7 +543,7 @@ export class Game {
     let best: WorldObject | null = null;
     let bestD = Infinity;
     for (const o of this.objects) {
-      if ((o.kind !== 'yeti' && o.kind !== 'dummy') || o.hp <= 0 || o.depleted) continue;
+      if ((o.kind !== 'yeti' && o.kind !== 'orc' && o.kind !== 'dummy') || o.hp <= 0 || o.depleted) continue;
       const d = this.distTo(o);
       if (d < bestD) {
         bestD = d;
@@ -490,7 +590,7 @@ export class Game {
           this.hud.chat('No enemies nearby to attack.', 'system');
           return;
         }
-        const range = target.kind === 'yeti' ? YETI_ATTACK_RANGE : ATTACK_RANGE;
+        const range = this.monsterAttackRange(target);
         const d = this.distTo(target);
         if (d > range + 2) {
           this.hud.chat(`${this.combatName(target)} is too far. Walk closer.`, 'system');
@@ -563,6 +663,8 @@ export class Game {
       );
     else if (all.kind === 'yeti')
       this.hud.chat('A massive Frost Yeti. Dark stripes mark its fur; amber eyes burn with hunger.', 'combat');
+    else if (all.kind === 'orc')
+      this.hud.chat('An Orc Scout in spiked tan fur and leather. White tusks and a long spear gleam.', 'combat');
     else this.hud.chat('A stuffed training dummy. Safe practice for combat skills.', 'system');
   }
 
@@ -664,7 +766,7 @@ export class Game {
 
     const now = performance.now() / 1000;
     for (const o of this.objects) {
-      if (o.depleted && o.kind !== 'dummy' && o.kind !== 'yeti' && now >= o.respawnAt) {
+      if (o.depleted && o.kind !== 'dummy' && o.kind !== 'yeti' && o.kind !== 'orc' && now >= o.respawnAt) {
         o.depleted = false;
         o.mesh.visible = true;
         this.hud.chat(
@@ -683,10 +785,25 @@ export class Game {
         o.mesh.visible = true;
         o.mesh.rotation.z = 0;
         o.mesh.position.y = 0;
+        o.mesh.position.x = YETI_HOME.x;
+        o.mesh.position.z = YETI_HOME.z;
         this.yetiAggroed = false;
         this.yetiAttackCd = 0;
         animateYetiSwipe(o.mesh, 0);
         this.hud.chat('A Frost Yeti stomps back into the north-east clearing!', 'combat');
+      }
+      if (o.kind === 'orc' && o.depleted && now >= o.respawnAt) {
+        o.hp = o.maxHp;
+        o.depleted = false;
+        o.mesh.visible = true;
+        o.mesh.rotation.z = 0;
+        o.mesh.position.y = 0;
+        o.mesh.position.x = ORC_HOME.x;
+        o.mesh.position.z = ORC_HOME.z;
+        this.orcAggroed = false;
+        this.orcAttackCd = 0;
+        animateOrcSpear(o.mesh, 0);
+        this.hud.chat('An Orc Scout stalks back onto the south-west trail!', 'combat');
       }
     }
 
@@ -698,6 +815,12 @@ export class Game {
       if (obj.name === 'flameGlow') {
         const s = 0.9 + Math.sin(now * 6) * 0.2;
         obj.scale.setScalar(s);
+      }
+      if (obj.name === 'yetiBreath') {
+        const pulse = 0.7 + Math.sin(now * 3.2) * 0.35;
+        obj.scale.set(pulse, 0.8 + pulse * 0.4, pulse);
+        const m = (obj as THREE.Mesh).material as THREE.MeshStandardMaterial;
+        if (m && m.opacity !== undefined) m.opacity = 0.2 + Math.sin(now * 4) * 0.15;
       }
     });
 
@@ -775,7 +898,7 @@ export class Game {
         setPlayerTool(this.player, null);
         this.hud.hideTarget();
       } else {
-        const range = target.kind === 'yeti' ? YETI_ATTACK_RANGE : ATTACK_RANGE;
+        const range = this.monsterAttackRange(target);
         if (this.distTo(target) > range + 0.55) {
           this.activity = { type: 'idle' };
           setPlayerTool(this.player, null);
@@ -783,7 +906,7 @@ export class Game {
           this.hud.chat('You step out of range.', 'combat');
         } else {
           this.faceToward(target.mesh.position.x, target.mesh.position.z);
-          if (target.kind === 'yeti') {
+          if (this.isMonster(target)) {
             const dx = this.player.position.x - target.mesh.position.x;
             const dz = this.player.position.z - target.mesh.position.z;
             if (Math.hypot(dx, dz) > 0.01) target.mesh.rotation.y = Math.atan2(dx, dz);
@@ -804,6 +927,7 @@ export class Game {
     }
 
     this.updateYetiAI(dt);
+    this.updateOrcAI(dt);
 
     this.vfx.update(dt);
     this.updateCamera(dt);
@@ -854,9 +978,9 @@ export class Game {
     }
     const dmg = 3 + Math.floor(Math.random() * (4 + str));
     target.hp -= dmg;
-    const xpAtk = target.kind === 'yeti' ? 18 : 12;
-    const xpStr = target.kind === 'yeti' ? 14 : 8;
-    const xpCon = target.kind === 'yeti' ? 8 : 4;
+    const xpAtk = target.kind === 'yeti' ? 18 : target.kind === 'orc' ? 15 : 12;
+    const xpStr = target.kind === 'yeti' ? 14 : target.kind === 'orc' ? 12 : 8;
+    const xpCon = target.kind === 'yeti' ? 8 : target.kind === 'orc' ? 6 : 4;
     this.grantXp('attack', xpAtk);
     this.grantXp('strength', xpStr);
     this.grantXp('constitution', xpCon);
@@ -867,6 +991,10 @@ export class Game {
       this.vfx.spawnIceBurst(target.mesh.position.clone(), 8);
       this.yetiAggroed = true;
     }
+    if (target.kind === 'orc') {
+      this.vfx.spawnSpearThrust(target.mesh.position.clone(), 6);
+      this.orcAggroed = true;
+    }
 
     if (target.kind === 'dummy') {
       const recoil = Math.random() < 0.15 ? 1 : 0;
@@ -876,18 +1004,21 @@ export class Game {
       } else {
         this.hud.chat(`You hit the training dummy for ${dmg} damage.`, 'combat');
       }
+    } else if (target.kind === 'orc') {
+      this.hud.chat(`You strike the Orc Scout for ${dmg} damage!`, 'combat');
     } else {
       this.hud.chat(`You strike the Frost Yeti for ${dmg} damage!`, 'combat');
     }
 
     target.mesh.rotation.z = (Math.random() - 0.5) * 0.12;
     setTimeout(() => {
-      if (target.kind !== 'yeti' || !target.depleted) target.mesh.rotation.z = 0;
+      if (!this.isMonster(target) || !target.depleted) target.mesh.rotation.z = 0;
     }, 120);
 
     if (target.hp <= 0) {
       target.hp = 0;
       if (target.kind === 'yeti') this.onYetiDeath(target);
+      else if (target.kind === 'orc') this.onOrcDeath(target);
       else this.onDummyDeath(target);
     } else {
       this.hud.showTarget(label, target.hp / target.maxHp);
@@ -913,6 +1044,7 @@ export class Game {
     this.yetiAttackCd = 0;
     this.vfx.spawnIceBurst(target.mesh.position.clone().setY(1.2), 22);
     this.hud.chat('The Frost Yeti collapses in a burst of frost!', 'combat');
+    // home reset on next respawn
     this.grantXp('defence', 28);
     this.grantXp('attack', 12);
     this.grantXp('strength', 10);
@@ -923,6 +1055,35 @@ export class Game {
     if (Math.random() < 0.55) {
       if (this.addItem('frost_claw', 1)) {
         this.hud.chat('You pry free a Frost Claw!', 'loot');
+      }
+    }
+    this.activity = { type: 'idle' };
+    setPlayerTool(this.player, null);
+    this.hud.hideTarget();
+    this.refreshUI();
+    this.persist();
+  }
+
+
+  private onOrcDeath(target: WorldObject): void {
+    target.depleted = true;
+    target.mesh.visible = false;
+    target.respawnAt = performance.now() / 1000 + ORC_RESPAWN_SEC;
+    this.orcAggroed = false;
+    this.orcAttackCd = 0;
+    this.vfx.spawnSpearThrust(target.mesh.position.clone().setY(1.1), 14);
+    this.vfx.spawnHitSparks(target.mesh.position.clone().setY(1.0), 16);
+    this.hud.chat('The Orc Scout falls! Its spear clatters to the dirt.', 'combat');
+    this.grantXp('defence', 22);
+    this.grantXp('attack', 10);
+    this.grantXp('strength', 8);
+    this.grantXp('constitution', 8);
+    if (this.addItem('orc_tooth', 1)) {
+      this.hud.chat('You loot an Orc Tooth.', 'loot');
+    }
+    if (Math.random() < 0.65) {
+      if (this.addItem('scout_leather', 1)) {
+        this.hud.chat('You strip Scout Leather from the vest.', 'loot');
       }
     }
     this.activity = { type: 'idle' };
@@ -963,8 +1124,8 @@ export class Game {
       const n = Math.hypot(dx, dz) || 1;
       yeti.mesh.position.x += (dx / n) * step;
       yeti.mesh.position.z += (dz / n) * step;
-      const sx = 4.2;
-      const sz = 7.2;
+      const sx = YETI_HOME.x;
+      const sz = YETI_HOME.z;
       const lx = yeti.mesh.position.x - sx;
       const lz = yeti.mesh.position.z - sz;
       const ld = Math.hypot(lx, lz);
@@ -977,8 +1138,8 @@ export class Game {
     if (dist > YETI_AGGRO_RADIUS + 6) {
       this.yetiAggroed = false;
       this.hud.chat('The Frost Yeti loses interest and returns to the clearing.', 'system');
-      yeti.mesh.position.x += (4.2 - yeti.mesh.position.x) * Math.min(1, dt * 0.8);
-      yeti.mesh.position.z += (7.2 - yeti.mesh.position.z) * Math.min(1, dt * 0.8);
+      yeti.mesh.position.x += (YETI_HOME.x - yeti.mesh.position.x) * Math.min(1, dt * 0.8);
+      yeti.mesh.position.z += (YETI_HOME.z - yeti.mesh.position.z) * Math.min(1, dt * 0.8);
       if (this.activity.type === 'combat' && this.activity.target === yeti) {
         this.activity = { type: 'idle' };
         setPlayerTool(this.player, null);
@@ -1023,7 +1184,7 @@ export class Game {
       setPlayerTool(this.player, null);
       this.hud.hideTarget();
       this.hud.chat('You fall! You wake by the Thornrest campfire, battered but alive.', 'combat');
-      yeti.mesh.position.set(4.2, 0, 7.2);
+      yeti.mesh.position.set(YETI_HOME.x, 0, YETI_HOME.z);
     }
     if (this.activity.type !== 'combat' && yeti.hp > 0 && !yeti.depleted) {
       this.beginCombat(yeti, 'You raise your guard against the Frost Yeti!');
@@ -1032,6 +1193,109 @@ export class Game {
     this.persist();
   }
 
+
+
+  private updateOrcAI(dt: number): void {
+    const orc = this.orcTarget;
+    if (!orc || orc.depleted || orc.hp <= 0) {
+      if (this.orcSwipeT > 0) this.orcSwipeT = Math.max(0, this.orcSwipeT - dt);
+      return;
+    }
+
+    const dist = this.distTo(orc);
+    if (!this.orcAggroed && dist <= ORC_AGGRO_RADIUS) {
+      this.orcAggroed = true;
+      this.hud.chat('The Orc Scout snarls and levels its spear!', 'combat');
+      if (this.activity.type !== 'combat' || this.activity.target !== orc) {
+        this.beginCombat(orc, 'The Orc Scout engages you!');
+      }
+    }
+
+    if (!this.orcAggroed) {
+      orc.mesh.position.y = Math.sin(performance.now() / 1000 * 1.8) * 0.025;
+      animateOrcSpear(orc.mesh, 0);
+      return;
+    }
+
+    const dx = this.player.position.x - orc.mesh.position.x;
+    const dz = this.player.position.z - orc.mesh.position.z;
+    if (Math.hypot(dx, dz) > 0.01) orc.mesh.rotation.y = Math.atan2(dx, dz);
+
+    // Faster than yeti
+    if (dist > ORC_ATTACK_RANGE && dist < ORC_AGGRO_RADIUS + 4) {
+      const step = Math.min(dist - ORC_ATTACK_RANGE * 0.85, 3.2 * dt);
+      const n = Math.hypot(dx, dz) || 1;
+      orc.mesh.position.x += (dx / n) * step;
+      orc.mesh.position.z += (dz / n) * step;
+      const sx = ORC_HOME.x;
+      const sz = ORC_HOME.z;
+      const lx = orc.mesh.position.x - sx;
+      const lz = orc.mesh.position.z - sz;
+      const ld = Math.hypot(lx, lz);
+      if (ld > 7) {
+        orc.mesh.position.x = sx + (lx / ld) * 7;
+        orc.mesh.position.z = sz + (lz / ld) * 7;
+      }
+    }
+
+    if (dist > ORC_AGGRO_RADIUS + 6) {
+      this.orcAggroed = false;
+      this.hud.chat('The Orc Scout loses interest and returns to the trail.', 'system');
+      orc.mesh.position.x += (ORC_HOME.x - orc.mesh.position.x) * Math.min(1, dt * 1.0);
+      orc.mesh.position.z += (ORC_HOME.z - orc.mesh.position.z) * Math.min(1, dt * 1.0);
+      if (this.activity.type === 'combat' && this.activity.target === orc) {
+        this.activity = { type: 'idle' };
+        setPlayerTool(this.player, null);
+        this.hud.hideTarget();
+      }
+      return;
+    }
+
+    if (this.orcSwipeT > 0) {
+      this.orcSwipeT = Math.max(0, this.orcSwipeT - dt);
+      animateOrcSpear(orc.mesh, 1 - this.orcSwipeT / 0.38);
+    } else {
+      animateOrcSpear(orc.mesh, 0);
+    }
+
+    this.orcAttackCd -= dt;
+    if (dist <= ORC_ATTACK_RANGE + 0.35 && this.orcAttackCd <= 0) {
+      this.orcAttackCd = 1.75; // faster attack cadence than yeti
+      this.orcSwipeT = 0.38;
+      this.orcMeleeHit(orc);
+    }
+  }
+
+  private orcMeleeHit(orc: WorldObject): void {
+    const dist = this.distTo(orc);
+    if (dist > ORC_ATTACK_RANGE + 0.5) return;
+    const def = this.save.skills.defence.level;
+    const raw = ORC_DMG_MIN + Math.floor(Math.random() * (ORC_DMG_MAX - ORC_DMG_MIN + 1));
+    const mitigated = Math.max(2, raw - Math.floor(def / 5));
+    this.save.hp = Math.max(0, this.save.hp - mitigated);
+    this.vfx.spawnSpearThrust(this.player.position.clone(), 10);
+    this.vfx.spawnHitSparks(this.player.position.clone().setY(1.1), 8);
+    this.vfx.spawnDamage(this.player.position.clone().setY(1.3), mitigated);
+    this.hud.chat(`The Orc Scout thrusts its spear for ${mitigated} damage!`, 'combat');
+    this.hud.setOrbs(this.save.hp, this.save.maxHp, this.save.focus, this.save.stamina);
+
+    if (this.save.hp <= 0) {
+      this.save.hp = Math.max(10, Math.floor(this.save.maxHp * 0.35));
+      this.player.position.set(0, 0, 2);
+      this.orcAggroed = false;
+      this.yetiAggroed = false;
+      this.activity = { type: 'idle' };
+      setPlayerTool(this.player, null);
+      this.hud.hideTarget();
+      this.hud.chat('You fall! You wake by the Thornrest campfire, battered but alive.', 'combat');
+      orc.mesh.position.set(ORC_HOME.x, 0, ORC_HOME.z);
+    }
+    if (this.activity.type !== 'combat' && orc.hp > 0 && !orc.depleted) {
+      this.beginCombat(orc, 'You raise your guard against the Orc Scout!');
+    }
+    this.refreshUI();
+    this.persist();
+  }
 
   private updateCamera(_dt: number): void {
     const target = new THREE.Vector3(
@@ -1047,10 +1311,11 @@ export class Game {
   private drawMinimapMarkers(): void {
     const markers: { x: number; z: number; color: string }[] = [];
     for (const o of this.objects) {
-      if (o.depleted && o.kind !== 'dummy' && o.kind !== 'yeti') continue;
+      if (o.depleted && o.kind !== 'dummy' && o.kind !== 'yeti' && o.kind !== 'orc') continue;
       if (o.kind === 'tree') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#2d8a2d' });
       else if (o.kind === 'rock') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#888' });
       else if (o.kind === 'yeti') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#7ec8ff' });
+      else if (o.kind === 'orc') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#6a9a2a' });
       else markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#c43c3c' });
     }
     markers.push({ x: -1.2, z: -0.5, color: '#ff8844' });
