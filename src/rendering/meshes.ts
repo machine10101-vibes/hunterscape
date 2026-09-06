@@ -55,42 +55,347 @@ export function createPlayerMesh(): THREE.Group {
   shadow.name = 'contactShadow';
   g.add(shadow);
 
-  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 0.55, 4, 8), mat(0x3a5a8a));
-  body.position.y = 0.85;
-  body.castShadow = true;
-  addOutline(body, 1.1, 0x061018);
-  g.add(body);
+  // --- Palette (Hunter Drive male hunter) ---
+  const skin = mat(0xb8866b, { roughness: 0.88 });
+  const skinDark = mat(0x9a6a4e, { roughness: 0.9 });
+  const hairCol = mat(0x2a1a0c, { roughness: 0.95 });
+  const leather = mat(0x4b3621, { roughness: 0.78 });
+  const leatherDark = mat(0x3d2b1f, { roughness: 0.8 });
+  const leatherMid = mat(0x5c4033, { roughness: 0.75 });
+  const fur = mat(0x967b5f, { roughness: 0.95 });
+  const furDark = mat(0x7a6348, { roughness: 0.95 });
+  const cloth = mat(0x333830, { roughness: 0.9 }); // charcoal/olive
+  const clothDark = mat(0x2a2e28, { roughness: 0.92 });
+  const metal = mat(0xa0a8b0, { metalness: 0.55, roughness: 0.4 });
+  const wood = mat(0x5a3a1a, { roughness: 0.85 });
 
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), mat(0xd4a574));
-  head.position.y = 1.45;
-  head.castShadow = true;
-  addOutline(head, 1.12, 0x1a1008);
+  const addPart = (
+    mesh: THREE.Mesh,
+    parent: THREE.Object3D = g,
+    outlineScale?: number,
+    outlineColor = 0x0a0806,
+  ) => {
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    if (outlineScale) addOutline(mesh, outlineScale, outlineColor);
+    parent.add(mesh);
+    return mesh;
+  };
+
+  /** Spiky fur ring / clump helper */
+  const addFurSpikes = (
+    parent: THREE.Object3D,
+    cx: number,
+    cy: number,
+    cz: number,
+    radius: number,
+    count: number,
+    length: number,
+    tipRadius: number,
+    yawBias = 0,
+  ) => {
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2 + yawBias;
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(tipRadius, length, 4), i % 3 === 0 ? furDark : fur);
+      spike.position.set(
+        cx + Math.cos(a) * radius,
+        cy + length * 0.25,
+        cz + Math.sin(a) * radius,
+      );
+      // Point outward-up
+      spike.rotation.z = -Math.cos(a) * 0.55;
+      spike.rotation.x = Math.sin(a) * 0.55;
+      spike.castShadow = true;
+      parent.add(spike);
+    }
+  };
+
+  // ===== Legs / trousers =====
+  const makeLeg = (side: number) => {
+    const leg = new THREE.Group();
+    const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 0.42, 6), cloth);
+    thigh.position.set(0, 0.55, 0);
+    addPart(thigh, leg);
+
+    const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.11, 0.28, 6), clothDark);
+    shin.position.set(0, 0.28, 0.02);
+    addPart(shin, leg);
+
+    // Boot shaft
+    const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.115, 0.13, 0.38, 6), leather);
+    boot.position.set(0, 0.2, 0.02);
+    addPart(boot, leg, 1.06);
+
+    // Boot foot
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.1, 0.28), leatherDark);
+    foot.position.set(0, 0.05, 0.08);
+    addPart(foot, leg);
+
+    // Horizontal straps on shin
+    for (let i = 0; i < 3; i++) {
+      const strap = new THREE.Mesh(new THREE.TorusGeometry(0.125, 0.018, 4, 10), leatherMid);
+      strap.rotation.x = Math.PI / 2;
+      strap.position.set(0, 0.12 + i * 0.1, 0.02);
+      leg.add(strap);
+    }
+
+    // Fur trim at boot top (below knee)
+    addFurSpikes(leg, 0, 0.36, 0.02, 0.12, 8, 0.1, 0.035);
+    // Fur trim at ankle
+    addFurSpikes(leg, 0, 0.08, 0.04, 0.11, 7, 0.08, 0.03);
+
+    leg.position.x = side * 0.16;
+    return leg;
+  };
+  g.add(makeLeg(-1));
+  g.add(makeLeg(1));
+
+  // Hip / lower tunic flaps
+  const hips = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.28, 0.22, 8), leather);
+  hips.position.y = 0.78;
+  addPart(hips, g);
+
+  // Faulds / leather flaps front+back
+  for (const [z, ry] of [
+    [0.16, 0],
+    [-0.16, Math.PI],
+  ] as const) {
+    const flap = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.22, 0.06), leatherDark);
+    flap.position.set(0, 0.68, z);
+    flap.rotation.y = ry;
+    addPart(flap, g);
+  }
+  // Side flaps
+  for (const sx of [-1, 1]) {
+    const flap = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.2, 0.18), leatherMid);
+    flap.position.set(sx * 0.22, 0.68, 0);
+    addPart(flap, g);
+  }
+
+  // ===== Torso / leather vest =====
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.28, 0.55, 8), leather);
+  torso.position.y = 1.12;
+  addPart(torso, g, 1.08, 0x0a0806);
+
+  // Chest plate facets (extra low-poly plates)
+  const chestPlate = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.32, 0.18), leatherMid);
+  chestPlate.position.set(0, 1.2, 0.14);
+  addPart(chestPlate, g);
+
+  // Thick belt
+  const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.29, 0.29, 0.1, 10), leatherDark);
+  belt.position.y = 0.88;
+  addPart(belt, g);
+  const beltBuckle = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.09, 0.06), metal);
+  beltBuckle.position.set(0, 0.88, 0.28);
+  g.add(beltBuckle);
+
+  // X chest straps (front)
+  const makeStrap = (rotZ: number, z = 0.22) => {
+    const strap = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.55, 0.035), leatherDark);
+    strap.position.set(0, 1.18, z);
+    strap.rotation.z = rotZ;
+    g.add(strap);
+  };
+  makeStrap(0.55, 0.24);
+  makeStrap(-0.55, 0.24);
+  // X on back
+  makeStrap(0.55, -0.22);
+  makeStrap(-0.55, -0.22);
+
+  // Silver chest buckle at X center
+  const chestBuckle = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.05), metal);
+  chestBuckle.position.set(0, 1.18, 0.27);
+  g.add(chestBuckle);
+  const chestBuckleRing = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.012, 4, 8), metal);
+  chestBuckleRing.position.set(0, 1.18, 0.3);
+  g.add(chestBuckleRing);
+
+  // Shoulder strap anchors
+  for (const sx of [-1, 1]) {
+    const pad = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.08, 0.16), leatherMid);
+    pad.position.set(sx * 0.22, 1.4, 0);
+    addPart(pad, g);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.01, 4, 8), metal);
+    ring.position.set(sx * 0.2, 1.38, 0.12);
+    g.add(ring);
+  }
+
+  // ===== Fur collar (thick spiky around neck/shoulders) =====
+  const collarBase = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.09, 6, 12), fur);
+  collarBase.rotation.x = Math.PI / 2;
+  collarBase.position.set(0, 1.42, 0);
+  collarBase.scale.set(1.15, 1.0, 0.95);
+  addPart(collarBase, g);
+
+  // Dense spike clumps for collar volume
+  addFurSpikes(g, 0, 1.4, 0, 0.28, 14, 0.18, 0.05);
+  addFurSpikes(g, 0, 1.48, -0.05, 0.22, 10, 0.16, 0.045, 0.2);
+  // Shoulder drapes
+  for (const sx of [-1, 1]) {
+    addFurSpikes(g, sx * 0.28, 1.35, 0.05, 0.12, 7, 0.14, 0.04);
+    const drape = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.28, 5), furDark);
+    drape.position.set(sx * 0.32, 1.28, 0);
+    drape.rotation.z = sx * 0.7;
+    drape.rotation.x = -0.3;
+    addPart(drape, g);
+  }
+
+  // ===== Arms (olive sleeves + leather gauntlets) =====
+  const makeArm = (side: number) => {
+    const arm = new THREE.Group();
+    // Upper arm / sleeve
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.1, 0.32, 6), cloth);
+    upper.position.set(0, 0, 0);
+    upper.rotation.z = side * 0.35;
+    addPart(upper, arm);
+
+    // Forearm gauntlet
+    const gauntlet = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.11, 0.28, 6), leather);
+    gauntlet.position.set(side * 0.12, -0.28, 0.02);
+    gauntlet.rotation.z = side * 0.2;
+    addPart(gauntlet, arm, 1.05);
+
+    // Gauntlet straps
+    for (let i = 0; i < 2; i++) {
+      const s = new THREE.Mesh(new THREE.TorusGeometry(0.105, 0.015, 4, 8), leatherDark);
+      s.rotation.x = Math.PI / 2;
+      s.position.set(side * 0.12, -0.22 - i * 0.1, 0.02);
+      arm.add(s);
+    }
+
+    // Fur trim at top of gauntlet (near elbow)
+    const furGroup = new THREE.Group();
+    furGroup.position.set(side * 0.08, -0.12, 0.02);
+    addFurSpikes(furGroup, 0, 0, 0, 0.1, 8, 0.09, 0.03);
+    arm.add(furGroup);
+
+    // Hand
+    const hand = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.12), skin);
+    hand.position.set(side * 0.16, -0.44, 0.04);
+    addPart(hand, arm);
+
+    arm.position.set(side * 0.34, 1.28, 0);
+    return arm;
+  };
+  g.add(makeArm(-1));
+  g.add(makeArm(1));
+
+  // ===== Head =====
+  const head = new THREE.Group();
+  head.position.set(0, 1.58, 0);
+
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.17, 8, 7), skin);
+  skull.scale.set(1.0, 1.08, 0.95);
+  addPart(skull, head, 1.12, 0x1a1008);
+
+  // Strong jaw / chin
+  const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.12, 0.16), skinDark);
+  jaw.position.set(0, -0.1, 0.04);
+  addPart(jaw, head);
+
+  // Cheek planes
+  for (const sx of [-1, 1]) {
+    const cheek = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.1, 0.1), skinDark);
+    cheek.position.set(sx * 0.12, -0.02, 0.08);
+    head.add(cheek);
+  }
+
+  // Nose
+  const nose = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.07, 0.09), skinDark);
+  nose.position.set(0, -0.02, 0.16);
+  head.add(nose);
+
+  // Brows
+  for (const sx of [-1, 1]) {
+    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.025, 0.04), hairCol);
+    brow.position.set(sx * 0.07, 0.06, 0.14);
+    brow.rotation.z = sx * -0.15;
+    head.add(brow);
+  }
+
+  // Eyes (dark sockets + iris)
+  for (const sx of [-1, 1]) {
+    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.035, 5, 4), mat(0x1a1210));
+    socket.position.set(sx * 0.065, 0.02, 0.14);
+    head.add(socket);
+    const iris = new THREE.Mesh(new THREE.SphereGeometry(0.02, 5, 4), mat(0x3a2818));
+    iris.position.set(sx * 0.065, 0.02, 0.165);
+    head.add(iris);
+  }
+
+  // Mouth line
+  const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.015, 0.03), mat(0x5a3a2a));
+  mouth.position.set(0, -0.12, 0.14);
+  head.add(mouth);
+
+  // Ears
+  for (const sx of [-1, 1]) {
+    const ear = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.07, 0.035), skin);
+    ear.position.set(sx * 0.16, 0.02, 0);
+    head.add(ear);
+  }
+
+  // Short spiky dark brown hair
+  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.175, 7, 5), hairCol);
+  hairCap.position.set(0, 0.06, -0.02);
+  hairCap.scale.set(1.05, 0.7, 1.05);
+  addPart(hairCap, head);
+
+  // Spiky clumps
+  const spikePts: [number, number, number, number][] = [
+    [0, 0.2, 0.05, 1.1],
+    [-0.08, 0.18, 0.08, 0.95],
+    [0.08, 0.18, 0.08, 0.95],
+    [-0.12, 0.14, -0.02, 0.9],
+    [0.12, 0.14, -0.02, 0.9],
+    [0, 0.16, -0.12, 1.0],
+    [-0.1, 0.12, -0.1, 0.85],
+    [0.1, 0.12, -0.1, 0.85],
+    [-0.06, 0.2, -0.04, 1.05],
+    [0.06, 0.2, -0.04, 1.05],
+    [0, 0.22, 0.12, 0.8],
+  ];
+  for (const [x, y, z, s] of spikePts) {
+    const spike = new THREE.Mesh(new THREE.ConeGeometry(0.05 * s, 0.14 * s, 4), hairCol);
+    spike.position.set(x, y, z);
+    spike.rotation.x = z * 1.2;
+    spike.rotation.z = -x * 1.5;
+    head.add(spike);
+  }
+
   g.add(head);
 
-  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.23, 8, 6), mat(0x2a1a0a));
-  hair.position.y = 1.55;
-  hair.scale.set(1, 0.55, 1);
-  g.add(hair);
+  // ===== Idle spear (held when no gather/combat tool) =====
+  const idleSpear = new THREE.Group();
+  idleSpear.name = 'idleSpear';
+  idleSpear.position.set(-0.42, 0.15, 0.12);
+  // Shaft
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.032, 1.85, 5), wood);
+  shaft.position.y = 0.95;
+  addPart(shaft, idleSpear);
+  // Faceted spearhead
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.28, 5), metal);
+  tip.position.y = 1.98;
+  addPart(tip, idleSpear);
+  // Side barbs
+  for (const sx of [-1, 1]) {
+    const barb = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.12, 4), metal);
+    barb.position.set(sx * 0.05, 1.82, 0);
+    barb.rotation.z = sx * 1.1;
+    idleSpear.add(barb);
+  }
+  // Butt cap
+  const butt = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.08, 4), metal);
+  butt.rotation.x = Math.PI;
+  butt.position.y = 0.02;
+  idleSpear.add(butt);
+  g.add(idleSpear);
 
-  const tunic = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.36, 0.5, 8), mat(0x4a6a3a));
-  tunic.position.y = 0.75;
-  tunic.castShadow = true;
-  g.add(tunic);
-
-  // Belt / pouch for silhouette detail
-  const belt = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.04, 6, 12), mat(0x3a2a12, { roughness: 0.7 }));
-  belt.rotation.x = Math.PI / 2;
-  belt.position.y = 0.55;
-  g.add(belt);
-
-  const nose = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.12), mat(0xc09060));
-  nose.position.set(0, 1.42, 0.2);
-  g.add(nose);
-
-  // Tool holders (shown during gather/combat)
+  // Tool holders (shown during gather/combat) — right hand
   const toolRoot = new THREE.Group();
   toolRoot.name = 'toolRoot';
-  toolRoot.position.set(0.38, 0.95, 0.15);
+  toolRoot.position.set(0.42, 0.95, 0.15);
   toolRoot.visible = false;
   g.add(toolRoot);
 
@@ -157,6 +462,9 @@ export function setPlayerTool(player: THREE.Group, tool: 'hatchet' | 'pickaxe' |
     const t = root.getObjectByName(name);
     if (t) t.visible = name === `tool_${tool}`;
   }
+  // Default spear held when idle; hide while swinging gather/combat tools
+  const spear = player.getObjectByName('idleSpear');
+  if (spear) spear.visible = tool === null;
 }
 
 export function createTree(seed = 0): THREE.Group {
