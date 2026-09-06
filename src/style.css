@@ -49,7 +49,7 @@ html, body {
   z-index: 10;
 }
 
-#hud button, #hud .ab-slot, #hud .inv-slot, #chat, #inventory, #skills-panel, #btn-skills {
+#hud button, #hud .ab-slot, #hud .inv-slot, #chat, #inventory, #skills-panel, #btn-skills, #btn-inventory {
   pointer-events: auto;
 }
 
@@ -68,6 +68,7 @@ html, body {
   display: flex;
   gap: 4px;
   flex-direction: row-reverse;
+  margin-bottom: 10px;
 }
 
 .orb {
@@ -120,6 +121,21 @@ html, body {
 .hp-core { background: radial-gradient(circle at 35% 30%, #e86868, #7a1818); }
 .pray-core { background: radial-gradient(circle at 35% 30%, #68b0e8, #184878); }
 .stam-core { background: radial-gradient(circle at 35% 30%, #68d888, #186828); }
+
+.orb-label {
+  position: absolute;
+  left: 50%;
+  bottom: -13px;
+  transform: translateX(-50%);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--gold);
+  text-shadow: 0 1px 2px #000;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 
 #minimap-wrap {
   position: relative;
@@ -404,6 +420,41 @@ html, body {
   text-shadow: 0 1px 1px #000;
 }
 
+
+/* —— Inventory toggle (narrow only) —— */
+#btn-inventory {
+  display: none;
+  position: absolute;
+  bottom: calc(12px + var(--safe-bottom));
+  right: 8px;
+  width: 48px;
+  height: 48px;
+  background: var(--panel);
+  border: 1px solid var(--gold-dim);
+  color: var(--gold);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 22px;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.6);
+  z-index: 35;
+  padding: 0;
+}
+
+#btn-inventory:hover, #btn-inventory[aria-expanded="true"] {
+  border-color: var(--gold);
+}
+
+.panel-head-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#inv-close {
+  display: none;
+}
 /* —— Progress —— */
 #progress-wrap {
   position: absolute;
@@ -482,10 +533,11 @@ html, body {
 
 #touch-hint.fade { opacity: 0; }
 
-/* —— Mobile tweaks —— */
+/* —— Tablet / mid tweaks —— */
 @media (max-width: 720px) {
   .orb { width: 42px; height: 42px; }
   .orb-core { font-size: 9px; inset: 6px; }
+  .orb-label { font-size: 7px; bottom: -12px; }
   #minimap-wrap { width: 110px; height: 110px; }
   #chat {
     width: min(200px, 48vw);
@@ -502,4 +554,93 @@ html, body {
 
 @media (min-width: 721px) {
   #touch-hint { opacity: 0.7; }
+}
+
+/* —— Narrow / phone HUD (≤480px): panels closed behind icons —— */
+@media (max-width: 480px) {
+  #btn-inventory {
+    display: flex;
+  }
+
+  #inv-close {
+    display: inline;
+  }
+
+  /* Action bar: full usable width, clears inventory toggle on the right */
+  #action-bar {
+    left: 8px;
+    right: 60px;
+    transform: none;
+    width: auto;
+    justify-content: space-evenly;
+    bottom: calc(12px + var(--safe-bottom));
+    z-index: 30;
+    padding: 5px 6px;
+  }
+
+  .ab-slot { width: 40px; height: 40px; }
+  .ab-icon { font-size: 17px; }
+
+  /* Chat: capped height, sits above action bar, never intersects it */
+  #chat {
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-width: none;
+    bottom: calc(68px + var(--safe-bottom));
+    max-height: 76px;
+    z-index: 20;
+  }
+
+  #chat-log {
+    max-height: 52px;
+    font-size: 11px;
+  }
+
+  /* Inventory defaults closed (hidden attr via JS); when open, stack above chat */
+  #inventory {
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-width: none;
+    bottom: calc(152px + var(--safe-bottom));
+    max-height: min(42vh, calc(100vh - 280px));
+    overflow-y: auto;
+    z-index: 25;
+  }
+
+  #inv-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .inv-slot { min-height: 32px; font-size: 15px; }
+
+  /* Compact top chrome */
+  .orb { width: 38px; height: 38px; }
+  .orb-core { font-size: 9px; inset: 5px; }
+  #minimap-wrap { width: 96px; height: 96px; }
+
+  #skills-panel {
+    width: min(260px, calc(100vw - 16px));
+    max-height: min(50vh, calc(100vh - 200px));
+    z-index: 26;
+  }
+
+  #btn-skills {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+
+  #btn-inventory {
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+  }
+}
+
+/* Desktop unchanged: inventory always visible, no inv toggle chrome */
+@media (min-width: 481px) {
+  #btn-inventory { display: none !important; }
+  #inv-close { display: none !important; }
+  #inventory { display: block; }
 }

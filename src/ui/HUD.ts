@@ -30,6 +30,9 @@ export class HUD {
   private minimap: HTMLCanvasElement;
   private minimapCtx: CanvasRenderingContext2D;
   private touchHint: HTMLElement;
+  private inventory!: HTMLElement;
+  private btnInventory!: HTMLButtonElement;
+  private narrowMq!: MediaQueryList;
   private circum = 2 * Math.PI * 28;
 
   onAction: ((action: string) => void) | null = null;
@@ -57,12 +60,32 @@ export class HUD {
     this.minimapCtx = this.minimap.getContext('2d')!;
     this.touchHint = el('touch-hint');
 
+    this.inventory = el('inventory');
+    this.btnInventory = el('btn-inventory') as HTMLButtonElement;
+    this.narrowMq = window.matchMedia('(max-width: 480px)');
+
     el('btn-skills').addEventListener('click', () => {
       this.skillsPanel.hidden = !this.skillsPanel.hidden;
     });
     el('skills-close').addEventListener('click', () => {
       this.skillsPanel.hidden = true;
     });
+
+    this.btnInventory.addEventListener('click', () => {
+      this.setInventoryOpen(this.inventory.hidden);
+    });
+    el('inv-close').addEventListener('click', () => {
+      this.setInventoryOpen(false);
+    });
+
+    const syncViewport = () => this.syncInventoryForViewport();
+    if (typeof this.narrowMq.addEventListener === 'function') {
+      this.narrowMq.addEventListener('change', syncViewport);
+    } else {
+      // Safari < 14
+      (this.narrowMq as MediaQueryList).addListener(syncViewport);
+    }
+    this.syncInventoryForViewport();
 
     document.querySelectorAll('.ab-slot').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -74,6 +97,20 @@ export class HUD {
     });
 
     setTimeout(() => this.touchHint.classList.add('fade'), 8000);
+  }
+
+  /** Narrow (≤480px): inventory closed by default behind icon. Desktop: always open. */
+  private syncInventoryForViewport(): void {
+    if (this.narrowMq.matches) {
+      this.setInventoryOpen(false);
+    } else {
+      this.setInventoryOpen(true);
+    }
+  }
+
+  private setInventoryOpen(open: boolean): void {
+    this.inventory.hidden = !open;
+    this.btnInventory.setAttribute('aria-expanded', open ? 'true' : 'false');
   }
 
   chat(msg: string, kind: ChatKind = 'system'): void {

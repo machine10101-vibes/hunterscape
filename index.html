@@ -16,12 +16,13 @@
         <!-- Top-right: minimap + orbs -->
         <div id="hud-top-right">
           <div id="orbs">
-            <div class="orb" id="orb-hp" title="Constitution">
+            <div class="orb" id="orb-hp" title="HP">
               <svg viewBox="0 0 64 64" class="orb-ring">
                 <circle cx="32" cy="32" r="28" class="orb-track" />
                 <circle cx="32" cy="32" r="28" class="orb-fill hp-fill" id="hp-ring" />
               </svg>
               <div class="orb-core hp-core"><span id="hp-text">100</span></div>
+              <span class="orb-label">HP</span>
             </div>
             <div class="orb" id="orb-pray" title="Focus">
               <svg viewBox="0 0 64 64" class="orb-ring">
@@ -29,6 +30,7 @@
                 <circle cx="32" cy="32" r="28" class="orb-fill pray-fill" id="pray-ring" />
               </svg>
               <div class="orb-core pray-core"><span id="pray-text">100</span></div>
+              <span class="orb-label">Focus</span>
             </div>
             <div class="orb" id="orb-stam" title="Stamina">
               <svg viewBox="0 0 64 64" class="orb-ring">
@@ -36,6 +38,7 @@
                 <circle cx="32" cy="32" r="28" class="orb-fill stam-fill" id="stam-ring" />
               </svg>
               <div class="orb-core stam-core"><span id="stam-text">100</span></div>
+              <span class="orb-label">Stamina</span>
             </div>
           </div>
           <div id="minimap-wrap">
@@ -75,9 +78,18 @@
           <button class="ab-slot" data-action="examine" title="Examine (5)"><span class="ab-icon">👁</span><span class="ab-key">5</span></button>
         </div>
 
+        <!-- Inventory toggle (narrow viewports) -->
+        <button type="button" id="btn-inventory" title="Inventory" aria-label="Inventory" aria-expanded="true">🎒</button>
+
         <!-- Inventory bottom-right -->
         <div id="inventory" class="panel">
-          <div class="panel-head"><span>Inventory</span><span id="inv-count">0/28</span></div>
+          <div class="panel-head">
+            <span>Inventory</span>
+            <span class="panel-head-right">
+              <span id="inv-count">0/28</span>
+              <button type="button" class="panel-close" id="inv-close" aria-label="Close inventory">✕</button>
+            </span>
+          </div>
           <div id="inv-grid"></div>
         </div>
 
