@@ -17,6 +17,7 @@ Original world, names, and art (procedural Three.js). Visual layout inspired by 
 - Inventory + tools; progress saved in `localStorage`
 - Desktop + mobile (touch-friendly)
 - Studio-style low-poly character/monster art with richer world lighting
+- Walk/attack/gather animation cycles, hit flinch, death collapse, combat telegraphs
 
 ## Develop
 

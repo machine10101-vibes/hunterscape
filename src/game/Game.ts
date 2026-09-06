@@ -21,6 +21,29 @@ import {
   flashDummy,
   setPlayerTool,
 } from '../rendering/meshes';
+import {
+  animateDeath,
+  animateHitFlinch,
+  animateOrcAttack,
+  animateOrcWalk,
+  animatePlayerAttack,
+  animatePlayerGather,
+  animatePlayerIdle,
+  animatePlayerWalk,
+  animateYetiAttack,
+  animateYetiWalk,
+  ORC_ATTACK_CONNECT_END,
+  ORC_ATTACK_CONNECT_START,
+  ORC_ATTACK_DURATION,
+  PLAYER_ATTACK_CONNECT_END,
+  PLAYER_ATTACK_CONNECT_START,
+  PLAYER_ATTACK_DURATION,
+  resetPlayerPose,
+  turnTowardYaw,
+  YETI_ATTACK_CONNECT_END,
+  YETI_ATTACK_CONNECT_START,
+  YETI_ATTACK_DURATION,
+} from '../rendering/anim';
 import { VFX } from '../rendering/vfx';
 import { loadSave, writeSave } from './Persistence';
 import {
@@ -47,14 +70,29 @@ type Activity =
   | { type: 'idle' }
   | { type: 'move'; tx: number; tz: number }
   | { type: 'gather'; target: WorldObject; elapsed: number; duration: number; label: string }
-  | { type: 'combat'; target: WorldObject; cooldown: number };
+  | {
+      type: 'combat';
+      target: WorldObject;
+      cooldown: number;
+      swingT: number;
+      swingDur: number;
+      hitDone: boolean;
+    };
+
+interface DeathAnim {
+  mesh: THREE.Group;
+  kind: 'yeti' | 'orc' | 'dummy';
+  t: number;
+  dur: number;
+  home?: { x: number; z: number };
+}
 
 const GATHER_RANGE = 1.6;
 const ATTACK_RANGE = 1.8;
-const YETI_ATTACK_RANGE = 2.3;
-const YETI_AGGRO_RADIUS = 5.5;
-const ORC_ATTACK_RANGE = 2.05;
-const ORC_AGGRO_RADIUS = 5.0;
+const YETI_ATTACK_RANGE = 2.35;
+const YETI_AGGRO_RADIUS = 5.8;
+const ORC_ATTACK_RANGE = 2.15;
+const ORC_AGGRO_RADIUS = 5.4;
 const MOVE_SPEED = 4.2;
 const SAVE_EVERY = 3;
 const YETI_MAX_HP = 80;
@@ -111,6 +149,15 @@ export class Game {
   private pendingGather: { obj: WorldObject; duration: number; label: string } | null = null;
   private pendingCombat = false;
   private toolSwing = 0;
+  private animTime = 0;
+  private playerFlinch = 0;
+  private playerKnock = new THREE.Vector3();
+  private yetiHitDone = false;
+  private orcHitDone = false;
+  private deathAnims: DeathAnim[] = [];
+  private camSmooth = new THREE.Vector3();
+  private lookSmooth = new THREE.Vector3();
+  private combatCamPull = 0;
 
   constructor(canvas: HTMLCanvasElement) {
     this.save = loadSave();
@@ -123,11 +170,11 @@ export class Game {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.12;
+    this.renderer.toneMappingExposure = 1.18;
     this.renderer.setClearColor(0x7aa0c0);
 
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2(0x9ab0c0, 0.018);
+    this.scene.fog = new THREE.FogExp2(0x8aa0b4, 0.022);
 
     this.camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 140);
 
@@ -174,7 +221,7 @@ export class Game {
   }
 
   private setupLights(): void {
-    const hemi = new THREE.HemisphereLight(0xd8ecff, 0x3a4a22, 0.62);
+    const hemi = new THREE.HemisphereLight(0xdceeff, 0x3a4a22, 0.7);
     this.scene.add(hemi);
 
     this.sun = new THREE.DirectionalLight(0xfff0d0, 1.55);
@@ -194,8 +241,8 @@ export class Game {
     this.scene.add(this.sun.target);
 
     // Cool rim / fill opposite the sun for silhouette pop
-    this.rim = new THREE.DirectionalLight(0x99bbee, 0.55);
-    this.rim.position.set(-12, 9, -14);
+    this.rim = new THREE.DirectionalLight(0xa8c8f0, 0.72);
+    this.rim.position.set(-14, 10, -16);
     this.scene.add(this.rim);
 
     // Warm fill from camp side
@@ -355,6 +402,31 @@ export class Game {
 
     // Snowy ground props around yeti clearing
     this.scene.add(createSnowProps());
+
+    // Light falling snow in NE (readability / atmosphere)
+    const snowGroup = new THREE.Group();
+    snowGroup.name = 'fallingSnow';
+    for (let i = 0; i < 48; i++) {
+      const flake = new THREE.Mesh(
+        new THREE.SphereGeometry(0.035 + Math.random() * 0.03, 4, 3),
+        new THREE.MeshBasicMaterial({
+          color: 0xe8f4ff,
+          transparent: true,
+          opacity: 0.55 + Math.random() * 0.35,
+          depthWrite: false,
+        }),
+      );
+      flake.position.set(
+        2.5 + Math.random() * 5.5,
+        1.5 + Math.random() * 6,
+        5.5 + Math.random() * 4.5,
+      );
+      flake.userData.fall = 0.4 + Math.random() * 0.9;
+      flake.userData.drift = (Math.random() - 0.5) * 0.35;
+      flake.userData.baseY = flake.position.y;
+      snowGroup.add(flake);
+    }
+    this.scene.add(snowGroup);
 
     // Orc Scout — south-west clearing (different area than Yeti)
     const orcMesh = createOrcScout();
@@ -534,9 +606,17 @@ export class Game {
   private beginCombat(obj: WorldObject, chat: string): void {
     this.hud.chat(chat, 'combat');
     this.pendingGather = null;
-    this.activity = { type: 'combat', target: obj, cooldown: 0 };
+    this.activity = {
+      type: 'combat',
+      target: obj,
+      cooldown: 0.15,
+      swingT: 0,
+      swingDur: PLAYER_ATTACK_DURATION,
+      hitDone: false,
+    };
     setPlayerTool(this.player, 'sword');
     this.hud.showTarget(this.combatName(obj), obj.hp / obj.maxHp);
+    this.combatCamPull = 1;
   }
 
   private nearestCombatTarget(): WorldObject | null {
@@ -700,11 +780,12 @@ export class Game {
     );
   }
 
-  private faceToward(x: number, z: number): void {
+  private faceToward(x: number, z: number, dt = 1 / 30, rate = 10): void {
     const dx = x - this.player.position.x;
     const dz = z - this.player.position.z;
     if (Math.hypot(dx, dz) > 0.01) {
-      this.player.rotation.y = Math.atan2(dx, dz);
+      const target = Math.atan2(dx, dz);
+      this.player.rotation.y = turnTowardYaw(this.player.rotation.y, target, rate, dt);
     }
   }
 
@@ -777,18 +858,23 @@ export class Game {
       if (o.kind === 'dummy' && o.hp <= 0 && now >= o.respawnAt) {
         o.hp = o.maxHp;
         o.depleted = false;
+        o.mesh.visible = true;
+        o.mesh.rotation.set(0, 0, 0);
+        o.mesh.position.y = 0;
+        o.mesh.scale.setScalar(1);
         this.hud.chat('The training dummy is patched up and ready again.', 'system');
       }
       if (o.kind === 'yeti' && o.depleted && now >= o.respawnAt) {
         o.hp = o.maxHp;
         o.depleted = false;
         o.mesh.visible = true;
-        o.mesh.rotation.z = 0;
-        o.mesh.position.y = 0;
-        o.mesh.position.x = YETI_HOME.x;
-        o.mesh.position.z = YETI_HOME.z;
+        o.mesh.rotation.set(0, Math.PI * 0.85, 0);
+        o.mesh.scale.setScalar(1.15);
+        o.mesh.position.set(YETI_HOME.x, 0, YETI_HOME.z);
         this.yetiAggroed = false;
         this.yetiAttackCd = 0;
+        this.yetiSwipeT = 0;
+        this.yetiHitDone = false;
         animateYetiSwipe(o.mesh, 0);
         this.hud.chat('A Frost Yeti stomps back into the north-east clearing!', 'combat');
       }
@@ -796,15 +882,30 @@ export class Game {
         o.hp = o.maxHp;
         o.depleted = false;
         o.mesh.visible = true;
-        o.mesh.rotation.z = 0;
-        o.mesh.position.y = 0;
-        o.mesh.position.x = ORC_HOME.x;
-        o.mesh.position.z = ORC_HOME.z;
+        o.mesh.rotation.set(0, Math.PI * 0.25, 0);
+        o.mesh.scale.setScalar(1);
+        o.mesh.position.set(ORC_HOME.x, 0, ORC_HOME.z);
         this.orcAggroed = false;
         this.orcAttackCd = 0;
+        this.orcSwipeT = 0;
+        this.orcHitDone = false;
         animateOrcSpear(o.mesh, 0);
         this.hud.chat('An Orc Scout stalks back onto the south-west trail!', 'combat');
       }
+    }
+
+    // Falling snow drift
+    const snowRoot = this.scene.getObjectByName('fallingSnow');
+    if (snowRoot) {
+      snowRoot.children.forEach((flake) => {
+        flake.position.y -= (flake.userData.fall as number) * dt;
+        flake.position.x += (flake.userData.drift as number) * dt;
+        if (flake.position.y < 0.05) {
+          flake.position.y = 6 + Math.random() * 2;
+          flake.position.x = 2.5 + Math.random() * 5.5;
+          flake.position.z = 5.5 + Math.random() * 4.5;
+        }
+      });
     }
 
     this.scene.traverse((obj) => {
@@ -817,16 +918,48 @@ export class Game {
         obj.scale.setScalar(s);
       }
       if (obj.name === 'yetiBreath') {
-        const pulse = 0.7 + Math.sin(now * 3.2) * 0.35;
-        obj.scale.set(pulse, 0.8 + pulse * 0.4, pulse);
+        const pulse = 0.75 + Math.sin(now * 3.2) * 0.4;
+        obj.scale.set(pulse, 0.85 + pulse * 0.45, pulse * 1.15);
         const m = (obj as THREE.Mesh).material as THREE.MeshStandardMaterial;
-        if (m && m.opacity !== undefined) m.opacity = 0.2 + Math.sin(now * 4) * 0.15;
+        if (m && m.opacity !== undefined) m.opacity = 0.25 + Math.sin(now * 4) * 0.18;
+      }
+      if (obj.name === 'yetiBreathMist') {
+        const pulse = 0.8 + Math.sin(now * 2.6 + obj.position.z) * 0.35;
+        obj.scale.setScalar(pulse);
+        const m = (obj as THREE.Mesh).material as THREE.MeshBasicMaterial;
+        if (m && m.opacity !== undefined) m.opacity = Math.max(0.05, 0.2 * pulse);
       }
     });
 
     // Follow sun target to player for stable shadows
     this.sun.target.position.set(this.player.position.x, 0, this.player.position.z);
     this.sun.target.updateMatrixWorld();
+
+    this.animTime += dt;
+
+    // Apply lingering knockback / flinch on player
+    if (this.playerFlinch > 0) {
+      this.playerFlinch = Math.max(0, this.playerFlinch - dt * 3.2);
+      animateHitFlinch(this.player, this.playerFlinch);
+      this.player.position.x += this.playerKnock.x * dt;
+      this.player.position.z += this.playerKnock.z * dt;
+      this.playerKnock.multiplyScalar(Math.max(0, 1 - dt * 6));
+    }
+
+    // Death animations (collapse before hide/respawn timer)
+    for (let i = this.deathAnims.length - 1; i >= 0; i--) {
+      const d = this.deathAnims[i];
+      d.t += dt;
+      const p = Math.min(1, d.t / d.dur);
+      animateDeath(d.mesh, d.kind, p);
+      if (p >= 1) {
+        d.mesh.visible = false;
+        d.mesh.rotation.set(0, d.mesh.rotation.y, 0);
+        d.mesh.scale.setScalar(d.kind === 'yeti' ? 1.15 : 1);
+        d.mesh.position.y = 0;
+        this.deathAnims.splice(i, 1);
+      }
+    }
 
     if (this.activity.type === 'move') {
       const { tx, tz } = this.activity;
@@ -838,7 +971,7 @@ export class Game {
         this.player.position.z = tz;
         this.moveMarker.visible = false;
         this.activity = { type: 'idle' };
-        this.player.position.y = 0;
+        resetPlayerPose(this.player);
         if (this.pendingGather) {
           const p = this.pendingGather;
           this.pendingGather = null;
@@ -852,8 +985,8 @@ export class Game {
         const step = Math.min(dist, MOVE_SPEED * dt);
         this.player.position.x += (dx / dist) * step;
         this.player.position.z += (dz / dist) * step;
-        this.faceToward(tx, tz);
-        this.player.position.y = Math.abs(Math.sin(now * 10)) * 0.06;
+        this.faceToward(tx, tz, dt, 12);
+        animatePlayerWalk(this.player, this.animTime, 0.95);
         this.save.stamina = Math.max(0, this.save.stamina - dt * 2);
       }
     } else if (this.activity.type === 'gather') {
@@ -861,21 +994,22 @@ export class Game {
       if (act.target.depleted) {
         this.activity = { type: 'idle' };
         setPlayerTool(this.player, null);
+        resetPlayerPose(this.player);
         this.hud.hideProgress();
       } else if (this.distTo(act.target) > GATHER_RANGE + 0.35) {
         this.activity = { type: 'idle' };
         setPlayerTool(this.player, null);
+        resetPlayerPose(this.player);
         this.hud.hideProgress();
         this.hud.chat('You move too far away.', 'system');
       } else {
         act.elapsed += dt;
         this.hud.showProgress(act.label, act.elapsed / act.duration);
+        this.faceToward(act.target.mesh.position.x, act.target.mesh.position.z, dt, 8);
         this.toolSwing += dt;
-        const root = this.player.getObjectByName('toolRoot');
-        if (root) {
-          root.rotation.x = Math.sin(this.toolSwing * 10) * 0.45;
-        }
-        // Mid-gather chip/sparks bursts (frequent + dense enough to screenshot)
+        const gatherProg = (this.toolSwing * 1.35) % 1;
+        animatePlayerGather(this.player, gatherProg, act.target.kind === 'tree' ? 'tree' : 'rock');
+        // Mid-gather chip/sparks bursts
         if (Math.floor(act.elapsed * 4) !== Math.floor((act.elapsed - dt) * 4)) {
           const p = act.target.mesh.position.clone();
           p.y = act.target.kind === 'tree' ? 1.05 : 0.7;
@@ -886,6 +1020,7 @@ export class Game {
           this.completeGather(act.target);
           this.activity = { type: 'idle' };
           setPlayerTool(this.player, null);
+          resetPlayerPose(this.player);
           this.hud.hideProgress();
         }
       }
@@ -896,37 +1031,74 @@ export class Game {
       if (target.hp <= 0 || target.depleted) {
         this.activity = { type: 'idle' };
         setPlayerTool(this.player, null);
+        resetPlayerPose(this.player);
         this.hud.hideTarget();
+        this.combatCamPull = 0;
       } else {
         const range = this.monsterAttackRange(target);
         if (this.distTo(target) > range + 0.55) {
           this.activity = { type: 'idle' };
           setPlayerTool(this.player, null);
+          resetPlayerPose(this.player);
           this.hud.hideTarget();
+          this.combatCamPull = Math.max(0, this.combatCamPull - dt);
           this.hud.chat('You step out of range.', 'combat');
         } else {
-          this.faceToward(target.mesh.position.x, target.mesh.position.z);
+          this.faceToward(target.mesh.position.x, target.mesh.position.z, dt, 10);
           if (this.isMonster(target)) {
             const dx = this.player.position.x - target.mesh.position.x;
             const dz = this.player.position.z - target.mesh.position.z;
-            if (Math.hypot(dx, dz) > 0.01) target.mesh.rotation.y = Math.atan2(dx, dz);
+            if (Math.hypot(dx, dz) > 0.01) {
+              target.mesh.rotation.y = turnTowardYaw(
+                target.mesh.rotation.y,
+                Math.atan2(dx, dz),
+                6,
+                dt,
+              );
+            }
           }
-          act.cooldown -= dt;
-          const root = this.player.getObjectByName('toolRoot');
-          if (root && act.cooldown > 1.2) {
-            root.rotation.x = -Math.sin((1.6 - act.cooldown) * 8) * 0.6;
-          }
-          if (act.cooldown <= 0) {
-            act.cooldown = 1.6;
-            this.swingAtTarget(target);
+
+          // Active swing: windup → connect → recovery
+          if (act.swingT > 0) {
+            act.swingT += dt;
+            const prog = Math.min(1, act.swingT / act.swingDur);
+            animatePlayerAttack(this.player, prog);
+            if (
+              !act.hitDone &&
+              prog >= PLAYER_ATTACK_CONNECT_START &&
+              prog <= PLAYER_ATTACK_CONNECT_END + 0.05
+            ) {
+              act.hitDone = true;
+              this.swingAtTarget(target);
+            }
+            if (prog >= 1) {
+              act.swingT = 0;
+              act.hitDone = false;
+              act.cooldown = 0.85;
+              resetPlayerPose(this.player);
+              setPlayerTool(this.player, 'sword');
+            }
+          } else {
+            act.cooldown -= dt;
+            // Idle combat stance breath while waiting
+            animatePlayerIdle(this.player, this.animTime);
+            if (act.cooldown <= 0) {
+              act.swingT = 0.001;
+              act.swingDur = PLAYER_ATTACK_DURATION;
+              act.hitDone = false;
+              setPlayerTool(this.player, 'sword');
+            }
           }
         }
       }
     } else {
       setPlayerTool(this.player, null);
+      animatePlayerIdle(this.player, this.animTime);
+      this.combatCamPull = Math.max(0, this.combatCamPull - dt * 0.6);
     }
 
     this.updateYetiAI(dt);
+
     this.updateOrcAI(dt);
 
     this.vfx.update(dt);
@@ -984,15 +1156,31 @@ export class Game {
     this.grantXp('attack', xpAtk);
     this.grantXp('strength', xpStr);
     this.grantXp('constitution', xpCon);
-    this.vfx.spawnHitSparks(target.mesh.position.clone().setY(1.2), 14);
-    this.vfx.spawnDamage(target.mesh.position.clone().setY(1.4), dmg);
-    flashDummy(target.mesh);
+    const hitPos = target.mesh.position.clone().setY(1.25);
+    this.vfx.spawnHitSparks(hitPos, 20);
+    this.vfx.spawnImpactBurst(hitPos, target.kind === 'yeti' ? 14 : 18, target.kind === 'yeti');
+    this.vfx.spawnDamage(target.mesh.position.clone().setY(1.5), dmg, dmg >= 8);
+    flashDummy(target.mesh, 180);
+    // Brief flinch knock on target
+    const away = Math.atan2(
+      target.mesh.position.x - this.player.position.x,
+      target.mesh.position.z - this.player.position.z,
+    );
+    target.mesh.position.x += Math.sin(away) * 0.12;
+    target.mesh.position.z += Math.cos(away) * 0.12;
+    animateHitFlinch(target.mesh, 1);
+    setTimeout(() => {
+      if (!target.depleted) {
+        target.mesh.rotation.z = 0;
+        target.mesh.rotation.x = 0;
+      }
+    }, 160);
     if (target.kind === 'yeti') {
-      this.vfx.spawnIceBurst(target.mesh.position.clone(), 8);
+      this.vfx.spawnIceBurst(target.mesh.position.clone(), 12);
       this.yetiAggroed = true;
     }
     if (target.kind === 'orc') {
-      this.vfx.spawnSpearThrust(target.mesh.position.clone(), 6);
+      this.vfx.spawnSpearThrust(target.mesh.position.clone(), 8);
       this.orcAggroed = true;
     }
 
@@ -1010,11 +1198,6 @@ export class Game {
       this.hud.chat(`You strike the Frost Yeti for ${dmg} damage!`, 'combat');
     }
 
-    target.mesh.rotation.z = (Math.random() - 0.5) * 0.12;
-    setTimeout(() => {
-      if (!this.isMonster(target) || !target.depleted) target.mesh.rotation.z = 0;
-    }, 120);
-
     if (target.hp <= 0) {
       target.hp = 0;
       if (target.kind === 'yeti') this.onYetiDeath(target);
@@ -1029,20 +1212,25 @@ export class Game {
 
   private onDummyDeath(target: WorldObject): void {
     target.respawnAt = performance.now() / 1000 + 8;
+    this.deathAnims.push({ mesh: target.mesh, kind: 'dummy', t: 0, dur: 0.55 });
     this.hud.chat('The training dummy collapses! It will be repaired shortly.', 'combat');
     this.grantXp('defence', 15);
     this.activity = { type: 'idle' };
     setPlayerTool(this.player, null);
+    resetPlayerPose(this.player);
     this.hud.hideTarget();
+    this.combatCamPull = 0;
   }
 
   private onYetiDeath(target: WorldObject): void {
     target.depleted = true;
-    target.mesh.visible = false;
     target.respawnAt = performance.now() / 1000 + YETI_RESPAWN_SEC;
     this.yetiAggroed = false;
     this.yetiAttackCd = 0;
-    this.vfx.spawnIceBurst(target.mesh.position.clone().setY(1.2), 22);
+    this.yetiSwipeT = 0;
+    this.vfx.spawnIceBurst(target.mesh.position.clone().setY(1.2), 28);
+    this.vfx.spawnImpactBurst(target.mesh.position.clone().setY(1.0), 16, true);
+    this.deathAnims.push({ mesh: target.mesh, kind: 'yeti', t: 0, dur: 0.85 });
     this.hud.chat('The Frost Yeti collapses in a burst of frost!', 'combat');
     // home reset on next respawn
     this.grantXp('defence', 28);
@@ -1067,12 +1255,14 @@ export class Game {
 
   private onOrcDeath(target: WorldObject): void {
     target.depleted = true;
-    target.mesh.visible = false;
     target.respawnAt = performance.now() / 1000 + ORC_RESPAWN_SEC;
     this.orcAggroed = false;
     this.orcAttackCd = 0;
-    this.vfx.spawnSpearThrust(target.mesh.position.clone().setY(1.1), 14);
-    this.vfx.spawnHitSparks(target.mesh.position.clone().setY(1.0), 16);
+    this.orcSwipeT = 0;
+    this.vfx.spawnSpearThrust(target.mesh.position.clone().setY(1.1), 16);
+    this.vfx.spawnHitSparks(target.mesh.position.clone().setY(1.0), 20);
+    this.vfx.spawnImpactBurst(target.mesh.position.clone().setY(1.0), 14, false);
+    this.deathAnims.push({ mesh: target.mesh, kind: 'orc', t: 0, dur: 0.7 });
     this.hud.chat('The Orc Scout falls! Its spear clatters to the dirt.', 'combat');
     this.grantXp('defence', 22);
     this.grantXp('attack', 10);
@@ -1101,6 +1291,9 @@ export class Game {
     }
 
     const dist = this.distTo(yeti);
+    // Leash: pull back if too far from home while aggroed
+    const homeDist = Math.hypot(yeti.mesh.position.x - YETI_HOME.x, yeti.mesh.position.z - YETI_HOME.z);
+
     if (!this.yetiAggroed && dist <= YETI_AGGRO_RADIUS) {
       this.yetiAggroed = true;
       this.hud.chat('The Frost Yeti snarls and charges!', 'combat');
@@ -1110,69 +1303,103 @@ export class Game {
     }
 
     if (!this.yetiAggroed) {
-      yeti.mesh.position.y = Math.sin(performance.now() / 1000 * 1.4) * 0.03;
+      animateYetiWalk(yeti.mesh, this.animTime, false);
       animateYetiSwipe(yeti.mesh, 0);
       return;
     }
 
     const dx = this.player.position.x - yeti.mesh.position.x;
     const dz = this.player.position.z - yeti.mesh.position.z;
-    if (Math.hypot(dx, dz) > 0.01) yeti.mesh.rotation.y = Math.atan2(dx, dz);
+    if (Math.hypot(dx, dz) > 0.01) {
+      yeti.mesh.rotation.y = turnTowardYaw(yeti.mesh.rotation.y, Math.atan2(dx, dz), 5, dt);
+    }
 
-    if (dist > YETI_ATTACK_RANGE && dist < YETI_AGGRO_RADIUS + 4) {
-      const step = Math.min(dist - YETI_ATTACK_RANGE * 0.85, 2.4 * dt);
+    let moving = false;
+    if (dist > YETI_ATTACK_RANGE && dist < YETI_AGGRO_RADIUS + 5 && homeDist < 7.5) {
+      const step = Math.min(dist - YETI_ATTACK_RANGE * 0.85, 2.55 * dt);
       const n = Math.hypot(dx, dz) || 1;
       yeti.mesh.position.x += (dx / n) * step;
       yeti.mesh.position.z += (dz / n) * step;
+      moving = true;
       const sx = YETI_HOME.x;
       const sz = YETI_HOME.z;
       const lx = yeti.mesh.position.x - sx;
       const lz = yeti.mesh.position.z - sz;
       const ld = Math.hypot(lx, lz);
-      if (ld > 7) {
-        yeti.mesh.position.x = sx + (lx / ld) * 7;
-        yeti.mesh.position.z = sz + (lz / ld) * 7;
+      if (ld > 7.5) {
+        yeti.mesh.position.x = sx + (lx / ld) * 7.5;
+        yeti.mesh.position.z = sz + (lz / ld) * 7.5;
       }
     }
 
-    if (dist > YETI_AGGRO_RADIUS + 6) {
+    // Soft leash break
+    if (dist > YETI_AGGRO_RADIUS + 7 || homeDist > 8.5) {
       this.yetiAggroed = false;
+      this.yetiSwipeT = 0;
       this.hud.chat('The Frost Yeti loses interest and returns to the clearing.', 'system');
-      yeti.mesh.position.x += (YETI_HOME.x - yeti.mesh.position.x) * Math.min(1, dt * 0.8);
-      yeti.mesh.position.z += (YETI_HOME.z - yeti.mesh.position.z) * Math.min(1, dt * 0.8);
+      yeti.mesh.position.x += (YETI_HOME.x - yeti.mesh.position.x) * Math.min(1, dt * 0.9);
+      yeti.mesh.position.z += (YETI_HOME.z - yeti.mesh.position.z) * Math.min(1, dt * 0.9);
       if (this.activity.type === 'combat' && this.activity.target === yeti) {
         this.activity = { type: 'idle' };
         setPlayerTool(this.player, null);
+        resetPlayerPose(this.player);
         this.hud.hideTarget();
       }
+      animateYetiWalk(yeti.mesh, this.animTime, true);
       return;
     }
 
     if (this.yetiSwipeT > 0) {
-      this.yetiSwipeT = Math.max(0, this.yetiSwipeT - dt);
-      animateYetiSwipe(yeti.mesh, 1 - this.yetiSwipeT / 0.45);
+      this.yetiSwipeT += dt;
+      const prog = Math.min(1, this.yetiSwipeT / YETI_ATTACK_DURATION);
+      animateYetiAttack(yeti.mesh, prog);
+      // Telegraph ring early in windup
+      if (prog < 0.08) {
+        this.vfx.spawnTelegraph(yeti.mesh.position.clone(), true, 0.5);
+      }
+      if (
+        !this.yetiHitDone &&
+        prog >= YETI_ATTACK_CONNECT_START &&
+        prog <= YETI_ATTACK_CONNECT_END + 0.05
+      ) {
+        this.yetiHitDone = true;
+        this.yetiMeleeHit(yeti);
+      }
+      if (prog >= 1) {
+        this.yetiSwipeT = 0;
+        this.yetiHitDone = false;
+        animateYetiSwipe(yeti.mesh, 0);
+      }
     } else {
-      animateYetiSwipe(yeti.mesh, 0);
-    }
-
-    this.yetiAttackCd -= dt;
-    if (dist <= YETI_ATTACK_RANGE + 0.35 && this.yetiAttackCd <= 0) {
-      this.yetiAttackCd = 2.1;
-      this.yetiSwipeT = 0.45;
-      this.yetiMeleeHit(yeti);
+      animateYetiWalk(yeti.mesh, this.animTime, moving);
+      this.yetiAttackCd -= dt;
+      if (dist <= YETI_ATTACK_RANGE + 0.4 && this.yetiAttackCd <= 0) {
+        this.yetiAttackCd = 2.35;
+        this.yetiSwipeT = 0.001;
+        this.yetiHitDone = false;
+        this.vfx.spawnTelegraph(yeti.mesh.position.clone(), true, 0.55);
+      }
     }
   }
 
   private yetiMeleeHit(yeti: WorldObject): void {
     const dist = this.distTo(yeti);
-    if (dist > YETI_ATTACK_RANGE + 0.5) return;
+    if (dist > YETI_ATTACK_RANGE + 0.65) return;
     const def = this.save.skills.defence.level;
     const raw = YETI_DMG_MIN + Math.floor(Math.random() * (YETI_DMG_MAX - YETI_DMG_MIN + 1));
     const mitigated = Math.max(2, raw - Math.floor(def / 5));
     this.save.hp = Math.max(0, this.save.hp - mitigated);
-    this.vfx.spawnClawSlash(this.player.position.clone(), 10);
-    this.vfx.spawnIceBurst(this.player.position.clone(), 10);
+    this.vfx.spawnClawSlash(this.player.position.clone(), 12);
+    this.vfx.spawnIceBurst(this.player.position.clone(), 14);
+    this.vfx.spawnImpactBurst(this.player.position.clone().setY(1.1), 12, true);
     this.vfx.spawnDamage(this.player.position.clone().setY(1.3), mitigated);
+    // Player flinch + knockback
+    this.playerFlinch = 1;
+    const away = Math.atan2(
+      this.player.position.x - yeti.mesh.position.x,
+      this.player.position.z - yeti.mesh.position.z,
+    );
+    this.playerKnock.set(Math.sin(away) * 2.8, 0, Math.cos(away) * 2.8);
     this.hud.chat(`The Frost Yeti swipes you for ${mitigated} damage!`, 'combat');
     this.hud.setOrbs(this.save.hp, this.save.maxHp, this.save.focus, this.save.stamina);
 
@@ -1203,6 +1430,8 @@ export class Game {
     }
 
     const dist = this.distTo(orc);
+    const homeDist = Math.hypot(orc.mesh.position.x - ORC_HOME.x, orc.mesh.position.z - ORC_HOME.z);
+
     if (!this.orcAggroed && dist <= ORC_AGGRO_RADIUS) {
       this.orcAggroed = true;
       this.hud.chat('The Orc Scout snarls and levels its spear!', 'combat');
@@ -1212,70 +1441,100 @@ export class Game {
     }
 
     if (!this.orcAggroed) {
-      orc.mesh.position.y = Math.sin(performance.now() / 1000 * 1.8) * 0.025;
+      animateOrcWalk(orc.mesh, this.animTime, false);
       animateOrcSpear(orc.mesh, 0);
       return;
     }
 
     const dx = this.player.position.x - orc.mesh.position.x;
     const dz = this.player.position.z - orc.mesh.position.z;
-    if (Math.hypot(dx, dz) > 0.01) orc.mesh.rotation.y = Math.atan2(dx, dz);
+    if (Math.hypot(dx, dz) > 0.01) {
+      orc.mesh.rotation.y = turnTowardYaw(orc.mesh.rotation.y, Math.atan2(dx, dz), 7, dt);
+    }
 
-    // Faster than yeti
-    if (dist > ORC_ATTACK_RANGE && dist < ORC_AGGRO_RADIUS + 4) {
-      const step = Math.min(dist - ORC_ATTACK_RANGE * 0.85, 3.2 * dt);
+    let moving = false;
+    if (dist > ORC_ATTACK_RANGE && dist < ORC_AGGRO_RADIUS + 5 && homeDist < 7.5) {
+      const step = Math.min(dist - ORC_ATTACK_RANGE * 0.85, 3.35 * dt);
       const n = Math.hypot(dx, dz) || 1;
       orc.mesh.position.x += (dx / n) * step;
       orc.mesh.position.z += (dz / n) * step;
+      moving = true;
       const sx = ORC_HOME.x;
       const sz = ORC_HOME.z;
       const lx = orc.mesh.position.x - sx;
       const lz = orc.mesh.position.z - sz;
       const ld = Math.hypot(lx, lz);
-      if (ld > 7) {
-        orc.mesh.position.x = sx + (lx / ld) * 7;
-        orc.mesh.position.z = sz + (lz / ld) * 7;
+      if (ld > 7.5) {
+        orc.mesh.position.x = sx + (lx / ld) * 7.5;
+        orc.mesh.position.z = sz + (lz / ld) * 7.5;
       }
     }
 
-    if (dist > ORC_AGGRO_RADIUS + 6) {
+    if (dist > ORC_AGGRO_RADIUS + 7 || homeDist > 8.5) {
       this.orcAggroed = false;
+      this.orcSwipeT = 0;
       this.hud.chat('The Orc Scout loses interest and returns to the trail.', 'system');
-      orc.mesh.position.x += (ORC_HOME.x - orc.mesh.position.x) * Math.min(1, dt * 1.0);
-      orc.mesh.position.z += (ORC_HOME.z - orc.mesh.position.z) * Math.min(1, dt * 1.0);
+      orc.mesh.position.x += (ORC_HOME.x - orc.mesh.position.x) * Math.min(1, dt * 1.1);
+      orc.mesh.position.z += (ORC_HOME.z - orc.mesh.position.z) * Math.min(1, dt * 1.1);
       if (this.activity.type === 'combat' && this.activity.target === orc) {
         this.activity = { type: 'idle' };
         setPlayerTool(this.player, null);
+        resetPlayerPose(this.player);
         this.hud.hideTarget();
       }
+      animateOrcWalk(orc.mesh, this.animTime, true);
       return;
     }
 
     if (this.orcSwipeT > 0) {
-      this.orcSwipeT = Math.max(0, this.orcSwipeT - dt);
-      animateOrcSpear(orc.mesh, 1 - this.orcSwipeT / 0.38);
+      this.orcSwipeT += dt;
+      const prog = Math.min(1, this.orcSwipeT / ORC_ATTACK_DURATION);
+      animateOrcAttack(orc.mesh, prog);
+      if (prog < 0.08) {
+        this.vfx.spawnTelegraph(orc.mesh.position.clone(), false, 0.42);
+      }
+      if (
+        !this.orcHitDone &&
+        prog >= ORC_ATTACK_CONNECT_START &&
+        prog <= ORC_ATTACK_CONNECT_END + 0.05
+      ) {
+        this.orcHitDone = true;
+        this.orcMeleeHit(orc);
+      }
+      if (prog >= 1) {
+        this.orcSwipeT = 0;
+        this.orcHitDone = false;
+        animateOrcSpear(orc.mesh, 0);
+      }
     } else {
-      animateOrcSpear(orc.mesh, 0);
-    }
-
-    this.orcAttackCd -= dt;
-    if (dist <= ORC_ATTACK_RANGE + 0.35 && this.orcAttackCd <= 0) {
-      this.orcAttackCd = 1.75; // faster attack cadence than yeti
-      this.orcSwipeT = 0.38;
-      this.orcMeleeHit(orc);
+      animateOrcWalk(orc.mesh, this.animTime, moving);
+      this.orcAttackCd -= dt;
+      if (dist <= ORC_ATTACK_RANGE + 0.4 && this.orcAttackCd <= 0) {
+        this.orcAttackCd = 1.9;
+        this.orcSwipeT = 0.001;
+        this.orcHitDone = false;
+        this.vfx.spawnTelegraph(orc.mesh.position.clone(), false, 0.45);
+      }
     }
   }
 
   private orcMeleeHit(orc: WorldObject): void {
     const dist = this.distTo(orc);
-    if (dist > ORC_ATTACK_RANGE + 0.5) return;
+    if (dist > ORC_ATTACK_RANGE + 0.65) return;
     const def = this.save.skills.defence.level;
     const raw = ORC_DMG_MIN + Math.floor(Math.random() * (ORC_DMG_MAX - ORC_DMG_MIN + 1));
     const mitigated = Math.max(2, raw - Math.floor(def / 5));
     this.save.hp = Math.max(0, this.save.hp - mitigated);
-    this.vfx.spawnSpearThrust(this.player.position.clone(), 10);
-    this.vfx.spawnHitSparks(this.player.position.clone().setY(1.1), 8);
+    this.vfx.spawnSpearThrust(this.player.position.clone(), 12);
+    this.vfx.spawnHitSparks(this.player.position.clone().setY(1.1), 12);
+    this.vfx.spawnImpactBurst(this.player.position.clone().setY(1.05), 14, false);
     this.vfx.spawnDamage(this.player.position.clone().setY(1.3), mitigated);
+    this.playerFlinch = 1;
+    const away = Math.atan2(
+      this.player.position.x - orc.mesh.position.x,
+      this.player.position.z - orc.mesh.position.z,
+    );
+    this.playerKnock.set(Math.sin(away) * 2.4, 0, Math.cos(away) * 2.4);
     this.hud.chat(`The Orc Scout thrusts its spear for ${mitigated} damage!`, 'combat');
     this.hud.setOrbs(this.save.hp, this.save.maxHp, this.save.focus, this.save.stamina);
 
@@ -1297,14 +1556,26 @@ export class Game {
     this.persist();
   }
 
-  private updateCamera(_dt: number): void {
-    const target = new THREE.Vector3(
-      this.player.position.x + this.camOffset.x,
-      this.camOffset.y,
-      this.player.position.z + this.camOffset.z,
+  private updateCamera(dt: number): void {
+    // Slight combat framing: pull in + lower when fighting
+    const pull = Math.min(1, this.combatCamPull);
+    const ox = this.camOffset.x;
+    const oy = this.camOffset.y - pull * 1.2;
+    const oz = this.camOffset.z - pull * 1.6;
+    const desired = this.camSmooth;
+    desired.set(
+      this.player.position.x + ox,
+      oy,
+      this.player.position.z + oz,
     );
-    this.camera.position.lerp(target, 0.12);
-    this.camLook.set(this.player.position.x, 0.8, this.player.position.z);
+    const follow = 1 - Math.exp(-4.2 * dt);
+    this.camera.position.lerp(desired, follow);
+    this.lookSmooth.set(
+      this.player.position.x,
+      0.85 + pull * 0.35,
+      this.player.position.z,
+    );
+    this.camLook.lerp(this.lookSmooth, follow);
     this.camera.lookAt(this.camLook);
   }
 

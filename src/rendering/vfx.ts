@@ -71,6 +71,28 @@ export class VFX {
     emissiveIntensity: 0.9,
     flatShading: true,
   });
+  private impactMat = new THREE.MeshStandardMaterial({
+    color: 0xfff6d0,
+    emissive: 0xffcc66,
+    emissiveIntensity: 2.4,
+    flatShading: true,
+    transparent: true,
+    opacity: 0.95,
+  });
+  private telegraphMat = new THREE.MeshBasicMaterial({
+    color: 0xff4422,
+    transparent: true,
+    opacity: 0.55,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  private frostTeleMat = new THREE.MeshBasicMaterial({
+    color: 0x88ddff,
+    transparent: true,
+    opacity: 0.5,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
 
   constructor(scene: THREE.Scene, camera: THREE.Camera, overlayParent: HTMLElement) {
     this.scene = scene;
@@ -137,26 +159,26 @@ export class VFX {
     }
   }
 
-  spawnHitSparks(origin: THREE.Vector3, count = 14): void {
+  spawnHitSparks(origin: THREE.Vector3, count = 18): void {
     for (let i = 0; i < count; i++) {
       const mesh = new THREE.Mesh(
-        new THREE.OctahedronGeometry(0.04 + Math.random() * 0.03, 0),
+        new THREE.OctahedronGeometry(0.045 + Math.random() * 0.04, 0),
         this.hitMat,
       );
       mesh.position.copy(origin);
-      mesh.position.y += 1.0 + Math.random() * 0.4;
+      mesh.position.y += 1.0 + Math.random() * 0.45;
       this.scene.add(mesh);
       this.particles.push({
         mesh,
         vel: new THREE.Vector3(
-          (Math.random() - 0.5) * 4,
-          0.8 + Math.random() * 2.2,
-          (Math.random() - 0.5) * 4,
+          (Math.random() - 0.5) * 5.2,
+          1.0 + Math.random() * 2.8,
+          (Math.random() - 0.5) * 5.2,
         ),
         life: 0,
-        maxLife: 0.35 + Math.random() * 0.25,
-        gravity: 4,
-        spin: (Math.random() - 0.5) * 16,
+        maxLife: 0.4 + Math.random() * 0.3,
+        gravity: 4.5,
+        spin: (Math.random() - 0.5) * 20,
       });
     }
   }
@@ -175,7 +197,7 @@ export class VFX {
     this.floats.push({
       el,
       life: 0,
-      maxLife: 1.35,
+      maxLife: 1.55,
       world: world.clone(),
       driftY: 0,
     });
@@ -189,11 +211,11 @@ export class VFX {
     );
   }
 
-  spawnDamage(world: THREE.Vector3, amount: number): void {
+  spawnDamage(world: THREE.Vector3, amount: number, crit = false): void {
     this.spawnFloatingText(
-      world.clone().add(new THREE.Vector3(0, 1.7, 0)),
-      String(amount),
-      '#ffb0a0',
+      world.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.25, 1.7, 0)),
+      crit ? `${amount}!` : String(amount),
+      crit ? '#ffe066' : '#ff8a78',
     );
   }
 
@@ -273,7 +295,73 @@ export class VFX {
       });
     }
   }
-  update(dt: number): void {
+
+  /** Stronger bloodless impact burst on connect */
+  spawnImpactBurst(origin: THREE.Vector3, count = 18, frost = false): void {
+    const mat = frost ? this.iceMat : this.impactMat;
+    for (let i = 0; i < count; i++) {
+      const mesh = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.05 + Math.random() * 0.06, 0),
+        mat,
+      );
+      mesh.position.copy(origin);
+      mesh.position.y += 0.9 + Math.random() * 0.55;
+      this.scene.add(mesh);
+      const a = Math.random() * Math.PI * 2;
+      const sp = 2.5 + Math.random() * 4.5;
+      this.particles.push({
+        mesh,
+        vel: new THREE.Vector3(Math.cos(a) * sp, 1.5 + Math.random() * 3.2, Math.sin(a) * sp),
+        life: 0,
+        maxLife: 0.4 + Math.random() * 0.35,
+        gravity: 5,
+        spin: (Math.random() - 0.5) * 22,
+      });
+    }
+    // Expanding ring flash
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(0.15, 0.45, 20),
+      new THREE.MeshBasicMaterial({
+        color: frost ? 0xa8e8ff : 0xffe8a0,
+        transparent: true,
+        opacity: 0.7,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      }),
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(origin.x, 0.12, origin.z);
+    this.scene.add(ring);
+    this.particles.push({
+      mesh: ring,
+      vel: new THREE.Vector3(0, 0.05, 0),
+      life: 0,
+      maxLife: 0.35,
+      gravity: 0,
+      spin: 0,
+    });
+  }
+
+  /** Ground telegraph disc under enemy during windup */
+  spawnTelegraph(origin: THREE.Vector3, frost = false, life = 0.45): void {
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(0.55, 0.95, 24),
+      frost ? this.frostTeleMat.clone() : this.telegraphMat.clone(),
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(origin.x, 0.08, origin.z);
+    this.scene.add(ring);
+    this.particles.push({
+      mesh: ring,
+      vel: new THREE.Vector3(0, 0, 0),
+      life: 0,
+      maxLife: life,
+      gravity: 0,
+      spin: 2,
+    });
+  }
+
+    update(dt: number): void {
     // Particles
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
@@ -284,7 +372,14 @@ export class VFX {
       p.mesh.rotation.z += p.spin * 0.7 * dt;
       const t = p.life / p.maxLife;
       const s = Math.max(0.05, 1 - t * 0.85);
-      p.mesh.scale.setScalar(s);
+      // Expanding rings grow then fade
+      if ((p.mesh.geometry as THREE.RingGeometry).type === 'RingGeometry') {
+        p.mesh.scale.setScalar(1 + t * 1.8);
+        const m = p.mesh.material as THREE.MeshBasicMaterial;
+        if (m && m.opacity !== undefined) m.opacity = Math.max(0, (1 - t) * 0.7);
+      } else {
+        p.mesh.scale.setScalar(s);
+      }
       if (p.life >= p.maxLife) {
         this.scene.remove(p.mesh);
         p.mesh.geometry.dispose();

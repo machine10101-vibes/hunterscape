@@ -6,14 +6,15 @@ function mat(
   color: number,
   opts: Partial<THREE.MeshStandardMaterialParameters> = {},
 ): THREE.MeshStandardMaterial {
-  const key = `${color}_${opts.roughness ?? 0.8}_${opts.metalness ?? 0.05}_${opts.flatShading ? 1 : 0}_${opts.emissive ?? 0}_${opts.emissiveIntensity ?? 0}`;
+  const key = `${color}_${opts.roughness ?? 0.78}_${opts.metalness ?? 0.08}_${opts.flatShading === false ? 0 : 1}_${opts.emissive ?? 0}_${opts.emissiveIntensity ?? 0}`;
   let m = matCache.get(key);
   if (!m) {
     m = new THREE.MeshStandardMaterial({
       color,
-      roughness: opts.roughness ?? 0.85,
-      metalness: opts.metalness ?? 0.05,
+      roughness: opts.roughness ?? 0.78,
+      metalness: opts.metalness ?? 0.08,
       flatShading: opts.flatShading ?? true,
+      envMapIntensity: opts.envMapIntensity ?? 0.85,
       ...opts,
     });
     matCache.set(key, m);
@@ -56,18 +57,18 @@ export function createPlayerMesh(): THREE.Group {
   g.add(shadow);
 
   // --- Palette (Hunter Drive male hunter) ---
-  const skin = mat(0xb8866b, { roughness: 0.88 });
-  const skinDark = mat(0x9a6a4e, { roughness: 0.9 });
-  const hairCol = mat(0x2a1a0c, { roughness: 0.95 });
-  const leather = mat(0x3e2a18, { roughness: 0.82 });
-  const leatherDark = mat(0x2a1c10, { roughness: 0.88 });
-  const leatherMid = mat(0x5a3c28, { roughness: 0.72 });
-  const fur = mat(0xa88868, { roughness: 0.97 });
-  const furDark = mat(0x7a5e44, { roughness: 0.97 });
-  const cloth = mat(0x2c322c, { roughness: 0.92 }); // charcoal/olive
-  const clothDark = mat(0x1e221e, { roughness: 0.94 });
-  const metal = mat(0xc8d0d8, { metalness: 0.72, roughness: 0.28 });
-  const wood = mat(0x4a3014, { roughness: 0.88 });
+  const skin = mat(0xc49a78, { roughness: 0.72, metalness: 0.04 });
+  const skinDark = mat(0xa07858, { roughness: 0.78, metalness: 0.04 });
+  const hairCol = mat(0x24160a, { roughness: 0.96 });
+  const leather = mat(0x3a2616, { roughness: 0.74, metalness: 0.12 });
+  const leatherDark = mat(0x24160c, { roughness: 0.82, metalness: 0.1 });
+  const leatherMid = mat(0x6a4430, { roughness: 0.62, metalness: 0.14 });
+  const fur = mat(0xc4a888, { roughness: 0.98, metalness: 0.0 });
+  const furDark = mat(0x8a6a48, { roughness: 0.98, metalness: 0.0 });
+  const cloth = mat(0x2a302a, { roughness: 0.9 }); // charcoal/olive
+  const clothDark = mat(0x1a1e1a, { roughness: 0.92 });
+  const metal = mat(0xd0d8e0, { metalness: 0.82, roughness: 0.22 });
+  const wood = mat(0x4a3014, { roughness: 0.86 });
 
   const addPart = (
     mesh: THREE.Mesh,
@@ -147,8 +148,12 @@ export function createPlayerMesh(): THREE.Group {
     leg.position.x = side * 0.16;
     return leg;
   };
-  g.add(makeLeg(-1));
-  g.add(makeLeg(1));
+  const legL = makeLeg(-1);
+  legL.name = 'legL';
+  g.add(legL);
+  const legR = makeLeg(1);
+  legR.name = 'legR';
+  g.add(legR);
 
   // Hip / lower tunic flaps
   const hips = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.28, 0.22, 8), leather);
@@ -174,6 +179,7 @@ export function createPlayerMesh(): THREE.Group {
 
   // ===== Torso / leather vest =====
   const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.28, 0.55, 8), leather);
+  torso.name = 'playerTorso';
   torso.position.y = 1.12;
   addPart(torso, g, 1.08, 0x0a0806);
 
@@ -251,6 +257,7 @@ export function createPlayerMesh(): THREE.Group {
   // ===== Arms (olive sleeves + leather gauntlets) =====
   const makeArm = (side: number) => {
     const arm = new THREE.Group();
+    arm.name = side < 0 ? 'armL' : 'armR';
     // Upper arm / sleeve
     const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.1, 0.32, 6), cloth);
     upper.position.set(0, 0, 0);
@@ -290,6 +297,7 @@ export function createPlayerMesh(): THREE.Group {
 
   // ===== Head =====
   const head = new THREE.Group();
+  head.name = 'playerHead';
   head.position.set(0, 1.58, 0);
 
   const skull = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), skin);
@@ -334,7 +342,7 @@ export function createPlayerMesh(): THREE.Group {
     head.add(socket);
     const iris = new THREE.Mesh(
       new THREE.SphereGeometry(0.024, 6, 5),
-      mat(0x4a3420, { emissive: 0x2a1810, emissiveIntensity: 0.25 }),
+      mat(0x5a4030, { emissive: 0x3a2818, emissiveIntensity: 0.45 }),
     );
     iris.position.set(sx * 0.07, 0.02, 0.175);
     head.add(iris);
@@ -468,15 +476,27 @@ function createPickaxeTool(): THREE.Group {
 
 function createSwordTool(): THREE.Group {
   const g = new THREE.Group();
-  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.55, 0.02), mat(0xa0b0c0, { metalness: 0.6, roughness: 0.35 }));
-  blade.position.y = 0.15;
+  const blade = new THREE.Mesh(
+    new THREE.BoxGeometry(0.055, 0.62, 0.02),
+    mat(0xc8d4e0, { metalness: 0.85, roughness: 0.22, emissive: 0x223344, emissiveIntensity: 0.15 }),
+  );
+  blade.position.y = 0.18;
   g.add(blade);
-  const guard = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.04, 0.04), mat(0xc4a040, { metalness: 0.4 }));
-  guard.position.y = -0.1;
+  const tip = new THREE.Mesh(
+    new THREE.ConeGeometry(0.04, 0.12, 4),
+    mat(0xd8e4f0, { metalness: 0.9, roughness: 0.18 }),
+  );
+  tip.position.y = 0.52;
+  g.add(tip);
+  const guard = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.045, 0.05), mat(0xd4b050, { metalness: 0.55, roughness: 0.35 }));
+  guard.position.y = -0.12;
   g.add(guard);
-  const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, 0.18, 5), mat(0x4a2a10));
-  hilt.position.y = -0.2;
+  const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, 0.2, 5), mat(0x4a2a10, { roughness: 0.8 }));
+  hilt.position.y = -0.24;
   g.add(hilt);
+  const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 4), mat(0xd4b050, { metalness: 0.5 }));
+  pommel.position.y = -0.36;
+  g.add(pommel);
   return g;
 }
 
@@ -529,9 +549,9 @@ export function createTree(seed = 0): THREE.Group {
     g.add(ring);
   }
 
-  const canopyA = seed % 2 === 0 ? 0x2a6a2a : 0x357a32;
-  const canopyB = seed % 3 === 0 ? 0x1e5a22 : 0x458040;
-  const canopyC = 0x1a4a1c;
+  const canopyA = seed % 2 === 0 ? 0x2f7230 : 0x3a8638;
+  const canopyB = seed % 3 === 0 ? 0x226628 : 0x4c8c48;
+  const canopyC = 0x1c5220;
   for (let i = 0; i < 5; i++) {
     const r = 0.9 - i * 0.12;
     const col = i % 3 === 0 ? canopyA : i % 3 === 1 ? canopyB : canopyC;
@@ -880,7 +900,7 @@ export function createSkyDome(radius = 60): THREE.Mesh {
 }
 
 export function createGround(size = 48): THREE.Mesh {
-  const segments = 72;
+  const segments = 96;
   const geo = new THREE.PlaneGeometry(size, size, segments, segments);
   const pos = geo.attributes.position;
   const colors = new Float32Array(pos.count * 3);
@@ -911,14 +931,16 @@ export function createGround(size = 48): THREE.Mesh {
     const pathAmt = Math.max(pathT, path2 * 0.85, pathWest * 0.75);
 
     // Snowy NE yeti clearing
-    const snowAmt = Math.exp(-Math.pow(x - 4.2, 2) * 0.12 - Math.pow(y - 7.2, 2) * 0.1);
+    const snowAmt = Math.exp(-Math.pow(x - 4.2, 2) * 0.09 - Math.pow(y - 7.2, 2) * 0.08);
+    const snowAmt2 = Math.exp(-Math.pow(x - 5.5, 2) * 0.15 - Math.pow(y - 6.0, 2) * 0.12);
 
     const noise = (Math.sin(x * 1.7) * Math.cos(y * 1.3) + 1) * 0.5;
     const noise2 = (Math.sin(x * 3.1 + 1.7) * Math.cos(y * 2.6) + 1) * 0.5;
-    if (snowAmt > 0.28) {
+    const snowTotal = Math.max(snowAmt, snowAmt2 * 0.85);
+    if (snowTotal > 0.24) {
       tmp.copy(snow).lerp(snowBlue, noise);
-      tmp.lerp(grassA, 1 - Math.min(1, snowAmt * 1.6));
-    } else if (pathAmt > 0.32) {
+      tmp.lerp(grassA, 1 - Math.min(1, snowTotal * 1.7));
+    } else if (pathAmt > 0.28) {
       tmp.copy(dirt).lerp(dirtDark, noise);
       tmp.lerp(grassA, 1 - Math.min(1, pathAmt * 1.4));
     } else if (noise > 0.74) {
@@ -938,9 +960,9 @@ export function createGround(size = 48): THREE.Mesh {
     geo,
     new THREE.MeshStandardMaterial({
       vertexColors: true,
-      roughness: 0.94,
-      metalness: 0.0,
-      flatShading: true,
+      roughness: 0.92,
+      metalness: 0.02,
+      flatShading: false,
     }),
   );
   mesh.rotation.x = -Math.PI / 2;
@@ -970,10 +992,11 @@ export function createFrostYeti(): THREE.Group {
   const noseMat = uniq(0x0a0a0a, { roughness: 0.4 });
   const mouthMat = uniq(0x8a3040, { roughness: 0.7 });
   const fangMat = uniq(0xf0e8d0, { roughness: 0.45 });
-  const eyeMat = uniq(0xffc820, {
-    emissive: 0xff9900,
-    emissiveIntensity: 2.1,
-    roughness: 0.22,
+  const eyeMat = uniq(0xffd030, {
+    emissive: 0xff8800,
+    emissiveIntensity: 3.2,
+    roughness: 0.18,
+    metalness: 0.15,
   });
 
   // Contact shadow
@@ -1144,15 +1167,29 @@ export function createFrostYeti(): THREE.Group {
   brow.position.set(0, 0.12, 0.28);
   head.add(brow);
 
-  // Glowing amber eyes
+  // Glowing amber eyes (emissive + local lights for bloom-like readability)
   const makeEye = (sx: number) => {
-    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 5), uniq(0x1a1010));
+    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 5), uniq(0x0a0606));
     socket.position.set(sx, 0.06, 0.32);
     head.add(socket);
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 6), eyeMat);
-    eye.position.set(sx, 0.06, 0.36);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.072, 8, 6), eyeMat);
+    eye.position.set(sx, 0.06, 0.38);
     eye.name = 'yetiEye';
     head.add(eye);
+    const glow = new THREE.Mesh(
+      new THREE.SphereGeometry(0.1, 8, 6),
+      new THREE.MeshBasicMaterial({
+        color: 0xffaa22,
+        transparent: true,
+        opacity: 0.35,
+        depthWrite: false,
+      }),
+    );
+    glow.position.set(sx, 0.06, 0.38);
+    head.add(glow);
+    const eyeLight = new THREE.PointLight(0xff9900, 0.55, 2.8);
+    eyeLight.position.set(sx, 0.06, 0.5);
+    head.add(eyeLight);
   };
   makeEye(-0.14);
   makeEye(0.14);
@@ -1201,24 +1238,38 @@ export function createFrostYeti(): THREE.Group {
 
   g.add(head);
 
-  // Frost breath cone (animated via name)
+  // Frost breath cone + mist puffs (animated via name)
   const breath = new THREE.Mesh(
-    new THREE.ConeGeometry(0.18, 0.55, 6, 1, true),
+    new THREE.ConeGeometry(0.22, 0.7, 7, 1, true),
     new THREE.MeshStandardMaterial({
-      color: 0xb8e8ff,
-      emissive: 0x66ccee,
-      emissiveIntensity: 0.65,
+      color: 0xc8f0ff,
+      emissive: 0x77ddff,
+      emissiveIntensity: 0.95,
       transparent: true,
-      opacity: 0.35,
+      opacity: 0.42,
       flatShading: true,
       side: THREE.DoubleSide,
       depthWrite: false,
     }),
   );
   breath.rotation.x = Math.PI / 2;
-  breath.position.set(0, 2.0, 0.85);
+  breath.position.set(0, 2.0, 0.95);
   breath.name = 'yetiBreath';
   g.add(breath);
+  for (let i = 0; i < 3; i++) {
+    const mist = new THREE.Mesh(
+      new THREE.SphereGeometry(0.12 + i * 0.04, 6, 5),
+      new THREE.MeshBasicMaterial({
+        color: 0xb8e8ff,
+        transparent: true,
+        opacity: 0.22 - i * 0.04,
+        depthWrite: false,
+      }),
+    );
+    mist.position.set((i - 1) * 0.08, 1.95 - i * 0.02, 1.15 + i * 0.22);
+    mist.name = 'yetiBreathMist';
+    g.add(mist);
+  }
 
   // Invisible hit volume
   const hit = new THREE.Mesh(
@@ -1234,21 +1285,36 @@ export function createFrostYeti(): THREE.Group {
   return g;
 }
 
-/** Animate yeti arms for a melee swipe */
+/** Animate yeti arms for a melee swipe (compat wrapper) */
 export function animateYetiSwipe(yeti: THREE.Group, progress: number): void {
   const armR = yeti.getObjectByName('yetiArmR');
   const armL = yeti.getObjectByName('yetiArmL');
-  // progress 0→1 swing
-  const swing = Math.sin(progress * Math.PI);
+  const p = Math.max(0, Math.min(1, progress));
+  let raise = 0;
+  let swipe = 0;
+  if (p <= 0) {
+    raise = 0;
+    swipe = 0;
+  } else if (p < 0.35) {
+    const w = p / 0.35;
+    raise = -1.35 * w;
+    swipe = -0.4 * w;
+  } else if (p < 0.55) {
+    const w = (p - 0.35) / 0.2;
+    raise = -1.35 + 2.4 * w;
+    swipe = -0.4 + 1.6 * w;
+  } else {
+    const w = (p - 0.55) / 0.45;
+    raise = 1.05 * (1 - w);
+    swipe = 1.2 * (1 - w);
+  }
   if (armR) {
-    armR.rotation.x = -swing * 1.1;
-    armR.rotation.y = swing * 0.4;
+    armR.rotation.x = raise;
+    armR.rotation.y = swipe * 0.55;
   }
-  if (armL) {
-    armL.rotation.x = -swing * 0.5;
-  }
+  if (armL) armL.rotation.x = raise * 0.55;
   const head = yeti.getObjectByName('yetiHead');
-  if (head) head.rotation.x = -0.15 - swing * 0.2;
+  if (head) head.rotation.x = -0.15 - Math.min(p, 1) * 0.2;
 }
 
 /** Snow mounds / icy rocks for Frost Yeti NE clearing */
@@ -1420,8 +1486,12 @@ export function createOrcScout(): THREE.Group {
     leg.position.x = side * 0.17;
     return leg;
   };
-  g.add(makeLeg(-1));
-  g.add(makeLeg(1));
+  const orcLegL = makeLeg(-1);
+  orcLegL.name = 'orcLegL';
+  g.add(orcLegL);
+  const orcLegR = makeLeg(1);
+  orcLegR.name = 'orcLegR';
+  g.add(orcLegR);
 
   // Hips / leather skirt flaps
   const hips = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.29, 0.22, 8), leather);
@@ -1564,13 +1634,21 @@ export function createOrcScout(): THREE.Group {
   jaw.position.set(0, -0.12, 0.06);
   addPart(jaw, head);
 
-  // White tusks from lower jaw
+  // White tusks from lower jaw (longer, more readable)
   for (const sx of [-1, 1]) {
-    const t = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.14, 5), tusk);
-    t.position.set(sx * 0.07, -0.14, 0.16);
-    t.rotation.x = Math.PI;
-    t.rotation.z = sx * -0.25;
+    const t = new THREE.Mesh(new THREE.ConeGeometry(0.038, 0.18, 5), tusk);
+    t.position.set(sx * 0.075, -0.12, 0.18);
+    t.rotation.x = Math.PI + 0.15;
+    t.rotation.z = sx * -0.32;
     head.add(t);
+    const tip = new THREE.Mesh(
+      new THREE.ConeGeometry(0.018, 0.06, 4),
+      uniq(0xfff8f0, { roughness: 0.3, metalness: 0.1 }),
+    );
+    tip.position.set(sx * 0.075, -0.02, 0.22);
+    tip.rotation.x = Math.PI + 0.15;
+    tip.rotation.z = sx * -0.32;
+    head.add(tip);
   }
 
   // Deep-set eyes
@@ -1665,18 +1743,32 @@ export function createOrcScout(): THREE.Group {
   return g;
 }
 
-/** Animate orc spear thrust (progress 0→1) */
+/** Animate orc spear thrust (progress 0→1, compat wrapper) */
 export function animateOrcSpear(orc: THREE.Group, progress: number): void {
   const spear = orc.getObjectByName('orcSpear');
   const armR = orc.getObjectByName('orcArmR');
-  const swing = Math.sin(progress * Math.PI);
+  const p = Math.max(0, Math.min(1, progress));
+  let pull = 0;
+  let thrust = 0;
+  if (p <= 0) {
+    pull = 0;
+    thrust = 0;
+  } else if (p < 0.32) {
+    pull = p / 0.32;
+    thrust = -0.35 * pull;
+  } else if (p < 0.52) {
+    const w = (p - 0.32) / 0.2;
+    pull = 1 - w;
+    thrust = -0.35 + 1.45 * w;
+  } else {
+    const w = (p - 0.52) / 0.48;
+    thrust = 1.1 * (1 - w);
+  }
   if (spear) {
-    spear.rotation.x = -swing * 0.85;
-    spear.position.z = 0.12 + swing * 0.35;
+    spear.rotation.x = -thrust * 0.95;
+    spear.position.z = 0.12 + thrust * 0.55 - pull * 0.25;
   }
-  if (armR) {
-    armR.rotation.x = -swing * 0.9;
-  }
+  if (armR) armR.rotation.x = -thrust * 1.05 + pull * 0.4;
   const head = orc.getObjectByName('orcHead');
-  if (head) head.rotation.x = -swing * 0.12;
+  if (head) head.rotation.x = -thrust * 0.12;
 }
