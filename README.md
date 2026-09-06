@@ -1,6 +1,6 @@
 # Hunterscape
 
-Browser fantasy adventure set in the **Whisperwood** — start at **Thornrest Camp**, chop timber, mine ore, and spar with the training dummy.
+Browser fantasy adventure set in the **Whisperwood** — start at **Thornrest Camp**, chop timber, mine ore, spar with the training dummy, and face the **Frost Yeti** in the north-east clearing.
 
 Original world, names, and art (procedural Three.js). Visual layout inspired by classic elevated fantasy MMO HUDs.
 

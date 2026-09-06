@@ -56,6 +56,8 @@ export const ITEM_META: Record<
   copper_ore: { name: 'Copper Ore', icon: '🟠', stackable: true },
   tin_ore: { name: 'Tin Ore', icon: '⚪', stackable: true },
   camp_rations: { name: 'Camp Rations', icon: '🍖', stackable: true },
+  yeti_fur: { name: 'Yeti Fur', icon: '🧣', stackable: true },
+  frost_claw: { name: 'Frost Claw', icon: '🧊', stackable: true },
 };
 
 /** Classic-style XP curve approximation */

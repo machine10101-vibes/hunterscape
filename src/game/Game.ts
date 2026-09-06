@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 import { HUD } from '../ui/HUD';
 import {
+  animateYetiSwipe,
   createBarrel,
   createBedroll,
   createCampfire,
   createCrate,
   createDummy,
+  createFrostYeti,
   createGround,
   createPlayerMesh,
   createRock,
@@ -24,7 +26,7 @@ import {
   type SkillId,
 } from './types';
 
-type InteractKind = 'tree' | 'rock' | 'dummy';
+type InteractKind = 'tree' | 'rock' | 'dummy' | 'yeti';
 
 interface WorldObject {
   kind: InteractKind;
@@ -45,8 +47,14 @@ type Activity =
 
 const GATHER_RANGE = 1.6;
 const ATTACK_RANGE = 1.8;
+const YETI_ATTACK_RANGE = 2.3;
+const YETI_AGGRO_RADIUS = 5.5;
 const MOVE_SPEED = 4.2;
 const SAVE_EVERY = 3;
+const YETI_MAX_HP = 80;
+const YETI_RESPAWN_SEC = 28;
+const YETI_DMG_MIN = 5;
+const YETI_DMG_MAX = 10;
 
 const SKILL_SHORT: Record<SkillId, string> = {
   constitution: 'Constitution',
@@ -77,6 +85,10 @@ export class Game {
   private camOffset = new THREE.Vector3(0, 11, 9);
   private camLook = new THREE.Vector3();
   private dummyTarget: WorldObject | null = null;
+  private yetiTarget: WorldObject | null = null;
+  private yetiAttackCd = 0;
+  private yetiSwipeT = 0;
+  private yetiAggroed = false;
   private running = true;
   private sun!: THREE.DirectionalLight;
   private rim!: THREE.DirectionalLight;
@@ -137,6 +149,7 @@ export class Game {
     this.refreshUI();
     this.hud.chat('Welcome to Thornrest Camp in the Whisperwood.', 'system');
     this.hud.chat('Tap the ground to walk. Chop trees, mine rocks, or spar with the training dummy.', 'system');
+    this.hud.chat('A Frost Yeti stalks the north-east clearing — keep your distance until you are ready.', 'combat');
     this.hud.chat('Your progress is saved in this browser.', 'system');
 
     window.addEventListener('resize', () => this.onResize());
@@ -300,6 +313,23 @@ export class Game {
     };
     this.objects.push(dummy);
     this.dummyTarget = dummy;
+
+    // Frost Yeti — north-east clearing off camp (visible, not on spawn)
+    const yetiMesh = createFrostYeti();
+    yetiMesh.position.set(4.2, 0, 7.2);
+    yetiMesh.rotation.y = Math.PI * 0.85; // face roughly toward camp
+    this.scene.add(yetiMesh);
+    const yeti: WorldObject = {
+      kind: 'yeti',
+      mesh: yetiMesh,
+      id: 'yeti_0',
+      hp: YETI_MAX_HP,
+      maxHp: YETI_MAX_HP,
+      depleted: false,
+      respawnAt: 0,
+    };
+    this.objects.push(yeti);
+    this.yetiTarget = yeti;
   }
 
   private bindInput(canvas: HTMLCanvasElement): void {
@@ -332,7 +362,7 @@ export class Game {
 
     const hitMeshes: THREE.Object3D[] = [];
     for (const o of this.objects) {
-      if (o.depleted && o.kind !== 'dummy') continue;
+      if (o.depleted && o.kind !== 'dummy' && o.kind !== 'yeti') continue;
       o.mesh.traverse((c) => {
         if ((c as THREE.Mesh).isMesh && c.name !== 'outline') hitMeshes.push(c);
       });
@@ -356,11 +386,21 @@ export class Game {
   }
 
   private interactWith(obj: WorldObject): void {
+    if (obj.kind === 'yeti') {
+      if (obj.depleted || obj.hp <= 0) {
+        this.hud.chat('The Frost Yeti lies slain. It will return before long.', 'system');
+        return;
+      }
+      this.beginCombat(obj, 'You ready your bronze sword against the Frost Yeti!');
+      this.yetiAggroed = true;
+      return;
+    }
     if (obj.kind === 'dummy') {
-      this.hud.chat('You ready your bronze sword against the training dummy.', 'combat');
-      this.activity = { type: 'combat', target: obj, cooldown: 0 };
-      setPlayerTool(this.player, 'sword');
-      this.hud.showTarget('Training Dummy', obj.hp / obj.maxHp);
+      if (obj.hp <= 0) {
+        this.hud.chat('The training dummy is already collapsed.', 'system');
+        return;
+      }
+      this.beginCombat(obj, 'You ready your bronze sword against the training dummy.');
       return;
     }
     if (obj.depleted) {
@@ -382,6 +422,35 @@ export class Game {
       }
       this.approachThenGather(obj, 2.6, `Mining ${obj.meta?.ore === 'tin' ? 'tin' : 'copper'}…`);
     }
+  }
+
+
+  private combatName(obj: WorldObject): string {
+    if (obj.kind === 'yeti') return 'Frost Yeti';
+    if (obj.kind === 'dummy') return 'Training Dummy';
+    return obj.kind;
+  }
+
+  private beginCombat(obj: WorldObject, chat: string): void {
+    this.hud.chat(chat, 'combat');
+    this.pendingGather = null;
+    this.activity = { type: 'combat', target: obj, cooldown: 0 };
+    setPlayerTool(this.player, 'sword');
+    this.hud.showTarget(this.combatName(obj), obj.hp / obj.maxHp);
+  }
+
+  private nearestCombatTarget(): WorldObject | null {
+    let best: WorldObject | null = null;
+    let bestD = Infinity;
+    for (const o of this.objects) {
+      if ((o.kind !== 'yeti' && o.kind !== 'dummy') || o.hp <= 0 || o.depleted) continue;
+      const d = this.distTo(o);
+      if (d < bestD) {
+        bestD = d;
+        best = o;
+      }
+    }
+    return bestD < 16 ? best : null;
   }
 
   private approachThenGather(obj: WorldObject, duration: number, label: string): void {
@@ -416,23 +485,27 @@ export class Game {
   private handleAction(action: string): void {
     switch (action) {
       case 'attack': {
-        const dummy = this.dummyTarget;
-        if (!dummy) return;
-        const d = this.distTo(dummy);
-        if (d > ATTACK_RANGE + 2) {
-          this.hud.chat('The training dummy is too far. Walk closer.', 'system');
+        const target = this.nearestCombatTarget();
+        if (!target) {
+          this.hud.chat('No enemies nearby to attack.', 'system');
+          return;
+        }
+        const range = target.kind === 'yeti' ? YETI_ATTACK_RANGE : ATTACK_RANGE;
+        const d = this.distTo(target);
+        if (d > range + 2) {
+          this.hud.chat(`${this.combatName(target)} is too far. Walk closer.`, 'system');
           this.pendingGather = null;
-          const dx = dummy.mesh.position.x - this.player.position.x;
-          const dz = dummy.mesh.position.z - this.player.position.z;
+          const dx = target.mesh.position.x - this.player.position.x;
+          const dz = target.mesh.position.z - this.player.position.z;
           const dist = Math.hypot(dx, dz) || 1;
           this.startMove(
-            dummy.mesh.position.x - (dx / dist) * 1.4,
-            dummy.mesh.position.z - (dz / dist) * 1.4,
+            target.mesh.position.x - (dx / dist) * 1.5,
+            target.mesh.position.z - (dz / dist) * 1.5,
           );
           this.pendingCombat = true;
           return;
         }
-        this.interactWith(dummy);
+        this.interactWith(target);
         break;
       }
       case 'chop': {
@@ -488,6 +561,8 @@ export class Game {
         `A rocky outcrop laced with ${all.meta?.ore ?? 'ore'}. Suitable for mining.`,
         'system',
       );
+    else if (all.kind === 'yeti')
+      this.hud.chat('A massive Frost Yeti. Dark stripes mark its fur; amber eyes burn with hunger.', 'combat');
     else this.hud.chat('A stuffed training dummy. Safe practice for combat skills.', 'system');
   }
 
@@ -589,7 +664,7 @@ export class Game {
 
     const now = performance.now() / 1000;
     for (const o of this.objects) {
-      if (o.depleted && o.kind !== 'dummy' && now >= o.respawnAt) {
+      if (o.depleted && o.kind !== 'dummy' && o.kind !== 'yeti' && now >= o.respawnAt) {
         o.depleted = false;
         o.mesh.visible = true;
         this.hud.chat(
@@ -601,6 +676,17 @@ export class Game {
         o.hp = o.maxHp;
         o.depleted = false;
         this.hud.chat('The training dummy is patched up and ready again.', 'system');
+      }
+      if (o.kind === 'yeti' && o.depleted && now >= o.respawnAt) {
+        o.hp = o.maxHp;
+        o.depleted = false;
+        o.mesh.visible = true;
+        o.mesh.rotation.z = 0;
+        o.mesh.position.y = 0;
+        this.yetiAggroed = false;
+        this.yetiAttackCd = 0;
+        animateYetiSwipe(o.mesh, 0);
+        this.hud.chat('A Frost Yeti stomps back into the north-east clearing!', 'combat');
       }
     }
 
@@ -634,9 +720,10 @@ export class Game {
           const p = this.pendingGather;
           this.pendingGather = null;
           this.approachThenGather(p.obj, p.duration, p.label);
-        } else if (this.pendingCombat && this.dummyTarget) {
+        } else if (this.pendingCombat) {
           this.pendingCombat = false;
-          this.interactWith(this.dummyTarget);
+          const t = this.nearestCombatTarget();
+          if (t) this.interactWith(t);
         }
       } else {
         const step = Math.min(dist, MOVE_SPEED * dt);
@@ -682,33 +769,41 @@ export class Game {
     } else if (this.activity.type === 'combat') {
       const act = this.activity;
       const target = act.target;
-      this.hud.showTarget('Training Dummy', Math.max(0, target.hp) / target.maxHp);
-      if (target.hp <= 0) {
+      this.hud.showTarget(this.combatName(target), Math.max(0, target.hp) / target.maxHp);
+      if (target.hp <= 0 || target.depleted) {
         this.activity = { type: 'idle' };
         setPlayerTool(this.player, null);
         this.hud.hideTarget();
-        return;
-      }
-      if (this.distTo(target) > ATTACK_RANGE + 0.4) {
-        this.activity = { type: 'idle' };
-        setPlayerTool(this.player, null);
-        this.hud.hideTarget();
-        this.hud.chat('You step out of range.', 'combat');
-        return;
-      }
-      this.faceToward(target.mesh.position.x, target.mesh.position.z);
-      act.cooldown -= dt;
-      const root = this.player.getObjectByName('toolRoot');
-      if (root && act.cooldown > 1.2) {
-        root.rotation.x = -Math.sin((1.6 - act.cooldown) * 8) * 0.6;
-      }
-      if (act.cooldown <= 0) {
-        act.cooldown = 1.6;
-        this.swingAtDummy(target);
+      } else {
+        const range = target.kind === 'yeti' ? YETI_ATTACK_RANGE : ATTACK_RANGE;
+        if (this.distTo(target) > range + 0.55) {
+          this.activity = { type: 'idle' };
+          setPlayerTool(this.player, null);
+          this.hud.hideTarget();
+          this.hud.chat('You step out of range.', 'combat');
+        } else {
+          this.faceToward(target.mesh.position.x, target.mesh.position.z);
+          if (target.kind === 'yeti') {
+            const dx = this.player.position.x - target.mesh.position.x;
+            const dz = this.player.position.z - target.mesh.position.z;
+            if (Math.hypot(dx, dz) > 0.01) target.mesh.rotation.y = Math.atan2(dx, dz);
+          }
+          act.cooldown -= dt;
+          const root = this.player.getObjectByName('toolRoot');
+          if (root && act.cooldown > 1.2) {
+            root.rotation.x = -Math.sin((1.6 - act.cooldown) * 8) * 0.6;
+          }
+          if (act.cooldown <= 0) {
+            act.cooldown = 1.6;
+            this.swingAtTarget(target);
+          }
+        }
       }
     } else {
       setPlayerTool(this.player, null);
     }
+
+    this.updateYetiAI(dt);
 
     this.vfx.update(dt);
     this.updateCamera(dt);
@@ -748,49 +843,195 @@ export class Game {
     this.persist();
   }
 
-  private swingAtDummy(target: WorldObject): void {
+  private swingAtTarget(target: WorldObject): void {
     const atk = this.save.skills.attack.level;
     const str = this.save.skills.strength.level;
     const hitChance = 0.65 + atk * 0.01;
+    const label = this.combatName(target);
     if (Math.random() > hitChance) {
-      this.hud.chat('You swing and miss the dummy.', 'combat');
+      this.hud.chat(`You swing and miss the ${label}.`, 'combat');
       return;
     }
     const dmg = 3 + Math.floor(Math.random() * (4 + str));
     target.hp -= dmg;
-    this.grantXp('attack', 12);
-    this.grantXp('strength', 8);
-    this.grantXp('constitution', 4);
-    this.vfx.spawnHitSparks(target.mesh.position.clone(), 14);
-    this.vfx.spawnDamage(target.mesh.position, dmg);
+    const xpAtk = target.kind === 'yeti' ? 18 : 12;
+    const xpStr = target.kind === 'yeti' ? 14 : 8;
+    const xpCon = target.kind === 'yeti' ? 8 : 4;
+    this.grantXp('attack', xpAtk);
+    this.grantXp('strength', xpStr);
+    this.grantXp('constitution', xpCon);
+    this.vfx.spawnHitSparks(target.mesh.position.clone().setY(1.2), 14);
+    this.vfx.spawnDamage(target.mesh.position.clone().setY(1.4), dmg);
     flashDummy(target.mesh);
-
-    const recoil = Math.random() < 0.15 ? 1 : 0;
-    if (recoil) {
-      this.save.hp = Math.max(1, this.save.hp - recoil);
-      this.hud.chat(`You hit the dummy for ${dmg}. Splinter grazes you (-${recoil}).`, 'combat');
-    } else {
-      this.hud.chat(`You hit the training dummy for ${dmg} damage.`, 'combat');
+    if (target.kind === 'yeti') {
+      this.vfx.spawnIceBurst(target.mesh.position.clone(), 8);
+      this.yetiAggroed = true;
     }
-    target.mesh.rotation.z = (Math.random() - 0.5) * 0.15;
+
+    if (target.kind === 'dummy') {
+      const recoil = Math.random() < 0.15 ? 1 : 0;
+      if (recoil) {
+        this.save.hp = Math.max(1, this.save.hp - recoil);
+        this.hud.chat(`You hit the dummy for ${dmg}. Splinter grazes you (-${recoil}).`, 'combat');
+      } else {
+        this.hud.chat(`You hit the training dummy for ${dmg} damage.`, 'combat');
+      }
+    } else {
+      this.hud.chat(`You strike the Frost Yeti for ${dmg} damage!`, 'combat');
+    }
+
+    target.mesh.rotation.z = (Math.random() - 0.5) * 0.12;
     setTimeout(() => {
-      target.mesh.rotation.z = 0;
+      if (target.kind !== 'yeti' || !target.depleted) target.mesh.rotation.z = 0;
     }, 120);
 
     if (target.hp <= 0) {
       target.hp = 0;
-      target.respawnAt = performance.now() / 1000 + 8;
-      this.hud.chat('The training dummy collapses! It will be repaired shortly.', 'combat');
-      this.grantXp('defence', 15);
-      this.activity = { type: 'idle' };
-      setPlayerTool(this.player, null);
-      this.hud.hideTarget();
+      if (target.kind === 'yeti') this.onYetiDeath(target);
+      else this.onDummyDeath(target);
     } else {
-      this.hud.showTarget('Training Dummy', target.hp / target.maxHp);
+      this.hud.showTarget(label, target.hp / target.maxHp);
     }
     this.refreshUI();
     this.persist();
   }
+
+  private onDummyDeath(target: WorldObject): void {
+    target.respawnAt = performance.now() / 1000 + 8;
+    this.hud.chat('The training dummy collapses! It will be repaired shortly.', 'combat');
+    this.grantXp('defence', 15);
+    this.activity = { type: 'idle' };
+    setPlayerTool(this.player, null);
+    this.hud.hideTarget();
+  }
+
+  private onYetiDeath(target: WorldObject): void {
+    target.depleted = true;
+    target.mesh.visible = false;
+    target.respawnAt = performance.now() / 1000 + YETI_RESPAWN_SEC;
+    this.yetiAggroed = false;
+    this.yetiAttackCd = 0;
+    this.vfx.spawnIceBurst(target.mesh.position.clone().setY(1.2), 22);
+    this.hud.chat('The Frost Yeti collapses in a burst of frost!', 'combat');
+    this.grantXp('defence', 28);
+    this.grantXp('attack', 12);
+    this.grantXp('strength', 10);
+    this.grantXp('constitution', 10);
+    if (this.addItem('yeti_fur', 1)) {
+      this.hud.chat('You loot Yeti Fur.', 'loot');
+    }
+    if (Math.random() < 0.55) {
+      if (this.addItem('frost_claw', 1)) {
+        this.hud.chat('You pry free a Frost Claw!', 'loot');
+      }
+    }
+    this.activity = { type: 'idle' };
+    setPlayerTool(this.player, null);
+    this.hud.hideTarget();
+    this.refreshUI();
+    this.persist();
+  }
+
+  private updateYetiAI(dt: number): void {
+    const yeti = this.yetiTarget;
+    if (!yeti || yeti.depleted || yeti.hp <= 0) {
+      if (this.yetiSwipeT > 0) this.yetiSwipeT = Math.max(0, this.yetiSwipeT - dt);
+      return;
+    }
+
+    const dist = this.distTo(yeti);
+    if (!this.yetiAggroed && dist <= YETI_AGGRO_RADIUS) {
+      this.yetiAggroed = true;
+      this.hud.chat('The Frost Yeti snarls and charges!', 'combat');
+      if (this.activity.type !== 'combat' || this.activity.target !== yeti) {
+        this.beginCombat(yeti, 'The Frost Yeti engages you!');
+      }
+    }
+
+    if (!this.yetiAggroed) {
+      yeti.mesh.position.y = Math.sin(performance.now() / 1000 * 1.4) * 0.03;
+      animateYetiSwipe(yeti.mesh, 0);
+      return;
+    }
+
+    const dx = this.player.position.x - yeti.mesh.position.x;
+    const dz = this.player.position.z - yeti.mesh.position.z;
+    if (Math.hypot(dx, dz) > 0.01) yeti.mesh.rotation.y = Math.atan2(dx, dz);
+
+    if (dist > YETI_ATTACK_RANGE && dist < YETI_AGGRO_RADIUS + 4) {
+      const step = Math.min(dist - YETI_ATTACK_RANGE * 0.85, 2.4 * dt);
+      const n = Math.hypot(dx, dz) || 1;
+      yeti.mesh.position.x += (dx / n) * step;
+      yeti.mesh.position.z += (dz / n) * step;
+      const sx = 4.2;
+      const sz = 7.2;
+      const lx = yeti.mesh.position.x - sx;
+      const lz = yeti.mesh.position.z - sz;
+      const ld = Math.hypot(lx, lz);
+      if (ld > 7) {
+        yeti.mesh.position.x = sx + (lx / ld) * 7;
+        yeti.mesh.position.z = sz + (lz / ld) * 7;
+      }
+    }
+
+    if (dist > YETI_AGGRO_RADIUS + 6) {
+      this.yetiAggroed = false;
+      this.hud.chat('The Frost Yeti loses interest and returns to the clearing.', 'system');
+      yeti.mesh.position.x += (4.2 - yeti.mesh.position.x) * Math.min(1, dt * 0.8);
+      yeti.mesh.position.z += (7.2 - yeti.mesh.position.z) * Math.min(1, dt * 0.8);
+      if (this.activity.type === 'combat' && this.activity.target === yeti) {
+        this.activity = { type: 'idle' };
+        setPlayerTool(this.player, null);
+        this.hud.hideTarget();
+      }
+      return;
+    }
+
+    if (this.yetiSwipeT > 0) {
+      this.yetiSwipeT = Math.max(0, this.yetiSwipeT - dt);
+      animateYetiSwipe(yeti.mesh, 1 - this.yetiSwipeT / 0.45);
+    } else {
+      animateYetiSwipe(yeti.mesh, 0);
+    }
+
+    this.yetiAttackCd -= dt;
+    if (dist <= YETI_ATTACK_RANGE + 0.35 && this.yetiAttackCd <= 0) {
+      this.yetiAttackCd = 2.1;
+      this.yetiSwipeT = 0.45;
+      this.yetiMeleeHit(yeti);
+    }
+  }
+
+  private yetiMeleeHit(yeti: WorldObject): void {
+    const dist = this.distTo(yeti);
+    if (dist > YETI_ATTACK_RANGE + 0.5) return;
+    const def = this.save.skills.defence.level;
+    const raw = YETI_DMG_MIN + Math.floor(Math.random() * (YETI_DMG_MAX - YETI_DMG_MIN + 1));
+    const mitigated = Math.max(2, raw - Math.floor(def / 5));
+    this.save.hp = Math.max(0, this.save.hp - mitigated);
+    this.vfx.spawnClawSlash(this.player.position.clone(), 10);
+    this.vfx.spawnIceBurst(this.player.position.clone(), 10);
+    this.vfx.spawnDamage(this.player.position.clone().setY(1.3), mitigated);
+    this.hud.chat(`The Frost Yeti swipes you for ${mitigated} damage!`, 'combat');
+    this.hud.setOrbs(this.save.hp, this.save.maxHp, this.save.focus, this.save.stamina);
+
+    if (this.save.hp <= 0) {
+      this.save.hp = Math.max(10, Math.floor(this.save.maxHp * 0.35));
+      this.player.position.set(0, 0, 2);
+      this.yetiAggroed = false;
+      this.activity = { type: 'idle' };
+      setPlayerTool(this.player, null);
+      this.hud.hideTarget();
+      this.hud.chat('You fall! You wake by the Thornrest campfire, battered but alive.', 'combat');
+      yeti.mesh.position.set(4.2, 0, 7.2);
+    }
+    if (this.activity.type !== 'combat' && yeti.hp > 0 && !yeti.depleted) {
+      this.beginCombat(yeti, 'You raise your guard against the Frost Yeti!');
+    }
+    this.refreshUI();
+    this.persist();
+  }
+
 
   private updateCamera(_dt: number): void {
     const target = new THREE.Vector3(
@@ -806,9 +1047,10 @@ export class Game {
   private drawMinimapMarkers(): void {
     const markers: { x: number; z: number; color: string }[] = [];
     for (const o of this.objects) {
-      if (o.depleted && o.kind !== 'dummy') continue;
+      if (o.depleted && o.kind !== 'dummy' && o.kind !== 'yeti') continue;
       if (o.kind === 'tree') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#2d8a2d' });
       else if (o.kind === 'rock') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#888' });
+      else if (o.kind === 'yeti') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#7ec8ff' });
       else markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#c43c3c' });
     }
     markers.push({ x: -1.2, z: -0.5, color: '#ff8844' });

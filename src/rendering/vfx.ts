@@ -51,6 +51,20 @@ export class VFX {
     roughness: 0.45,
     flatShading: true,
   });
+  private iceMat = new THREE.MeshStandardMaterial({
+    color: 0xa8e8ff,
+    emissive: 0x44aacc,
+    emissiveIntensity: 1.2,
+    flatShading: true,
+    transparent: true,
+    opacity: 0.9,
+  });
+  private clawMat = new THREE.MeshStandardMaterial({
+    color: 0xd8e8f8,
+    emissive: 0x88bbdd,
+    emissiveIntensity: 0.8,
+    flatShading: true,
+  });
 
   constructor(scene: THREE.Scene, camera: THREE.Camera, overlayParent: HTMLElement) {
     this.scene = scene;
@@ -175,6 +189,58 @@ export class VFX {
       String(amount),
       '#ffb0a0',
     );
+  }
+
+
+  /** Icy burst when Frost Yeti swipes or dies */
+  spawnIceBurst(origin: THREE.Vector3, count = 16): void {
+    for (let i = 0; i < count; i++) {
+      const mesh = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.06 + Math.random() * 0.05, 0),
+        this.iceMat,
+      );
+      mesh.position.copy(origin);
+      mesh.position.y += 0.8 + Math.random() * 0.6;
+      mesh.position.x += (Math.random() - 0.5) * 0.4;
+      mesh.position.z += (Math.random() - 0.5) * 0.4;
+      this.scene.add(mesh);
+      this.particles.push({
+        mesh,
+        vel: new THREE.Vector3(
+          (Math.random() - 0.5) * 5,
+          1.2 + Math.random() * 3.5,
+          (Math.random() - 0.5) * 5,
+        ),
+        life: 0,
+        maxLife: 0.55 + Math.random() * 0.4,
+        gravity: 5,
+        spin: (Math.random() - 0.5) * 20,
+      });
+    }
+  }
+
+  /** Claw slash arcs for yeti melee */
+  spawnClawSlash(origin: THREE.Vector3, count = 8): void {
+    for (let i = 0; i < count; i++) {
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(0.08, 0.02, 0.28 + Math.random() * 0.15),
+        this.clawMat,
+      );
+      mesh.position.copy(origin);
+      mesh.position.y += 1.0 + Math.random() * 0.5;
+      const a = (i / count) * Math.PI - Math.PI / 2;
+      mesh.rotation.y = a;
+      mesh.rotation.z = -0.4;
+      this.scene.add(mesh);
+      this.particles.push({
+        mesh,
+        vel: new THREE.Vector3(Math.cos(a) * 3.5, 0.5 + Math.random(), Math.sin(a) * 3.5),
+        life: 0,
+        maxLife: 0.28 + Math.random() * 0.15,
+        gravity: 2,
+        spin: 8,
+      });
+    }
   }
 
   update(dt: number): void {

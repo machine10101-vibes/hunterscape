@@ -556,3 +556,272 @@ export function createGround(size = 48): THREE.Mesh {
   mesh.name = 'ground';
   return mesh;
 }
+
+/** Low-poly Frost Yeti — white/blue fur, charcoal stripes, amber eyes, black claws */
+export function createFrostYeti(): THREE.Group {
+  const g = new THREE.Group();
+  g.name = 'yeti';
+
+  const uniq = (color: number, opts: Partial<THREE.MeshStandardMaterialParameters> = {}) =>
+    new THREE.MeshStandardMaterial({
+      color,
+      roughness: opts.roughness ?? 0.92,
+      metalness: opts.metalness ?? 0.02,
+      flatShading: true,
+      ...opts,
+    });
+
+  const fur = uniq(0xe8f0f8); // alice-blue white
+  const furBlue = uniq(0xc8dce8); // cool blue tint
+  const stripe = uniq(0x333338);
+  const claw = uniq(0x0a0a0c, { roughness: 0.35, metalness: 0.25 });
+  const noseMat = uniq(0x0a0a0a, { roughness: 0.4 });
+  const mouthMat = uniq(0x8a3040, { roughness: 0.7 });
+  const fangMat = uniq(0xf0e8d0, { roughness: 0.45 });
+  const eyeMat = uniq(0xffbf00, {
+    emissive: 0xffaa00,
+    emissiveIntensity: 1.35,
+    roughness: 0.3,
+  });
+
+  // Contact shadow
+  const shadow = new THREE.Mesh(
+    new THREE.CircleGeometry(0.85, 20),
+    new THREE.MeshBasicMaterial({
+      color: 0x000000,
+      transparent: true,
+      opacity: 0.42,
+      depthWrite: false,
+    }),
+  );
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.position.y = 0.03;
+  g.add(shadow);
+
+  // Legs (thick, slightly bent forward for hunched stance)
+  const makeLeg = (side: number) => {
+    const leg = new THREE.Group();
+    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.35, 3, 6), fur);
+    thigh.position.set(0, 0.55, 0.05);
+    thigh.rotation.x = 0.25;
+    thigh.castShadow = true;
+    leg.add(thigh);
+    // stripe on thigh
+    const thStripe = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.1, 0.38), stripe);
+    thStripe.position.set(0, 0.62, 0.08);
+    leg.add(thStripe);
+    const shin = new THREE.Mesh(new THREE.CapsuleGeometry(0.18, 0.28, 3, 6), furBlue);
+    shin.position.set(0, 0.22, 0.12);
+    shin.rotation.x = -0.15;
+    shin.castShadow = true;
+    leg.add(shin);
+    const shStripe = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.08, 0.32), stripe);
+    shStripe.position.set(0, 0.28, 0.14);
+    leg.add(shStripe);
+    // Foot
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.14, 0.48), fur);
+    foot.position.set(0, 0.07, 0.18);
+    foot.castShadow = true;
+    leg.add(foot);
+    // Toes / claws
+    for (let i = 0; i < 4; i++) {
+      const c = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.18, 4), claw);
+      c.rotation.x = Math.PI / 2;
+      c.position.set(-0.1 + i * 0.07, 0.06, 0.42);
+      leg.add(c);
+    }
+    leg.position.x = side * 0.32;
+    return leg;
+  };
+  g.add(makeLeg(-1));
+  g.add(makeLeg(1));
+
+  // Torso — bulky upper body, hunched
+  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.55, 0.55, 4, 10), fur);
+  torso.position.set(0, 1.35, -0.08);
+  torso.scale.set(1.15, 1, 0.95);
+  torso.rotation.x = 0.2;
+  torso.castShadow = true;
+  torso.name = 'yetiBody';
+  addOutline(torso, 1.06, 0x0a1520);
+  g.add(torso);
+
+  // Horizontal charcoal stripes on torso
+  for (let i = 0; i < 4; i++) {
+    const band = new THREE.Mesh(
+      new THREE.TorusGeometry(0.58 + i * 0.02, 0.055, 5, 16),
+      stripe,
+    );
+    band.rotation.x = Math.PI / 2 + 0.15;
+    band.position.set(0, 1.55 - i * 0.18, -0.05 + i * 0.02);
+    band.scale.set(1.05, 0.85, 1);
+    g.add(band);
+  }
+
+  // Belly slightly bluer
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.38, 8, 6), furBlue);
+  belly.position.set(0, 1.15, 0.28);
+  belly.scale.set(1.1, 1.0, 0.55);
+  g.add(belly);
+
+  // Shoulder mane / spiky fur clumps
+  const makeManeClump = (x: number, y: number, z: number, s: number) => {
+    const clump = new THREE.Mesh(new THREE.ConeGeometry(0.18 * s, 0.4 * s, 5), fur);
+    clump.position.set(x, y, z);
+    clump.rotation.x = -0.55 - s * 0.08;
+    clump.castShadow = true;
+    g.add(clump);
+  };
+  makeManeClump(-0.55, 1.85, -0.15, 1.2);
+  makeManeClump(0.55, 1.85, -0.15, 1.2);
+  makeManeClump(-0.35, 2.0, -0.35, 1.0);
+  makeManeClump(0.35, 2.0, -0.35, 1.0);
+  makeManeClump(0, 2.05, -0.4, 1.15);
+  makeManeClump(-0.7, 1.65, 0.05, 0.9);
+  makeManeClump(0.7, 1.65, 0.05, 0.9);
+
+  // Arms
+  const makeArm = (side: number) => {
+    const arm = new THREE.Group();
+    arm.name = side < 0 ? 'yetiArmL' : 'yetiArmR';
+    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.4, 3, 6), fur);
+    upper.position.set(0, 0, 0);
+    upper.rotation.z = side * 0.55;
+    upper.rotation.x = -0.35;
+    upper.castShadow = true;
+    arm.add(upper);
+    const uStripe = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.09, 0.28), stripe);
+    uStripe.position.set(side * 0.05, -0.05, 0.05);
+    uStripe.rotation.z = side * 0.55;
+    arm.add(uStripe);
+    const forearm = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.35, 3, 6), furBlue);
+    forearm.position.set(side * 0.28, -0.45, 0.25);
+    forearm.rotation.z = side * 0.35;
+    forearm.rotation.x = -0.5;
+    forearm.castShadow = true;
+    arm.add(forearm);
+    const fStripe = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.08, 0.24), stripe);
+    fStripe.position.set(side * 0.28, -0.4, 0.28);
+    arm.add(fStripe);
+    // Hand
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.16, 6, 5), fur);
+    hand.position.set(side * 0.42, -0.72, 0.45);
+    hand.castShadow = true;
+    arm.add(hand);
+    // Claws
+    for (let i = 0; i < 4; i++) {
+      const c = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.22, 4), claw);
+      c.rotation.x = Math.PI / 2 + 0.3;
+      c.position.set(side * 0.42 + (i - 1.5) * 0.06, -0.78, 0.62);
+      arm.add(c);
+    }
+    arm.position.set(side * 0.72, 1.7, 0.05);
+    return arm;
+  };
+  g.add(makeArm(-1));
+  g.add(makeArm(1));
+
+  // Head — bear-like snout, roaring
+  const head = new THREE.Group();
+  head.name = 'yetiHead';
+  head.position.set(0, 2.15, 0.15);
+  head.rotation.x = -0.15;
+
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.38, 10, 8), fur);
+  skull.scale.set(1.05, 0.95, 1.1);
+  skull.castShadow = true;
+  addOutline(skull, 1.08, 0x0a1520);
+  head.add(skull);
+
+  // Brow ridge / shadowed sockets
+  const brow = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.12, 0.2), uniq(0xb8c8d4));
+  brow.position.set(0, 0.12, 0.28);
+  head.add(brow);
+
+  // Glowing amber eyes
+  const makeEye = (sx: number) => {
+    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 5), uniq(0x1a1010));
+    socket.position.set(sx, 0.06, 0.32);
+    head.add(socket);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 6), eyeMat);
+    eye.position.set(sx, 0.06, 0.36);
+    eye.name = 'yetiEye';
+    head.add(eye);
+  };
+  makeEye(-0.14);
+  makeEye(0.14);
+
+  // Snout
+  const snout = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.18, 3, 6), furBlue);
+  snout.rotation.x = Math.PI / 2;
+  snout.position.set(0, -0.08, 0.42);
+  head.add(snout);
+
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 5), noseMat);
+  nose.position.set(0, -0.02, 0.58);
+  head.add(nose);
+
+  // Open roaring mouth
+  const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.16, 0.28), mouthMat);
+  jaw.position.set(0, -0.22, 0.38);
+  head.add(jaw);
+
+  // Fangs
+  const makeFang = (x: number, y: number, upper: boolean) => {
+    const fang = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.16, 4), fangMat);
+    fang.rotation.x = upper ? Math.PI : 0;
+    fang.position.set(x, y, 0.5);
+    head.add(fang);
+  };
+  makeFang(-0.1, -0.12, true);
+  makeFang(0.1, -0.12, true);
+  makeFang(-0.08, -0.28, false);
+  makeFang(0.08, -0.28, false);
+
+  // Smaller teeth row
+  for (let i = 0; i < 5; i++) {
+    const t = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, 0.04), fangMat);
+    t.position.set(-0.12 + i * 0.06, -0.14, 0.52);
+    head.add(t);
+  }
+
+  // Ear tufts
+  for (const s of [-1, 1]) {
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.22, 5), fur);
+    ear.position.set(s * 0.32, 0.22, -0.05);
+    ear.rotation.z = s * 0.4;
+    head.add(ear);
+  }
+
+  g.add(head);
+
+  // Invisible hit volume
+  const hit = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.85, 0.95, 2.4, 10),
+    new THREE.MeshBasicMaterial({ visible: false }),
+  );
+  hit.position.y = 1.2;
+  hit.name = 'hit';
+  g.add(hit);
+
+  // Slight overall scale — massive presence
+  g.scale.setScalar(1.15);
+  return g;
+}
+
+/** Animate yeti arms for a melee swipe */
+export function animateYetiSwipe(yeti: THREE.Group, progress: number): void {
+  const armR = yeti.getObjectByName('yetiArmR');
+  const armL = yeti.getObjectByName('yetiArmL');
+  // progress 0→1 swing
+  const swing = Math.sin(progress * Math.PI);
+  if (armR) {
+    armR.rotation.x = -swing * 1.1;
+    armR.rotation.y = swing * 0.4;
+  }
+  if (armL) {
+    armL.rotation.x = -swing * 0.5;
+  }
+  const head = yeti.getObjectByName('yetiHead');
+  if (head) head.rotation.x = -0.15 - swing * 0.2;
+}
