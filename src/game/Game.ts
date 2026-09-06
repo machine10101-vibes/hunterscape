@@ -35,14 +35,17 @@ import {
   ORC_ATTACK_CONNECT_END,
   ORC_ATTACK_CONNECT_START,
   ORC_ATTACK_DURATION,
+  ORC_ATTACK_WINDUP_END,
   PLAYER_ATTACK_CONNECT_END,
   PLAYER_ATTACK_CONNECT_START,
   PLAYER_ATTACK_DURATION,
+  PLAYER_ATTACK_WINDUP_END,
   resetPlayerPose,
   turnTowardYaw,
   YETI_ATTACK_CONNECT_END,
   YETI_ATTACK_CONNECT_START,
   YETI_ATTACK_DURATION,
+  YETI_ATTACK_WINDUP_END,
 } from '../rendering/anim';
 import { VFX } from '../rendering/vfx';
 import { loadSave, writeSave } from './Persistence';
@@ -94,6 +97,8 @@ const YETI_AGGRO_RADIUS = 5.8;
 const ORC_ATTACK_RANGE = 2.15;
 const ORC_AGGRO_RADIUS = 5.4;
 const MOVE_SPEED = 4.2;
+const MOVE_ACCEL = 9.5;
+const MOVE_DECEL = 12.0;
 const SAVE_EVERY = 3;
 const YETI_MAX_HP = 80;
 const YETI_RESPAWN_SEC = 28;
@@ -158,6 +163,18 @@ export class Game {
   private camSmooth = new THREE.Vector3();
   private lookSmooth = new THREE.Vector3();
   private combatCamPull = 0;
+  /** Current locomotion speed (eased) */
+  private moveSpeedCur = 0;
+  private moveBlend = 0;
+  private stoppingSteps = 0;
+  private lastMoveDir = new THREE.Vector3(0, 0, 1);
+  /** Target hit-react timers (mesh uuid → remaining) */
+  private hitReacts: { mesh: THREE.Object3D; t: number; inten: number }[] = [];
+  private yetiMoveBlend = 0;
+  private orcMoveBlend = 0;
+  private yetiTeleDone = false;
+  private orcTeleDone = false;
+  private playerTeleDone = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.save = loadSave();
@@ -918,16 +935,24 @@ export class Game {
         obj.scale.setScalar(s);
       }
       if (obj.name === 'yetiBreath') {
-        const pulse = 0.75 + Math.sin(now * 3.2) * 0.4;
-        obj.scale.set(pulse, 0.85 + pulse * 0.45, pulse * 1.15);
+        const fightBoost = this.yetiAggroed ? 1.35 : 1;
+        const pulse = (0.85 + Math.sin(now * 3.4) * 0.45) * fightBoost;
+        obj.scale.set(pulse, 0.9 + pulse * 0.5, pulse * 1.25);
         const m = (obj as THREE.Mesh).material as THREE.MeshStandardMaterial;
-        if (m && m.opacity !== undefined) m.opacity = 0.25 + Math.sin(now * 4) * 0.18;
+        if (m && m.opacity !== undefined) {
+          m.opacity = (0.4 + Math.sin(now * 4.2) * 0.22) * (this.yetiAggroed ? 1.15 : 1);
+        }
       }
       if (obj.name === 'yetiBreathMist') {
-        const pulse = 0.8 + Math.sin(now * 2.6 + obj.position.z) * 0.35;
+        const fightBoost = this.yetiAggroed ? 1.3 : 1;
+        const pulse = (0.85 + Math.sin(now * 2.8 + obj.position.z) * 0.4) * fightBoost;
         obj.scale.setScalar(pulse);
         const m = (obj as THREE.Mesh).material as THREE.MeshBasicMaterial;
-        if (m && m.opacity !== undefined) m.opacity = Math.max(0.05, 0.2 * pulse);
+        if (m && m.opacity !== undefined) m.opacity = Math.max(0.08, 0.28 * pulse);
+      }
+      if (obj.name === 'yetiEyeGlow') {
+        const pulse = 0.9 + Math.sin(now * 5.5) * 0.35;
+        obj.scale.setScalar(pulse * (this.yetiAggroed ? 1.25 : 1));
       }
     });
 
@@ -939,11 +964,36 @@ export class Game {
 
     // Apply lingering knockback / flinch on player
     if (this.playerFlinch > 0) {
-      this.playerFlinch = Math.max(0, this.playerFlinch - dt * 3.2);
-      animateHitFlinch(this.player, this.playerFlinch);
+      const decay = this.playerFlinch > 0.65 ? 2.4 : 3.6;
+      this.playerFlinch = Math.max(0, this.playerFlinch - dt * decay);
+      animateHitFlinch(this.player, this.playerFlinch, this.playerFlinch > 0.65 ? 1.1 : 0.55);
       this.player.position.x += this.playerKnock.x * dt;
       this.player.position.z += this.playerKnock.z * dt;
-      this.playerKnock.multiplyScalar(Math.max(0, 1 - dt * 6));
+      this.playerKnock.multiplyScalar(Math.max(0, 1 - dt * 5.5));
+      if (this.playerFlinch <= 0) {
+        this.player.rotation.z = 0;
+        this.player.rotation.x = 0;
+        const torso = this.player.getObjectByName('playerTorso');
+        if (torso) torso.rotation.y = 0;
+      }
+    }
+
+    // Scaled hit reactions on monsters / dummy
+    for (let i = this.hitReacts.length - 1; i >= 0; i--) {
+      const hr = this.hitReacts[i];
+      hr.t -= dt;
+      const amt = Math.max(0, Math.min(1, hr.t / 0.35));
+      animateHitFlinch(hr.mesh, amt, hr.inten);
+      if (hr.t <= 0) {
+        hr.mesh.rotation.z = 0;
+        hr.mesh.rotation.x = 0;
+        const torso =
+          hr.mesh.getObjectByName('playerTorso') ||
+          hr.mesh.getObjectByName('yetiBody') ||
+          hr.mesh.getObjectByName('orcBody');
+        if (torso) torso.rotation.y = 0;
+        this.hitReacts.splice(i, 1);
+      }
     }
 
     // Death animations (collapse before hide/respawn timer)
@@ -966,12 +1016,22 @@ export class Game {
       const dx = tx - this.player.position.x;
       const dz = tz - this.player.position.z;
       const dist = Math.hypot(dx, dz);
-      if (dist < 0.08) {
+      // Ease into full walk speed; start decelerating near destination
+      const want = dist < 0.55 ? Math.max(0.35, dist / 0.55) * MOVE_SPEED : MOVE_SPEED;
+      if (this.moveSpeedCur < want) {
+        this.moveSpeedCur = Math.min(want, this.moveSpeedCur + MOVE_ACCEL * dt);
+      } else {
+        this.moveSpeedCur = Math.max(want, this.moveSpeedCur - MOVE_DECEL * dt);
+      }
+      this.moveBlend = Math.min(1, this.moveBlend + dt * 4.5);
+      if (dist < 0.1 && this.moveSpeedCur < 0.55) {
         this.player.position.x = tx;
         this.player.position.z = tz;
         this.moveMarker.visible = false;
+        // Residual settle steps before full idle
+        this.stoppingSteps = 0.28;
         this.activity = { type: 'idle' };
-        resetPlayerPose(this.player);
+        this.moveSpeedCur = 0;
         if (this.pendingGather) {
           const p = this.pendingGather;
           this.pendingGather = null;
@@ -982,11 +1042,20 @@ export class Game {
           if (t) this.interactWith(t);
         }
       } else {
-        const step = Math.min(dist, MOVE_SPEED * dt);
-        this.player.position.x += (dx / dist) * step;
-        this.player.position.z += (dz / dist) * step;
-        this.faceToward(tx, tz, dt, 12);
-        animatePlayerWalk(this.player, this.animTime, 0.95);
+        const n = dist || 1;
+        const step = Math.min(dist, this.moveSpeedCur * dt);
+        this.player.position.x += (dx / n) * step;
+        this.player.position.z += (dz / n) * step;
+        this.lastMoveDir.set(dx / n, 0, dz / n);
+        // Turn-while-moving: snappy; large yaw delta gets slightly slower
+        const targetYaw = Math.atan2(dx, dz);
+        let yawDelta = targetYaw - this.player.rotation.y;
+        while (yawDelta > Math.PI) yawDelta -= Math.PI * 2;
+        while (yawDelta < -Math.PI) yawDelta += Math.PI * 2;
+        const turnRate = Math.abs(yawDelta) > 1.2 ? 7 : 11;
+        this.faceToward(tx, tz, dt, turnRate);
+        const speedNorm = Math.min(1.05, 0.45 + (this.moveSpeedCur / MOVE_SPEED) * 0.55);
+        animatePlayerWalk(this.player, this.animTime, speedNorm, this.moveBlend);
         this.save.stamina = Math.max(0, this.save.stamina - dt * 2);
       }
     } else if (this.activity.type === 'gather') {
@@ -1063,6 +1132,11 @@ export class Game {
             act.swingT += dt;
             const prog = Math.min(1, act.swingT / act.swingDur);
             animatePlayerAttack(this.player, prog);
+            if (!this.playerTeleDone && prog < 0.12) {
+              this.playerTeleDone = true;
+              const life = PLAYER_ATTACK_WINDUP_END * act.swingDur;
+              this.vfx.spawnTelegraph(this.player.position.clone(), false, life, 0.7);
+            }
             if (
               !act.hitDone &&
               prog >= PLAYER_ATTACK_CONNECT_START &&
@@ -1074,7 +1148,8 @@ export class Game {
             if (prog >= 1) {
               act.swingT = 0;
               act.hitDone = false;
-              act.cooldown = 0.85;
+              this.playerTeleDone = false;
+              act.cooldown = 0.72;
               resetPlayerPose(this.player);
               setPlayerTool(this.player, 'sword');
             }
@@ -1086,6 +1161,7 @@ export class Game {
               act.swingT = 0.001;
               act.swingDur = PLAYER_ATTACK_DURATION;
               act.hitDone = false;
+              this.playerTeleDone = false;
               setPlayerTool(this.player, 'sword');
             }
           }
@@ -1093,7 +1169,17 @@ export class Game {
       }
     } else {
       setPlayerTool(this.player, null);
-      animatePlayerIdle(this.player, this.animTime);
+      // Residual foot plants after stop, then idle breath
+      if (this.stoppingSteps > 0) {
+        this.stoppingSteps -= dt;
+        this.moveBlend = Math.max(0, this.moveBlend - dt * 3.5);
+        animatePlayerWalk(this.player, this.animTime, 0.4, Math.max(0.15, this.moveBlend));
+      } else {
+        this.moveBlend = Math.max(0, this.moveBlend - dt * 5);
+        this.moveSpeedCur = 0;
+        // Turn-in-place: if nearly idle but facing wrong way after click cancel, settle pose
+        animatePlayerIdle(this.player, this.animTime);
+      }
       this.combatCamPull = Math.max(0, this.combatCamPull - dt * 0.6);
     }
 
@@ -1157,24 +1243,21 @@ export class Game {
     this.grantXp('strength', xpStr);
     this.grantXp('constitution', xpCon);
     const hitPos = target.mesh.position.clone().setY(1.25);
-    this.vfx.spawnHitSparks(hitPos, 20);
-    this.vfx.spawnImpactBurst(hitPos, target.kind === 'yeti' ? 14 : 18, target.kind === 'yeti');
+    // Impact VFX synced to actual connect frame
+    this.vfx.spawnHitSparks(hitPos, 14 + Math.min(12, dmg));
+    this.vfx.spawnImpactBurst(hitPos, target.kind === 'yeti' ? 16 : 20, target.kind === 'yeti');
     this.vfx.spawnDamage(target.mesh.position.clone().setY(1.5), dmg, dmg >= 8);
-    flashDummy(target.mesh, 180);
-    // Brief flinch knock on target
+    flashDummy(target.mesh, dmg >= 10 ? 260 : 160);
+    // Hit reaction scaled to damage: flinch vs big stagger
+    const inten = dmg >= 12 ? 1.25 : dmg >= 8 ? 0.9 : 0.5;
+    const knock = dmg >= 12 ? 0.28 : dmg >= 8 ? 0.18 : 0.1;
     const away = Math.atan2(
       target.mesh.position.x - this.player.position.x,
       target.mesh.position.z - this.player.position.z,
     );
-    target.mesh.position.x += Math.sin(away) * 0.12;
-    target.mesh.position.z += Math.cos(away) * 0.12;
-    animateHitFlinch(target.mesh, 1);
-    setTimeout(() => {
-      if (!target.depleted) {
-        target.mesh.rotation.z = 0;
-        target.mesh.rotation.x = 0;
-      }
-    }, 160);
+    target.mesh.position.x += Math.sin(away) * knock;
+    target.mesh.position.z += Math.cos(away) * knock;
+    this.hitReacts.push({ mesh: target.mesh, t: inten > 1 ? 0.48 : 0.28, inten });
     if (target.kind === 'yeti') {
       this.vfx.spawnIceBurst(target.mesh.position.clone(), 12);
       this.yetiAggroed = true;
@@ -1212,7 +1295,7 @@ export class Game {
 
   private onDummyDeath(target: WorldObject): void {
     target.respawnAt = performance.now() / 1000 + 8;
-    this.deathAnims.push({ mesh: target.mesh, kind: 'dummy', t: 0, dur: 0.55 });
+    this.deathAnims.push({ mesh: target.mesh, kind: 'dummy', t: 0, dur: 0.85 });
     this.hud.chat('The training dummy collapses! It will be repaired shortly.', 'combat');
     this.grantXp('defence', 15);
     this.activity = { type: 'idle' };
@@ -1230,7 +1313,7 @@ export class Game {
     this.yetiSwipeT = 0;
     this.vfx.spawnIceBurst(target.mesh.position.clone().setY(1.2), 28);
     this.vfx.spawnImpactBurst(target.mesh.position.clone().setY(1.0), 16, true);
-    this.deathAnims.push({ mesh: target.mesh, kind: 'yeti', t: 0, dur: 0.85 });
+    this.deathAnims.push({ mesh: target.mesh, kind: 'yeti', t: 0, dur: 1.35 });
     this.hud.chat('The Frost Yeti collapses in a burst of frost!', 'combat');
     // home reset on next respawn
     this.grantXp('defence', 28);
@@ -1262,7 +1345,7 @@ export class Game {
     this.vfx.spawnSpearThrust(target.mesh.position.clone().setY(1.1), 16);
     this.vfx.spawnHitSparks(target.mesh.position.clone().setY(1.0), 20);
     this.vfx.spawnImpactBurst(target.mesh.position.clone().setY(1.0), 14, false);
-    this.deathAnims.push({ mesh: target.mesh, kind: 'orc', t: 0, dur: 0.7 });
+    this.deathAnims.push({ mesh: target.mesh, kind: 'orc', t: 0, dur: 1.15 });
     this.hud.chat('The Orc Scout falls! Its spear clatters to the dirt.', 'combat');
     this.grantXp('defence', 22);
     this.grantXp('attack', 10);
@@ -1316,7 +1399,9 @@ export class Game {
 
     let moving = false;
     if (dist > YETI_ATTACK_RANGE && dist < YETI_AGGRO_RADIUS + 5 && homeDist < 7.5) {
-      const step = Math.min(dist - YETI_ATTACK_RANGE * 0.85, 2.55 * dt);
+      // Lumbering accel — heavy creature eases into chase
+      this.yetiMoveBlend = Math.min(1, this.yetiMoveBlend + dt * 2.2);
+      const step = Math.min(dist - YETI_ATTACK_RANGE * 0.85, 2.35 * this.yetiMoveBlend * dt);
       const n = Math.hypot(dx, dz) || 1;
       yeti.mesh.position.x += (dx / n) * step;
       yeti.mesh.position.z += (dz / n) * step;
@@ -1330,6 +1415,8 @@ export class Game {
         yeti.mesh.position.x = sx + (lx / ld) * 7.5;
         yeti.mesh.position.z = sz + (lz / ld) * 7.5;
       }
+    } else {
+      this.yetiMoveBlend = Math.max(0, this.yetiMoveBlend - dt * 3);
     }
 
     // Soft leash break
@@ -1345,7 +1432,7 @@ export class Game {
         resetPlayerPose(this.player);
         this.hud.hideTarget();
       }
-      animateYetiWalk(yeti.mesh, this.animTime, true);
+      animateYetiWalk(yeti.mesh, this.animTime, true, 0.7);
       return;
     }
 
@@ -1353,9 +1440,11 @@ export class Game {
       this.yetiSwipeT += dt;
       const prog = Math.min(1, this.yetiSwipeT / YETI_ATTACK_DURATION);
       animateYetiAttack(yeti.mesh, prog);
-      // Telegraph ring early in windup
-      if (prog < 0.08) {
-        this.vfx.spawnTelegraph(yeti.mesh.position.clone(), true, 0.5);
+      if (!this.yetiTeleDone) {
+        this.yetiTeleDone = true;
+        const life = YETI_ATTACK_WINDUP_END * YETI_ATTACK_DURATION + 0.08;
+        this.vfx.spawnTelegraph(yeti.mesh.position.clone(), true, life, 1.35);
+        this.vfx.spawnArcTelegraph(yeti.mesh.position.clone(), yeti.mesh.rotation.y, true, life);
       }
       if (
         !this.yetiHitDone &&
@@ -1368,16 +1457,17 @@ export class Game {
       if (prog >= 1) {
         this.yetiSwipeT = 0;
         this.yetiHitDone = false;
+        this.yetiTeleDone = false;
         animateYetiSwipe(yeti.mesh, 0);
       }
     } else {
-      animateYetiWalk(yeti.mesh, this.animTime, moving);
+      animateYetiWalk(yeti.mesh, this.animTime, moving, Math.max(this.yetiMoveBlend, moving ? 0.4 : 0));
       this.yetiAttackCd -= dt;
       if (dist <= YETI_ATTACK_RANGE + 0.4 && this.yetiAttackCd <= 0) {
-        this.yetiAttackCd = 2.35;
+        this.yetiAttackCd = 2.55;
         this.yetiSwipeT = 0.001;
         this.yetiHitDone = false;
-        this.vfx.spawnTelegraph(yeti.mesh.position.clone(), true, 0.55);
+        this.yetiTeleDone = false;
       }
     }
   }
@@ -1389,17 +1479,18 @@ export class Game {
     const raw = YETI_DMG_MIN + Math.floor(Math.random() * (YETI_DMG_MAX - YETI_DMG_MIN + 1));
     const mitigated = Math.max(2, raw - Math.floor(def / 5));
     this.save.hp = Math.max(0, this.save.hp - mitigated);
-    this.vfx.spawnClawSlash(this.player.position.clone(), 12);
-    this.vfx.spawnIceBurst(this.player.position.clone(), 14);
-    this.vfx.spawnImpactBurst(this.player.position.clone().setY(1.1), 12, true);
+    this.vfx.spawnClawSlash(this.player.position.clone(), 14);
+    this.vfx.spawnIceBurst(this.player.position.clone(), 16);
+    this.vfx.spawnImpactBurst(this.player.position.clone().setY(1.1), 16, true);
     this.vfx.spawnDamage(this.player.position.clone().setY(1.3), mitigated);
-    // Player flinch + knockback
-    this.playerFlinch = 1;
+    // Player flinch + knockback scaled to damage
+    this.playerFlinch = mitigated >= 8 ? 1.15 : 0.75;
     const away = Math.atan2(
       this.player.position.x - yeti.mesh.position.x,
       this.player.position.z - yeti.mesh.position.z,
     );
-    this.playerKnock.set(Math.sin(away) * 2.8, 0, Math.cos(away) * 2.8);
+    const kb = mitigated >= 8 ? 3.4 : 2.4;
+    this.playerKnock.set(Math.sin(away) * kb, 0, Math.cos(away) * kb);
     this.hud.chat(`The Frost Yeti swipes you for ${mitigated} damage!`, 'combat');
     this.hud.setOrbs(this.save.hp, this.save.maxHp, this.save.focus, this.save.stamina);
 
@@ -1454,7 +1545,8 @@ export class Game {
 
     let moving = false;
     if (dist > ORC_ATTACK_RANGE && dist < ORC_AGGRO_RADIUS + 5 && homeDist < 7.5) {
-      const step = Math.min(dist - ORC_ATTACK_RANGE * 0.85, 3.35 * dt);
+      this.orcMoveBlend = Math.min(1, this.orcMoveBlend + dt * 3.5);
+      const step = Math.min(dist - ORC_ATTACK_RANGE * 0.85, 3.2 * this.orcMoveBlend * dt);
       const n = Math.hypot(dx, dz) || 1;
       orc.mesh.position.x += (dx / n) * step;
       orc.mesh.position.z += (dz / n) * step;
@@ -1468,6 +1560,8 @@ export class Game {
         orc.mesh.position.x = sx + (lx / ld) * 7.5;
         orc.mesh.position.z = sz + (lz / ld) * 7.5;
       }
+    } else {
+      this.orcMoveBlend = Math.max(0, this.orcMoveBlend - dt * 4);
     }
 
     if (dist > ORC_AGGRO_RADIUS + 7 || homeDist > 8.5) {
@@ -1482,7 +1576,7 @@ export class Game {
         resetPlayerPose(this.player);
         this.hud.hideTarget();
       }
-      animateOrcWalk(orc.mesh, this.animTime, true);
+      animateOrcWalk(orc.mesh, this.animTime, true, 0.75);
       return;
     }
 
@@ -1490,8 +1584,10 @@ export class Game {
       this.orcSwipeT += dt;
       const prog = Math.min(1, this.orcSwipeT / ORC_ATTACK_DURATION);
       animateOrcAttack(orc.mesh, prog);
-      if (prog < 0.08) {
-        this.vfx.spawnTelegraph(orc.mesh.position.clone(), false, 0.42);
+      if (!this.orcTeleDone) {
+        this.orcTeleDone = true;
+        const life = ORC_ATTACK_WINDUP_END * ORC_ATTACK_DURATION + 0.06;
+        this.vfx.spawnTelegraph(orc.mesh.position.clone(), false, life, 1.1);
       }
       if (
         !this.orcHitDone &&
@@ -1504,16 +1600,17 @@ export class Game {
       if (prog >= 1) {
         this.orcSwipeT = 0;
         this.orcHitDone = false;
+        this.orcTeleDone = false;
         animateOrcSpear(orc.mesh, 0);
       }
     } else {
-      animateOrcWalk(orc.mesh, this.animTime, moving);
+      animateOrcWalk(orc.mesh, this.animTime, moving, Math.max(this.orcMoveBlend, moving ? 0.45 : 0));
       this.orcAttackCd -= dt;
       if (dist <= ORC_ATTACK_RANGE + 0.4 && this.orcAttackCd <= 0) {
-        this.orcAttackCd = 1.9;
+        this.orcAttackCd = 2.05;
         this.orcSwipeT = 0.001;
         this.orcHitDone = false;
-        this.vfx.spawnTelegraph(orc.mesh.position.clone(), false, 0.45);
+        this.orcTeleDone = false;
       }
     }
   }
@@ -1525,16 +1622,17 @@ export class Game {
     const raw = ORC_DMG_MIN + Math.floor(Math.random() * (ORC_DMG_MAX - ORC_DMG_MIN + 1));
     const mitigated = Math.max(2, raw - Math.floor(def / 5));
     this.save.hp = Math.max(0, this.save.hp - mitigated);
-    this.vfx.spawnSpearThrust(this.player.position.clone(), 12);
-    this.vfx.spawnHitSparks(this.player.position.clone().setY(1.1), 12);
-    this.vfx.spawnImpactBurst(this.player.position.clone().setY(1.05), 14, false);
+    this.vfx.spawnSpearThrust(this.player.position.clone(), 14);
+    this.vfx.spawnHitSparks(this.player.position.clone().setY(1.1), 14);
+    this.vfx.spawnImpactBurst(this.player.position.clone().setY(1.05), 16, false);
     this.vfx.spawnDamage(this.player.position.clone().setY(1.3), mitigated);
-    this.playerFlinch = 1;
+    this.playerFlinch = mitigated >= 7 ? 1.05 : 0.7;
     const away = Math.atan2(
       this.player.position.x - orc.mesh.position.x,
       this.player.position.z - orc.mesh.position.z,
     );
-    this.playerKnock.set(Math.sin(away) * 2.4, 0, Math.cos(away) * 2.4);
+    const kb = mitigated >= 7 ? 2.9 : 2.1;
+    this.playerKnock.set(Math.sin(away) * kb, 0, Math.cos(away) * kb);
     this.hud.chat(`The Orc Scout thrusts its spear for ${mitigated} damage!`, 'combat');
     this.hud.setOrbs(this.save.hp, this.save.maxHp, this.save.focus, this.save.stamina);
 

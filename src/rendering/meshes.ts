@@ -992,11 +992,11 @@ export function createFrostYeti(): THREE.Group {
   const noseMat = uniq(0x0a0a0a, { roughness: 0.4 });
   const mouthMat = uniq(0x8a3040, { roughness: 0.7 });
   const fangMat = uniq(0xf0e8d0, { roughness: 0.45 });
-  const eyeMat = uniq(0xffd030, {
-    emissive: 0xff8800,
-    emissiveIntensity: 3.2,
-    roughness: 0.18,
-    metalness: 0.15,
+  const eyeMat = uniq(0xffe060, {
+    emissive: 0xff9900,
+    emissiveIntensity: 4.5,
+    roughness: 0.12,
+    metalness: 0.2,
   });
 
   // Contact shadow
@@ -1048,8 +1048,12 @@ export function createFrostYeti(): THREE.Group {
     leg.position.x = side * 0.32;
     return leg;
   };
-  g.add(makeLeg(-1));
-  g.add(makeLeg(1));
+  const yetiLegL = makeLeg(-1);
+  yetiLegL.name = 'yetiLegL';
+  g.add(yetiLegL);
+  const yetiLegR = makeLeg(1);
+  yetiLegR.name = 'yetiLegR';
+  g.add(yetiLegR);
 
   // Torso — bulky upper body, hunched
   const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.55, 0.55, 4, 10), fur);
@@ -1169,26 +1173,33 @@ export function createFrostYeti(): THREE.Group {
 
   // Glowing amber eyes (emissive + local lights for bloom-like readability)
   const makeEye = (sx: number) => {
-    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 5), uniq(0x0a0606));
+    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.11, 6, 5), uniq(0x0a0606));
     socket.position.set(sx, 0.06, 0.32);
     head.add(socket);
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.072, 8, 6), eyeMat);
-    eye.position.set(sx, 0.06, 0.38);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.085, 8, 6), eyeMat);
+    eye.position.set(sx, 0.06, 0.4);
     eye.name = 'yetiEye';
     head.add(eye);
+    const pupil = new THREE.Mesh(
+      new THREE.SphereGeometry(0.032, 6, 5),
+      uniq(0x1a0800, { emissive: 0x331100, emissiveIntensity: 0.4 }),
+    );
+    pupil.position.set(sx, 0.06, 0.46);
+    head.add(pupil);
     const glow = new THREE.Mesh(
-      new THREE.SphereGeometry(0.1, 8, 6),
+      new THREE.SphereGeometry(0.14, 8, 6),
       new THREE.MeshBasicMaterial({
         color: 0xffaa22,
         transparent: true,
-        opacity: 0.35,
+        opacity: 0.5,
         depthWrite: false,
       }),
     );
-    glow.position.set(sx, 0.06, 0.38);
+    glow.position.set(sx, 0.06, 0.4);
+    glow.name = 'yetiEyeGlow';
     head.add(glow);
-    const eyeLight = new THREE.PointLight(0xff9900, 0.55, 2.8);
-    eyeLight.position.set(sx, 0.06, 0.5);
+    const eyeLight = new THREE.PointLight(0xff9900, 0.95, 3.6);
+    eyeLight.position.set(sx, 0.06, 0.55);
     head.add(eyeLight);
   };
   makeEye(-0.14);
@@ -1238,35 +1249,35 @@ export function createFrostYeti(): THREE.Group {
 
   g.add(head);
 
-  // Frost breath cone + mist puffs (animated via name)
+  // Frost breath cone + mist puffs (animated via name) — more visible mid-fight
   const breath = new THREE.Mesh(
-    new THREE.ConeGeometry(0.22, 0.7, 7, 1, true),
+    new THREE.ConeGeometry(0.32, 1.05, 8, 1, true),
     new THREE.MeshStandardMaterial({
-      color: 0xc8f0ff,
-      emissive: 0x77ddff,
-      emissiveIntensity: 0.95,
+      color: 0xd0f6ff,
+      emissive: 0x66eeff,
+      emissiveIntensity: 1.45,
       transparent: true,
-      opacity: 0.42,
+      opacity: 0.55,
       flatShading: true,
       side: THREE.DoubleSide,
       depthWrite: false,
     }),
   );
   breath.rotation.x = Math.PI / 2;
-  breath.position.set(0, 2.0, 0.95);
+  breath.position.set(0, 2.0, 1.05);
   breath.name = 'yetiBreath';
   g.add(breath);
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 5; i++) {
     const mist = new THREE.Mesh(
-      new THREE.SphereGeometry(0.12 + i * 0.04, 6, 5),
+      new THREE.SphereGeometry(0.14 + i * 0.05, 6, 5),
       new THREE.MeshBasicMaterial({
         color: 0xb8e8ff,
         transparent: true,
-        opacity: 0.22 - i * 0.04,
+        opacity: 0.32 - i * 0.04,
         depthWrite: false,
       }),
     );
-    mist.position.set((i - 1) * 0.08, 1.95 - i * 0.02, 1.15 + i * 0.22);
+    mist.position.set((i - 2) * 0.06, 1.95 - i * 0.015, 1.2 + i * 0.28);
     mist.name = 'yetiBreathMist';
     g.add(mist);
   }

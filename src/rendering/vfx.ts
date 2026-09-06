@@ -80,16 +80,16 @@ export class VFX {
     opacity: 0.95,
   });
   private telegraphMat = new THREE.MeshBasicMaterial({
-    color: 0xff4422,
+    color: 0xff3311,
     transparent: true,
-    opacity: 0.55,
+    opacity: 0.7,
     depthWrite: false,
     side: THREE.DoubleSide,
   });
   private frostTeleMat = new THREE.MeshBasicMaterial({
-    color: 0x88ddff,
+    color: 0x66ccff,
     transparent: true,
-    opacity: 0.5,
+    opacity: 0.65,
     depthWrite: false,
     side: THREE.DoubleSide,
   });
@@ -342,22 +342,62 @@ export class VFX {
     });
   }
 
-  /** Ground telegraph disc under enemy during windup */
-  spawnTelegraph(origin: THREE.Vector3, frost = false, life = 0.45): void {
-    const ring = new THREE.Mesh(
-      new THREE.RingGeometry(0.55, 0.95, 24),
+  /**
+   * Readable ground telegraph: outer danger ring + inner fill that grows
+   * through the windup so the player can see the attack coming.
+   */
+  spawnTelegraph(origin: THREE.Vector3, frost = false, life = 0.55, radius = 1.05): void {
+    const outer = new THREE.Mesh(
+      new THREE.RingGeometry(radius * 0.72, radius, 28),
       frost ? this.frostTeleMat.clone() : this.telegraphMat.clone(),
     );
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.set(origin.x, 0.08, origin.z);
-    this.scene.add(ring);
+    outer.rotation.x = -Math.PI / 2;
+    outer.position.set(origin.x, 0.09, origin.z);
+    this.scene.add(outer);
     this.particles.push({
-      mesh: ring,
+      mesh: outer,
       vel: new THREE.Vector3(0, 0, 0),
       life: 0,
       maxLife: life,
       gravity: 0,
-      spin: 2,
+      spin: 1.2,
+    });
+
+    const fillMat = (frost ? this.frostTeleMat : this.telegraphMat).clone();
+    fillMat.opacity = frost ? 0.28 : 0.32;
+    const fill = new THREE.Mesh(new THREE.CircleGeometry(radius * 0.7, 28), fillMat);
+    fill.rotation.x = -Math.PI / 2;
+    fill.position.set(origin.x, 0.07, origin.z);
+    fill.scale.setScalar(0.15);
+    this.scene.add(fill);
+    this.particles.push({
+      mesh: fill,
+      vel: new THREE.Vector3(0, 0.01, 0),
+      life: 0,
+      maxLife: life,
+      gravity: 0,
+      spin: 0,
+    });
+    // Mark fill so update expands it toward full during windup
+    (fill as THREE.Mesh & { userData: Record<string, unknown> }).userData.teleFill = true;
+  }
+
+  /** Horizontal claw/slash arc telegraph above ground during windup */
+  spawnArcTelegraph(origin: THREE.Vector3, yaw: number, frost = false, life = 0.5): void {
+    const mat = (frost ? this.frostTeleMat : this.telegraphMat).clone();
+    mat.opacity = 0.65;
+    const arc = new THREE.Mesh(new THREE.RingGeometry(0.55, 1.15, 20, 1, 0, Math.PI * 0.85), mat);
+    arc.rotation.x = -Math.PI / 2.6;
+    arc.rotation.z = yaw;
+    arc.position.set(origin.x, 0.85, origin.z);
+    this.scene.add(arc);
+    this.particles.push({
+      mesh: arc,
+      vel: new THREE.Vector3(0, 0.15, 0),
+      life: 0,
+      maxLife: life,
+      gravity: 0,
+      spin: 0,
     });
   }
 
@@ -372,11 +412,26 @@ export class VFX {
       p.mesh.rotation.z += p.spin * 0.7 * dt;
       const t = p.life / p.maxLife;
       const s = Math.max(0.05, 1 - t * 0.85);
-      // Expanding rings grow then fade
-      if ((p.mesh.geometry as THREE.RingGeometry).type === 'RingGeometry') {
-        p.mesh.scale.setScalar(1 + t * 1.8);
+      const geoType = (p.mesh.geometry as THREE.BufferGeometry).type;
+      const isTeleFill = !!(p.mesh.userData && p.mesh.userData.teleFill);
+      if (isTeleFill) {
+        // Fill grows from center → full during windup, then fades
+        const grow = Math.min(1, t / 0.85);
+        p.mesh.scale.setScalar(0.15 + grow * 0.85);
         const m = p.mesh.material as THREE.MeshBasicMaterial;
-        if (m && m.opacity !== undefined) m.opacity = Math.max(0, (1 - t) * 0.7);
+        if (m && m.opacity !== undefined) m.opacity = Math.max(0, (1 - t) * 0.35);
+      } else if (geoType === 'RingGeometry') {
+        // Outer danger rings pulse slightly then fade (telegraphs don't explode)
+        const pulse = p.gravity === 0 && p.spin > 0 && p.spin < 3 ? 1 + Math.sin(t * Math.PI) * 0.08 : 1 + t * 1.8;
+        p.mesh.scale.setScalar(pulse);
+        const m = p.mesh.material as THREE.MeshBasicMaterial;
+        if (m && m.opacity !== undefined) {
+          m.opacity = Math.max(0, (1 - t) * (p.spin > 0 && p.spin < 3 ? 0.6 : 0.7));
+        }
+      } else if (geoType === 'CircleGeometry') {
+        p.mesh.scale.setScalar(s);
+        const m = p.mesh.material as THREE.MeshBasicMaterial;
+        if (m && m.opacity !== undefined) m.opacity = Math.max(0, (1 - t) * 0.5);
       } else {
         p.mesh.scale.setScalar(s);
       }
