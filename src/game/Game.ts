@@ -260,12 +260,15 @@ export class Game {
       });
     });
 
+    // Mineable ore rocks near Thornrest camp / spawn so Mine + click work by visible camp rocks
     const rockSpots: { x: number; z: number; ore: 'copper' | 'tin' }[] = [
-      { x: -4, z: 6.5, ore: 'copper' },
-      { x: -2.5, z: 7.5, ore: 'copper' },
-      { x: -5.5, z: 7.2, ore: 'tin' },
-      { x: 5, z: 7, ore: 'tin' },
-      { x: 6.5, z: 6, ore: 'copper' },
+      { x: 1.2, z: 3.4, ore: 'copper' },
+      { x: -0.3, z: 4.1, ore: 'copper' },
+      { x: 2.6, z: 4.0, ore: 'tin' },
+      { x: -1.8, z: 3.2, ore: 'tin' },
+      { x: 0.8, z: 5.2, ore: 'copper' },
+      { x: 3.4, z: 2.2, ore: 'copper' },
+      { x: -3.2, z: 2.8, ore: 'tin' },
     ];
     rockSpots.forEach((r, i) => {
       const mesh = createRock(r.ore, i);
@@ -470,7 +473,7 @@ export class Game {
         best = o;
       }
     }
-    return bestD < 10 ? best : null;
+    return bestD < 14 ? best : null;
   }
 
   private examineNearest(): void {
@@ -662,12 +665,12 @@ export class Game {
         if (root) {
           root.rotation.x = Math.sin(this.toolSwing * 10) * 0.45;
         }
-        // Mid-gather chip/sparks bursts
-        if (Math.floor(act.elapsed * 3) !== Math.floor((act.elapsed - dt) * 3)) {
+        // Mid-gather chip/sparks bursts (frequent + dense enough to screenshot)
+        if (Math.floor(act.elapsed * 4) !== Math.floor((act.elapsed - dt) * 4)) {
           const p = act.target.mesh.position.clone();
-          p.y = 0.6;
-          if (act.target.kind === 'tree') this.vfx.spawnWoodchips(p, 3);
-          else this.vfx.spawnMineSparks(p, 4);
+          p.y = act.target.kind === 'tree' ? 1.05 : 0.7;
+          if (act.target.kind === 'tree') this.vfx.spawnWoodchips(p, 12);
+          else this.vfx.spawnMineSparks(p, 14);
         }
         if (act.elapsed >= act.duration) {
           this.completeGather(act.target);
@@ -727,7 +730,7 @@ export class Game {
       if (!this.addItem('whisper_logs', 1)) return;
       this.grantXp('woodcutting', 25);
       this.hud.chat('You chop some Whisper Logs.', 'loot');
-      this.vfx.spawnWoodchips(obj.mesh.position.clone().setY(1.0), 14);
+      this.vfx.spawnWoodchips(obj.mesh.position.clone().setY(1.1), 22);
       obj.depleted = true;
       obj.mesh.visible = false;
       obj.respawnAt = performance.now() / 1000 + 12;
@@ -736,7 +739,7 @@ export class Game {
       if (!this.addItem(ore, 1)) return;
       this.grantXp('mining', 28);
       this.hud.chat(`You mine some ${ITEM_META[ore].name}.`, 'loot');
-      this.vfx.spawnMineSparks(obj.mesh.position.clone().setY(0.6), 16);
+      this.vfx.spawnMineSparks(obj.mesh.position.clone().setY(0.7), 24);
       obj.depleted = true;
       obj.mesh.visible = false;
       obj.respawnAt = performance.now() / 1000 + 14;

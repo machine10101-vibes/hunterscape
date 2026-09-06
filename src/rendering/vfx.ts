@@ -25,14 +25,16 @@ export class VFX {
   private floats: FloatXp[] = [];
   private tmp = new THREE.Vector3();
   private chipMat = new THREE.MeshStandardMaterial({
-    color: 0x8a5a28,
+    color: 0xc48a40,
+    emissive: 0x5a3010,
+    emissiveIntensity: 0.35,
     flatShading: true,
-    roughness: 0.9,
+    roughness: 0.85,
   });
   private sparkMat = new THREE.MeshStandardMaterial({
-    color: 0xffcc66,
-    emissive: 0xffaa33,
-    emissiveIntensity: 1.2,
+    color: 0xffe088,
+    emissive: 0xffcc44,
+    emissiveIntensity: 2.0,
     flatShading: true,
   });
   private hitMat = new THREE.MeshStandardMaterial({
@@ -62,25 +64,28 @@ export class VFX {
 
   spawnWoodchips(origin: THREE.Vector3, count = 10): void {
     for (let i = 0; i < count; i++) {
+      const s = 0.14 + Math.random() * 0.16;
       const mesh = new THREE.Mesh(
-        new THREE.BoxGeometry(0.06 + Math.random() * 0.05, 0.03, 0.08),
+        new THREE.BoxGeometry(s, s * 0.35, s * 0.7),
         this.chipMat,
       );
       mesh.position.copy(origin);
-      mesh.position.y += 0.8 + Math.random() * 0.4;
+      mesh.position.x += (Math.random() - 0.5) * 0.35;
+      mesh.position.y += 0.35 + Math.random() * 0.55;
+      mesh.position.z += (Math.random() - 0.5) * 0.35;
       mesh.castShadow = false;
       this.scene.add(mesh);
       this.particles.push({
         mesh,
         vel: new THREE.Vector3(
-          (Math.random() - 0.5) * 2.2,
-          1.5 + Math.random() * 2,
-          (Math.random() - 0.5) * 2.2,
+          (Math.random() - 0.5) * 3.4,
+          2.2 + Math.random() * 2.8,
+          (Math.random() - 0.5) * 3.4,
         ),
         life: 0,
-        maxLife: 0.55 + Math.random() * 0.35,
-        gravity: 6,
-        spin: (Math.random() - 0.5) * 10,
+        maxLife: 1.05 + Math.random() * 0.55,
+        gravity: 7,
+        spin: (Math.random() - 0.5) * 14,
       });
     }
   }
@@ -89,23 +94,25 @@ export class VFX {
     for (let i = 0; i < count; i++) {
       const isOre = i % 3 === 0;
       const mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(isOre ? 0.05 : 0.03, 4, 3),
+        new THREE.SphereGeometry(isOre ? 0.11 : 0.07, 5, 4),
         isOre ? this.oreMat : this.sparkMat,
       );
       mesh.position.copy(origin);
-      mesh.position.y += 0.5 + Math.random() * 0.3;
+      mesh.position.x += (Math.random() - 0.5) * 0.3;
+      mesh.position.y += 0.25 + Math.random() * 0.45;
+      mesh.position.z += (Math.random() - 0.5) * 0.3;
       this.scene.add(mesh);
       this.particles.push({
         mesh,
         vel: new THREE.Vector3(
-          (Math.random() - 0.5) * 3.5,
-          1.2 + Math.random() * 2.5,
-          (Math.random() - 0.5) * 3.5,
+          (Math.random() - 0.5) * 4.6,
+          2.0 + Math.random() * 3.2,
+          (Math.random() - 0.5) * 4.6,
         ),
         life: 0,
-        maxLife: 0.4 + Math.random() * 0.3,
-        gravity: 5,
-        spin: (Math.random() - 0.5) * 14,
+        maxLife: 0.85 + Math.random() * 0.45,
+        gravity: 6,
+        spin: (Math.random() - 0.5) * 18,
       });
     }
   }
