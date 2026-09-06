@@ -33,6 +33,7 @@ export class HUD {
   private inventory!: HTMLElement;
   private btnInventory!: HTMLButtonElement;
   private narrowMq!: MediaQueryList;
+  private desktopInvInited = false;
   private circum = 2 * Math.PI * 28;
 
   onAction: ((action: string) => void) | null = null;
@@ -98,11 +99,13 @@ export class HUD {
     setTimeout(() => this.touchHint.classList.add('fade'), 8000);
   }
 
-  /** Narrow (≤480px): inventory closed by default behind icon. Desktop: always open. */
+  /** Narrow (≤480px): inventory closed by default. Desktop: open once, user may close. */
   private syncInventoryForViewport(): void {
     if (this.narrowMq.matches) {
+      this.desktopInvInited = false;
       this.setInventoryOpen(false);
-    } else {
+    } else if (!this.desktopInvInited) {
+      this.desktopInvInited = true;
       this.setInventoryOpen(true);
     }
   }
@@ -110,6 +113,10 @@ export class HUD {
   private setInventoryOpen(open: boolean): void {
     this.inventory.hidden = !open;
     this.btnInventory.setAttribute('aria-expanded', open ? 'true' : 'false');
+    // Desktop: show backpack when closed so inventory is recoverable
+    if (!this.narrowMq.matches) {
+      this.btnInventory.style.display = open ? 'none' : 'flex';
+    }
   }
 
   chat(msg: string, kind: ChatKind = 'system'): void {

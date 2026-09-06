@@ -992,11 +992,11 @@ export function createFrostYeti(): THREE.Group {
   const noseMat = uniq(0x0a0a0a, { roughness: 0.4 });
   const mouthMat = uniq(0x8a3040, { roughness: 0.7 });
   const fangMat = uniq(0xf0e8d0, { roughness: 0.45 });
-  const eyeMat = uniq(0xffe060, {
-    emissive: 0xff9900,
-    emissiveIntensity: 4.5,
-    roughness: 0.12,
-    metalness: 0.2,
+  const eyeMat = uniq(0xffe070, {
+    emissive: 0xff8800,
+    emissiveIntensity: 6.2,
+    roughness: 0.08,
+    metalness: 0.15,
   });
 
   // Contact shadow
@@ -1171,39 +1171,53 @@ export function createFrostYeti(): THREE.Group {
   brow.position.set(0, 0.12, 0.28);
   head.add(brow);
 
-  // Glowing amber eyes (emissive + local lights for bloom-like readability)
+  // Glowing amber eyes — larger + stronger emissive for fight readability
   const makeEye = (sx: number) => {
-    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.11, 6, 5), uniq(0x0a0606));
-    socket.position.set(sx, 0.06, 0.32);
+    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.13, 6, 5), uniq(0x0a0606));
+    socket.position.set(sx, 0.06, 0.3);
     head.add(socket);
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.085, 8, 6), eyeMat);
-    eye.position.set(sx, 0.06, 0.4);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), eyeMat);
+    eye.position.set(sx, 0.06, 0.42);
     eye.name = 'yetiEye';
     head.add(eye);
     const pupil = new THREE.Mesh(
-      new THREE.SphereGeometry(0.032, 6, 5),
-      uniq(0x1a0800, { emissive: 0x331100, emissiveIntensity: 0.4 }),
+      new THREE.SphereGeometry(0.038, 6, 5),
+      uniq(0x1a0800, { emissive: 0x441800, emissiveIntensity: 0.55 }),
     );
-    pupil.position.set(sx, 0.06, 0.46);
+    pupil.position.set(sx, 0.06, 0.5);
     head.add(pupil);
     const glow = new THREE.Mesh(
-      new THREE.SphereGeometry(0.14, 8, 6),
+      new THREE.SphereGeometry(0.2, 8, 6),
       new THREE.MeshBasicMaterial({
         color: 0xffaa22,
         transparent: true,
-        opacity: 0.5,
+        opacity: 0.55,
         depthWrite: false,
       }),
     );
     glow.position.set(sx, 0.06, 0.4);
     glow.name = 'yetiEyeGlow';
     head.add(glow);
-    const eyeLight = new THREE.PointLight(0xff9900, 0.95, 3.6);
+    // Outer halo for distance read (not neon — warm amber wash)
+    const halo = new THREE.Mesh(
+      new THREE.SphereGeometry(0.28, 8, 6),
+      new THREE.MeshBasicMaterial({
+        color: 0xff8800,
+        transparent: true,
+        opacity: 0.22,
+        depthWrite: false,
+      }),
+    );
+    halo.position.set(sx, 0.06, 0.38);
+    halo.name = 'yetiEyeGlow';
+    head.add(halo);
+    const eyeLight = new THREE.PointLight(0xff9900, 1.15, 4.2);
+    eyeLight.name = 'yetiEyeLight';
     eyeLight.position.set(sx, 0.06, 0.55);
     head.add(eyeLight);
   };
-  makeEye(-0.14);
-  makeEye(0.14);
+  makeEye(-0.15);
+  makeEye(0.15);
 
   // Snout
   const snout = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.18, 3, 6), furBlue);

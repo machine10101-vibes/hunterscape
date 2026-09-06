@@ -175,6 +175,12 @@ export class Game {
   private yetiTeleDone = false;
   private orcTeleDone = false;
   private playerTeleDone = false;
+  /** Seconds continuously out of soft attack range before cancel */
+  private combatOorT = 0;
+  /** Soft recover after range abort (pose settle) */
+  private combatAbortT = 0;
+  private pendingCombatTarget: WorldObject | null = null;
+  private pendingCombatChat = '';
 
   constructor(canvas: HTMLCanvasElement) {
     this.save = loadSave();
@@ -330,19 +336,20 @@ export class Game {
       this.scene.add(bush);
     }
 
+    // Pines kept off Yeti NE (~4.2,7.2) and Orc SW (~-6.2,-4.8) clearings for silhouette/telegraph read
     const treeSpots: [number, number][] = [
       [4.5, -3],
       [6.2, -1.5],
-      [7.5, 1],
-      [5.5, 3.5],
-      [3, 5],
-      [-5, 4],
-      [-7, 2],
-      [-6.5, -3.5],
+      [8.2, 0.2],
+      [7.4, 2.6],
+      [1.2, 5.6],
+      [-4.2, 5.2],
+      [-8.2, 2.4],
+      [-8.4, -2.2],
       [2, -6],
       [-2.5, -7],
       [8, -5],
-      [-8.5, -1],
+      [-9.2, -0.4],
     ];
     treeSpots.forEach(([x, z], i) => {
       const mesh = createTree(i);
@@ -550,6 +557,10 @@ export class Game {
     const groundHits = this.raycaster.intersectObject(this.ground);
     if (groundHits.length > 0) {
       const p = groundHits[0].point;
+      this.pendingCombat = false;
+      this.pendingCombatTarget = null;
+      this.pendingCombatChat = '';
+      this.pendingGather = null;
       this.startMove(p.x, p.z);
     }
   }
@@ -560,8 +571,8 @@ export class Game {
         this.hud.chat('The Frost Yeti lies slain. It will return before long.', 'system');
         return;
       }
-      this.beginCombat(obj, 'You ready your bronze sword against the Frost Yeti!');
       this.yetiAggroed = true;
+      this.approachThenCombat(obj, 'You ready your bronze sword against the Frost Yeti!');
       return;
     }
     if (obj.kind === 'orc') {
@@ -569,8 +580,8 @@ export class Game {
         this.hud.chat('The Orc Scout lies slain. Another will take its place.', 'system');
         return;
       }
-      this.beginCombat(obj, 'You ready your bronze sword against the Orc Scout!');
       this.orcAggroed = true;
+      this.approachThenCombat(obj, 'You ready your bronze sword against the Orc Scout!');
       return;
     }
     if (obj.kind === 'dummy') {
@@ -578,7 +589,7 @@ export class Game {
         this.hud.chat('The training dummy is already collapsed.', 'system');
         return;
       }
-      this.beginCombat(obj, 'You ready your bronze sword against the training dummy.');
+      this.approachThenCombat(obj, 'You ready your bronze sword against the training dummy.');
       return;
     }
     if (obj.depleted) {
@@ -623,6 +634,11 @@ export class Game {
   private beginCombat(obj: WorldObject, chat: string): void {
     this.hud.chat(chat, 'combat');
     this.pendingGather = null;
+    this.pendingCombat = false;
+    this.pendingCombatTarget = null;
+    this.pendingCombatChat = '';
+    this.combatOorT = 0;
+    this.combatAbortT = 0;
     this.activity = {
       type: 'combat',
       target: obj,
@@ -634,6 +650,25 @@ export class Game {
     setPlayerTool(this.player, 'sword');
     this.hud.showTarget(this.combatName(obj), obj.hp / obj.maxHp);
     this.combatCamPull = 1;
+  }
+
+  /** Walk into soft range before locking into combat (avoids instant out-of-range cancel). */
+  private approachThenCombat(obj: WorldObject, chat: string): void {
+    const range = this.monsterAttackRange(obj);
+    const dist = this.distTo(obj);
+    if (dist > range * 0.92) {
+      const dx = obj.mesh.position.x - this.player.position.x;
+      const dz = obj.mesh.position.z - this.player.position.z;
+      const n = Math.hypot(dx, dz) || 1;
+      const stop = range * 0.78;
+      this.startMove(obj.mesh.position.x - (dx / n) * stop, obj.mesh.position.z - (dz / n) * stop);
+      this.pendingCombat = true;
+      this.pendingCombatTarget = obj;
+      this.pendingCombatChat = chat;
+      this.hud.chat(`You close on the ${this.combatName(obj)}…`, 'combat');
+      return;
+    }
+    this.beginCombat(obj, chat);
   }
 
   private nearestCombatTarget(): WorldObject | null {
@@ -696,10 +731,12 @@ export class Game {
           const dz = target.mesh.position.z - this.player.position.z;
           const dist = Math.hypot(dx, dz) || 1;
           this.startMove(
-            target.mesh.position.x - (dx / dist) * 1.5,
-            target.mesh.position.z - (dz / dist) * 1.5,
+            target.mesh.position.x - (dx / dist) * (range * 0.78),
+            target.mesh.position.z - (dz / dist) * (range * 0.78),
           );
           this.pendingCombat = true;
+          this.pendingCombatTarget = target;
+          this.pendingCombatChat = `You ready your bronze sword against the ${this.combatName(target)}!`;
           return;
         }
         this.interactWith(target);
@@ -951,8 +988,27 @@ export class Game {
         if (m && m.opacity !== undefined) m.opacity = Math.max(0.08, 0.28 * pulse);
       }
       if (obj.name === 'yetiEyeGlow') {
-        const pulse = 0.9 + Math.sin(now * 5.5) * 0.35;
-        obj.scale.setScalar(pulse * (this.yetiAggroed ? 1.25 : 1));
+        const fight = this.yetiAggroed || (this.activity.type === 'combat' && this.activity.target?.kind === 'yeti');
+        const pulse = 0.95 + Math.sin(now * 6.2) * (fight ? 0.55 : 0.28);
+        obj.scale.setScalar(pulse * (fight ? 1.65 : 1.1));
+        const m = (obj as THREE.Mesh).material as THREE.MeshBasicMaterial;
+        if (m && m.opacity !== undefined) m.opacity = fight ? 0.72 + Math.sin(now * 7) * 0.18 : 0.45;
+      }
+      if (obj.name === 'yetiEye') {
+        const fight = this.yetiAggroed || (this.activity.type === 'combat' && this.activity.target?.kind === 'yeti');
+        const m = (obj as THREE.Mesh).material as THREE.MeshStandardMaterial;
+        if (m && m.emissiveIntensity !== undefined) {
+          const base = fight ? 7.2 : 4.8;
+          m.emissiveIntensity = base + Math.sin(now * 6.8) * (fight ? 2.4 : 0.8);
+        }
+        const pulse = 1 + Math.sin(now * 6.5) * (fight ? 0.12 : 0.04);
+        obj.scale.setScalar(pulse);
+      }
+      if (obj.name === 'yetiEyeLight') {
+        const fight = this.yetiAggroed || (this.activity.type === 'combat' && this.activity.target?.kind === 'yeti');
+        const light = obj as THREE.PointLight;
+        light.intensity = (fight ? 1.85 : 0.85) + Math.sin(now * 7.1) * (fight ? 0.55 : 0.15);
+        light.distance = fight ? 5.2 : 3.4;
       }
     });
 
@@ -1038,8 +1094,17 @@ export class Game {
           this.approachThenGather(p.obj, p.duration, p.label);
         } else if (this.pendingCombat) {
           this.pendingCombat = false;
-          const t = this.nearestCombatTarget();
-          if (t) this.interactWith(t);
+          const t = this.pendingCombatTarget ?? this.nearestCombatTarget();
+          const chat =
+            this.pendingCombatChat ||
+            (t ? `You ready your bronze sword against the ${this.combatName(t)}!` : '');
+          this.pendingCombatTarget = null;
+          this.pendingCombatChat = '';
+          if (t && t.hp > 0 && !t.depleted) {
+            if (t.kind === 'yeti') this.yetiAggroed = true;
+            if (t.kind === 'orc') this.orcAggroed = true;
+            this.beginCombat(t, chat);
+          }
         }
       } else {
         const n = dist || 1;
@@ -1103,15 +1168,46 @@ export class Game {
         resetPlayerPose(this.player);
         this.hud.hideTarget();
         this.combatCamPull = 0;
+        this.combatOorT = 0;
       } else {
         const range = this.monsterAttackRange(target);
-        if (this.distTo(target) > range + 0.55) {
-          this.activity = { type: 'idle' };
-          setPlayerTool(this.player, null);
-          resetPlayerPose(this.player);
-          this.hud.hideTarget();
-          this.combatCamPull = Math.max(0, this.combatCamPull - dt);
-          this.hud.chat('You step out of range.', 'combat');
+        const softLeash = range + 0.55;
+        const hardLeash = range + 1.45;
+        let dist = this.distTo(target);
+        const midSwing =
+          act.swingT > 0 && act.swingT / act.swingDur < PLAYER_ATTACK_CONNECT_END + 0.08;
+
+        // Stick/chase slightly while committed to a swing (windup→connect) so knockback
+        // or micro-drift doesn't hard-interrupt mid-combo.
+        if (dist > softLeash && dist < hardLeash + 0.35 && midSwing) {
+          const dx = target.mesh.position.x - this.player.position.x;
+          const dz = target.mesh.position.z - this.player.position.z;
+          const n = Math.hypot(dx, dz) || 1;
+          const step = Math.min(dist - range * 0.88, 3.6 * dt);
+          this.player.position.x += (dx / n) * step;
+          this.player.position.z += (dz / n) * step;
+          dist = this.distTo(target);
+          this.combatOorT = Math.max(0, this.combatOorT - dt * 1.5);
+        } else if (dist > softLeash && dist <= hardLeash && !midSwing) {
+          // Between swings: gentle re-close instead of instant cancel
+          const dx = target.mesh.position.x - this.player.position.x;
+          const dz = target.mesh.position.z - this.player.position.z;
+          const n = Math.hypot(dx, dz) || 1;
+          const step = Math.min(dist - range * 0.9, 2.4 * dt);
+          this.player.position.x += (dx / n) * step;
+          this.player.position.z += (dz / n) * step;
+          dist = this.distTo(target);
+          this.combatOorT += dt * 0.55;
+        } else if (dist > hardLeash) {
+          this.combatOorT += dt;
+        } else {
+          this.combatOorT = Math.max(0, this.combatOorT - dt * 2.5);
+        }
+
+        // Grace window before cancel — longer if still mid-swing commit
+        const grace = midSwing ? 0.55 : 0.3;
+        if (dist > hardLeash && this.combatOorT >= grace && !midSwing) {
+          this.abortCombatSoft(dt, true);
         } else {
           this.faceToward(target.mesh.position.x, target.mesh.position.z, dt, 10);
           if (this.isMonster(target)) {
@@ -1142,8 +1238,11 @@ export class Game {
               prog >= PLAYER_ATTACK_CONNECT_START &&
               prog <= PLAYER_ATTACK_CONNECT_END + 0.05
             ) {
-              act.hitDone = true;
-              this.swingAtTarget(target);
+              // Connect only if still roughly in reach (forgiving)
+              if (this.distTo(target) <= range + 0.95) {
+                act.hitDone = true;
+                this.swingAtTarget(target);
+              }
             }
             if (prog >= 1) {
               act.swingT = 0;
@@ -1157,7 +1256,7 @@ export class Game {
             act.cooldown -= dt;
             // Idle combat stance breath while waiting
             animatePlayerIdle(this.player, this.animTime);
-            if (act.cooldown <= 0) {
+            if (act.cooldown <= 0 && this.distTo(target) <= softLeash + 0.2) {
               act.swingT = 0.001;
               act.swingDur = PLAYER_ATTACK_DURATION;
               act.hitDone = false;
@@ -1188,6 +1287,16 @@ export class Game {
     this.updateOrcAI(dt);
 
     this.vfx.update(dt);
+    this.updateCombatTreeFade(dt);
+    if (this.combatAbortT > 0) {
+      this.combatAbortT = Math.max(0, this.combatAbortT - dt);
+      // Ease out of swing pose instead of snapping
+      animatePlayerIdle(this.player, this.animTime);
+      if (this.combatAbortT <= 0) {
+        setPlayerTool(this.player, null);
+        resetPlayerPose(this.player);
+      }
+    }
     this.updateCamera(dt);
 
     this.save.x = this.player.position.x;
@@ -1654,12 +1763,24 @@ export class Game {
     this.persist();
   }
 
+  /** Soft range abort — settle pose briefly instead of hard interrupt. */
+  private abortCombatSoft(_dt: number, chat: boolean): void {
+    if (chat) this.hud.chat('You step out of range.', 'combat');
+    this.combatAbortT = 0.22;
+    this.combatOorT = 0;
+    this.activity = { type: 'idle' };
+    this.hud.hideTarget();
+    this.combatCamPull = Math.max(0.15, this.combatCamPull * 0.5);
+    // Keep sword for a beat while pose eases — reset next frames via abort settle
+    setPlayerTool(this.player, 'sword');
+  }
+
   private updateCamera(dt: number): void {
-    // Slight combat framing: pull in + lower when fighting
+    // Combat framing: lift + slight pull-back so pine canopy doesn't bury telegraphs
     const pull = Math.min(1, this.combatCamPull);
     const ox = this.camOffset.x;
-    const oy = this.camOffset.y - pull * 1.2;
-    const oz = this.camOffset.z - pull * 1.6;
+    const oy = this.camOffset.y + pull * 1.55;
+    const oz = this.camOffset.z + pull * 0.85;
     const desired = this.camSmooth;
     desired.set(
       this.player.position.x + ox,
@@ -1668,13 +1789,71 @@ export class Game {
     );
     const follow = 1 - Math.exp(-4.2 * dt);
     this.camera.position.lerp(desired, follow);
-    this.lookSmooth.set(
-      this.player.position.x,
-      0.85 + pull * 0.35,
-      this.player.position.z,
-    );
+    // Bias look toward fight focus (monster mid-body) when engaged
+    let lookX = this.player.position.x;
+    let lookZ = this.player.position.z;
+    if (this.activity.type === 'combat') {
+      const t = this.activity.target.mesh.position;
+      lookX = this.player.position.x * 0.55 + t.x * 0.45;
+      lookZ = this.player.position.z * 0.55 + t.z * 0.45;
+    }
+    this.lookSmooth.set(lookX, 1.05 + pull * 0.55, lookZ);
     this.camLook.lerp(this.lookSmooth, follow);
     this.camera.lookAt(this.camLook);
+  }
+
+  /** Fade pine canopies that sit between camera and combatants. */
+  private updateCombatTreeFade(dt: number): void {
+    const fighting =
+      this.activity.type === 'combat' || this.yetiAggroed || this.orcAggroed;
+    const cam = this.camera.position;
+    let fx = this.player.position.x;
+    let fz = this.player.position.z;
+    if (this.activity.type === 'combat') {
+      fx = fx * 0.5 + this.activity.target.mesh.position.x * 0.5;
+      fz = fz * 0.5 + this.activity.target.mesh.position.z * 0.5;
+    } else if (this.yetiAggroed && this.yetiTarget) {
+      fx = this.yetiTarget.mesh.position.x;
+      fz = this.yetiTarget.mesh.position.z;
+    } else if (this.orcAggroed && this.orcTarget) {
+      fx = this.orcTarget.mesh.position.x;
+      fz = this.orcTarget.mesh.position.z;
+    }
+    const segX = fx - cam.x;
+    const segZ = fz - cam.z;
+    const segLen = Math.hypot(segX, segZ) || 1;
+
+    for (const o of this.objects) {
+      if (o.kind !== 'tree') continue;
+      const tx = o.mesh.position.x - cam.x;
+      const tz = o.mesh.position.z - cam.z;
+      const t = Math.max(0, Math.min(1, (tx * segX + tz * segZ) / (segLen * segLen)));
+      const cx = cam.x + segX * t;
+      const cz = cam.z + segZ * t;
+      const lateral = Math.hypot(o.mesh.position.x - cx, o.mesh.position.z - cz);
+      const want = fighting && t > 0.12 && t < 0.92 && lateral < 2.15 ? 0.22 : 1;
+      o.mesh.traverse((c) => {
+        const mesh = c as THREE.Mesh;
+        if (!mesh.isMesh || mesh.name === 'hit' || mesh.name === 'outline') return;
+        const mat = mesh.material as THREE.MeshStandardMaterial;
+        if (!mat || !('opacity' in mat)) return;
+        if (!mesh.userData.fadeReady) {
+          // Unique clone so shared tree mats don't all fade together
+          const cloned = mat.clone();
+          cloned.transparent = true;
+          mesh.material = cloned;
+          mesh.userData.fadeReady = true;
+          mesh.userData.fadeOpacity = 1;
+        }
+        const cur = (mesh.userData.fadeOpacity as number) ?? 1;
+        const next = cur + (want - cur) * Math.min(1, dt * 5.5);
+        mesh.userData.fadeOpacity = next;
+        const m = mesh.material as THREE.MeshStandardMaterial;
+        m.opacity = next;
+        m.transparent = next < 0.98;
+        m.depthWrite = next > 0.75;
+      });
+    }
   }
 
   private drawMinimapMarkers(): void {

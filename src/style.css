@@ -668,11 +668,25 @@ html, body {
   }
 }
 
-/* Desktop unchanged: inventory always visible, no inv toggle chrome */
+/* Desktop: inventory closable (✕ + backpack reopen). Do not force-stay open. */
 @media (min-width: 481px) {
-  #btn-inventory { display: none !important; }
-  #inv-close { display: none !important; }
-  #inventory { display: block; }
+  #btn-inventory {
+    display: none; /* JS sets flex when inv closed */
+    bottom: calc(12px + var(--safe-bottom));
+    right: 8px;
+  }
+  #inv-close {
+    display: inline;
+    background: transparent;
+    border: none;
+    color: var(--muted, #aaa);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 2px 4px;
+  }
+  #inventory:not([hidden]) { display: block; }
+  #inventory[hidden] { display: none !important; }
 }
 
 
