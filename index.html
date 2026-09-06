@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#0a0c10" />
+    <title>Hunterscape — Thornrest Camp</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="game-canvas"></canvas>
+      <div id="hud" aria-hidden="false">
+        <!-- Top-right: minimap + orbs -->
+        <div id="hud-top-right">
+          <div id="orbs">
+            <div class="orb" id="orb-hp" title="Constitution">
+              <svg viewBox="0 0 64 64" class="orb-ring">
+                <circle cx="32" cy="32" r="28" class="orb-track" />
+                <circle cx="32" cy="32" r="28" class="orb-fill hp-fill" id="hp-ring" />
+              </svg>
+              <div class="orb-core hp-core"><span id="hp-text">100</span></div>
+            </div>
+            <div class="orb" id="orb-pray" title="Focus">
+              <svg viewBox="0 0 64 64" class="orb-ring">
+                <circle cx="32" cy="32" r="28" class="orb-track" />
+                <circle cx="32" cy="32" r="28" class="orb-fill pray-fill" id="pray-ring" />
+              </svg>
+              <div class="orb-core pray-core"><span id="pray-text">100</span></div>
+            </div>
+            <div class="orb" id="orb-stam" title="Stamina">
+              <svg viewBox="0 0 64 64" class="orb-ring">
+                <circle cx="32" cy="32" r="28" class="orb-track" />
+                <circle cx="32" cy="32" r="28" class="orb-fill stam-fill" id="stam-ring" />
+              </svg>
+              <div class="orb-core stam-core"><span id="stam-text">100</span></div>
+            </div>
+          </div>
+          <div id="minimap-wrap">
+            <canvas id="minimap" width="160" height="160"></canvas>
+            <div id="minimap-label">Thornrest</div>
+          </div>
+        </div>
+
+        <!-- Skills toggle button -->
+        <button type="button" id="btn-skills" title="Skills (K)">⚔ Skills</button>
+
+        <!-- Skills panel -->
+        <div id="skills-panel" class="panel" hidden>
+          <div class="panel-head">
+            <span>Skills</span>
+            <button type="button" class="panel-close" id="skills-close" aria-label="Close">✕</button>
+          </div>
+          <div id="skills-list"></div>
+        </div>
+
+        <!-- Chat bottom-left -->
+        <div id="chat">
+          <div id="chat-log"></div>
+          <div id="chat-tabs">
+            <span class="chat-tab active">Game</span>
+            <span class="chat-tab">Public</span>
+            <span class="chat-tab">Private</span>
+          </div>
+        </div>
+
+        <!-- Action bar bottom-center -->
+        <div id="action-bar" aria-label="Action bar">
+          <button class="ab-slot" data-action="attack" title="Basic Attack (1)"><span class="ab-icon">⚔</span><span class="ab-key">1</span></button>
+          <button class="ab-slot" data-action="chop" title="Chop Tree (2)"><span class="ab-icon">🪓</span><span class="ab-key">2</span></button>
+          <button class="ab-slot" data-action="mine" title="Mine Rock (3)"><span class="ab-icon">⛏</span><span class="ab-key">3</span></button>
+          <button class="ab-slot" data-action="eat" title="Eat Food (4)"><span class="ab-icon">🍖</span><span class="ab-key">4</span></button>
+          <button class="ab-slot" data-action="examine" title="Examine (5)"><span class="ab-icon">👁</span><span class="ab-key">5</span></button>
+        </div>
+
+        <!-- Inventory bottom-right -->
+        <div id="inventory" class="panel">
+          <div class="panel-head"><span>Inventory</span><span id="inv-count">0/28</span></div>
+          <div id="inv-grid"></div>
+        </div>
+
+        <!-- Progress bar (gathering/combat) -->
+        <div id="progress-wrap" hidden>
+          <div id="progress-label">Working…</div>
+          <div id="progress-bar"><div id="progress-fill"></div></div>
+        </div>
+
+        <!-- Target info -->
+        <div id="target-info" hidden>
+          <span id="target-name"></span>
+          <div class="bar thin"><div id="target-hp"></div></div>
+        </div>
+
+        <div id="touch-hint">Tap ground to move · Tap trees, rocks &amp; dummy to interact</div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
