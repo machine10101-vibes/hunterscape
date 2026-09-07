@@ -13,7 +13,7 @@ function mat(color: number, opts: PhysOpts = {}): THREE.MeshPhysicalMaterial {
       roughness: opts.roughness ?? 0.62,
       metalness: opts.metalness ?? 0.06,
       envMapIntensity: opts.envMapIntensity ?? 1,
-      flatShading: opts.flatShading ?? true,
+      flatShading: opts.flatShading ?? false,
       ...opts,
     });
     matCache.set(key, m);
@@ -170,8 +170,8 @@ function leatherMat(tint: number, extra: PhysOpts = {}): THREE.MeshPhysicalMater
     sheen: 0.22,
     sheenColor: new THREE.Color(0x6a4028),
     sheenRoughness: 0.7,
-    envMapIntensity: 0.55,
-    flatShading: true,
+    envMapIntensity: 0.7,
+    flatShading: false,
     ...extra,
   });
 }
@@ -189,8 +189,8 @@ function clothMat(tint: number): THREE.MeshPhysicalMaterial {
     sheen: 0.18,
     sheenColor: new THREE.Color(0x3a4438),
     sheenRoughness: 0.85,
-    envMapIntensity: 0.28,
-    flatShading: true,
+    envMapIntensity: 0.4,
+    flatShading: false,
   });
 }
 
@@ -210,7 +210,7 @@ function skinMat(tint: number, extra: PhysOpts = {}): THREE.MeshPhysicalMaterial
     envMapIntensity: 0.32,
     emissive: new THREE.Color(0x3a1810),
     emissiveIntensity: 0.02,
-    flatShading: true,
+    flatShading: false,
     ...extra,
   });
 }
@@ -222,7 +222,7 @@ function addPart(mesh: THREE.Mesh, parent: THREE.Object3D): THREE.Mesh {
   return mesh;
 }
 
-function latheBody(radii: [number, number][], segs = 6): THREE.LatheGeometry {
+function latheBody(radii: [number, number][], segs = 12): THREE.LatheGeometry {
   const pts = radii.map(([r, y]) => new THREE.Vector2(r, y));
   return new THREE.LatheGeometry(pts, segs);
 }
@@ -263,13 +263,13 @@ function squareBuckle(size: number, thick: number, _hole: number, metal: THREE.M
   mesh.castShadow = true;
   const inner = new THREE.Mesh(
     new THREE.BoxGeometry(size * 0.42, size * 0.42, thick + 0.008),
-    new THREE.MeshPhysicalMaterial({ color: 0x2a2418, roughness: 0.7, metalness: 0.2, flatShading: true }),
+    new THREE.MeshPhysicalMaterial({ color: 0x2a2418, roughness: 0.7, metalness: 0.2, flatShading: false }),
   );
   mesh.add(inner);
   return mesh;
 }
 
-/** Drive-ref fur: 4-sided cones, not smooth capsules. */
+/** Soft fur tufts — rounded capsules, not razor cones. */
 function addFurFringe(
   parent: THREE.Object3D,
   cx: number,
@@ -281,21 +281,20 @@ function addFurFringe(
   fur: THREE.Material,
   furDark: THREE.Material,
   furMid: THREE.Material,
-  upBias = 0.55,
+  upBias = 0.45,
 ): void {
   for (let i = 0; i < count; i++) {
-    const a = (i / count) * Math.PI * 2 + (i % 5) * 0.04;
-    const ring = radius * (0.88 + (i % 4) * 0.04);
-    const len = length * (0.78 + (i % 5) * 0.06);
-    const tip = 0.018 + (i % 3) * 0.006;
+    const a = (i / count) * Math.PI * 2 + (i % 5) * 0.03;
+    const ring = radius * (0.88 + (i % 4) * 0.035);
+    const len = length * (0.78 + (i % 5) * 0.05);
+    const rad = 0.012 + (i % 3) * 0.004;
     const tuft = new THREE.Mesh(
-      new THREE.ConeGeometry(tip, len, 4),
+      new THREE.CapsuleGeometry(rad, len, 4, 8),
       i % 4 === 0 ? furDark : i % 3 === 0 ? furMid : fur,
     );
-    tuft.position.set(cx + Math.cos(a) * ring, cy + len * 0.22, cz + Math.sin(a) * ring);
+    tuft.position.set(cx + Math.cos(a) * ring, cy + len * 0.18, cz + Math.sin(a) * ring);
     tuft.rotation.z = -Math.cos(a) * upBias;
     tuft.rotation.x = Math.sin(a) * upBias;
-    tuft.rotation.y = (i % 3) * 0.4;
     tuft.castShadow = true;
     parent.add(tuft);
   }
@@ -307,23 +306,25 @@ function makeHand(
   grip: 'open' | 'spear' | 'fist',
 ): THREE.Group {
   const hand = new THREE.Group();
-  const palm = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.07, 0.11), leather);
+  const palm = new THREE.Mesh(new THREE.CapsuleGeometry(0.038, 0.04, 4, 8), leather);
+  palm.rotation.x = Math.PI / 2;
+  palm.scale.set(1.15, 0.85, 1.25);
   palm.castShadow = true;
   hand.add(palm);
   const curl = grip === 'fist' ? 1.05 : grip === 'spear' ? 0.72 : 0.22;
   for (let i = 0; i < 4; i++) {
-    const knuckle = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.028, 0.022), leather);
+    const knuckle = new THREE.Mesh(new THREE.CapsuleGeometry(0.01, 0.022, 3, 6), leather);
     knuckle.position.set(-0.034 + i * 0.022, -0.048, 0.028);
     knuckle.rotation.x = curl * 0.35;
     knuckle.castShadow = true;
     hand.add(knuckle);
-    const tip = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.032, 0.016), skin);
+    const tip = new THREE.Mesh(new THREE.CapsuleGeometry(0.009, 0.028, 3, 6), skin);
     tip.position.set(-0.034 + i * 0.022, -0.078, 0.04);
     tip.rotation.x = curl;
     tip.castShadow = true;
     hand.add(tip);
   }
-  const thumb = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.036, 0.016), skin);
+  const thumb = new THREE.Mesh(new THREE.CapsuleGeometry(0.011, 0.032, 3, 6), skin);
   thumb.position.set(-0.052, -0.01, 0.02);
   thumb.rotation.z = 0.85;
   thumb.rotation.x = 0.4;
@@ -391,48 +392,58 @@ export function createPlayerMesh(): THREE.Group {
   const makeLeg = (side: number) => {
     const hip = new THREE.Group();
     hip.name = side < 0 ? 'legL' : 'legR';
-    hip.position.set(side * 0.125, 0.92, 0);
+    hip.position.set(side * 0.15, 0.94, 0);
 
-    const hipBall = new THREE.Mesh(new THREE.SphereGeometry(0.105, 6, 5), cloth);
+    const hipBall = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 10), cloth);
     addPart(hipBall, hip);
 
-    const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.1, 0.32, 6), cloth);
+    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.092, 0.26, 6, 12), cloth);
     thigh.position.set(0, -0.18, 0);
     addPart(thigh, hip);
 
     const shin = new THREE.Group();
     shin.name = side < 0 ? 'shinL' : 'shinR';
-    shin.position.set(0, -0.42, 0);
+    shin.position.set(0, -0.44, 0);
 
-    const knee = new THREE.Mesh(new THREE.SphereGeometry(0.092, 6, 5), cloth);
+    const knee = new THREE.Mesh(new THREE.SphereGeometry(0.088, 12, 10), cloth);
     addPart(knee, shin);
 
-    // Calf sits slightly behind the knee axis so bent knees stay plantigrade.
-    const calf = new THREE.Mesh(new THREE.CylinderGeometry(0.078, 0.088, 0.16, 6), clothDark);
-    calf.position.set(0, -0.1, -0.032);
+    // Trousers stop above the boot cuff.
+    const calf = new THREE.Mesh(new THREE.CapsuleGeometry(0.078, 0.14, 5, 12), clothDark);
+    calf.position.set(0, -0.12, -0.028);
     addPart(calf, shin);
 
-    const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.108, 0.22, 6), leather);
-    boot.position.set(0, -0.22, -0.02);
+    // Calf-high boot shaft — does not reach the foot.
+    const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.092, 0.1, 0.16, 12), leather);
+    boot.position.set(0, -0.24, -0.018);
     addPart(boot, shin);
+    addCrissCross(shin, -0.16, -0.32, 0.1, leatherDark, 0.02);
 
-    addCrissCross(shin, -0.08, -0.36, 0.118, leatherDark, 0.04);
+    // Narrow ankle between boot and foot (this was missing).
+    const ankleCol = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.06, 0.1, 12), leatherMid);
+    ankleCol.position.set(0, -0.4, -0.01);
+    addPart(ankleCol, shin);
 
     const foot = new THREE.Group();
     foot.name = side < 0 ? 'footL' : 'footR';
-    foot.position.set(0, -0.48, 0.02);
-    const ankle = new THREE.Mesh(new THREE.SphereGeometry(0.078, 6, 5), leather);
+    foot.position.set(0, -0.5, 0.02);
+    const ankle = new THREE.Mesh(new THREE.SphereGeometry(0.058, 10, 8), leather);
     addPart(ankle, foot);
-    const toe = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.07, 0.22), leatherDark);
-    toe.position.set(0, 0.01, 0.1);
+    const heel = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), leatherDark);
+    heel.position.set(0, -0.02, -0.04);
+    addPart(heel, foot);
+    const toe = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.14, 4, 10), leatherDark);
+    toe.rotation.x = Math.PI / 2;
+    toe.position.set(0, 0.0, 0.1);
+    toe.scale.set(1.15, 1, 0.72);
     addPart(toe, foot);
-    const sole = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.035, 0.3), mat(0x140e0a, { roughness: 0.96 }));
-    sole.position.set(0, -0.018, 0.08);
+    const sole = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.032, 0.28), mat(0x140e0a, { roughness: 0.96 }));
+    sole.position.set(0, -0.03, 0.08);
     foot.add(sole);
     shin.add(foot);
 
-    addFurFringe(shin, 0, -0.02, 0.02, 0.112, 14, 0.09, fur, furDark, furMid, 0.72);
-    addFurFringe(shin, 0, -0.32, -0.02, 0.1, 12, 0.07, fur, furDark, furMid, 0.58);
+    addFurFringe(shin, 0, -0.14, 0.02, 0.105, 12, 0.07, fur, furDark, furMid, 0.55);
+    addFurFringe(shin, 0, -0.34, -0.01, 0.09, 10, 0.055, fur, furDark, furMid, 0.45);
 
     hip.add(shin);
     return hip;
@@ -440,7 +451,7 @@ export function createPlayerMesh(): THREE.Group {
   hips.add(makeLeg(-1));
   hips.add(makeLeg(1));
 
-  const pelvis = new THREE.Mesh(latheBody([[0.2, -0.1], [0.24, -0.02], [0.22, 0.1]], 6), leather);
+  const pelvis = new THREE.Mesh(latheBody([[0.2, -0.1], [0.24, -0.02], [0.22, 0.1]], 12), leather);
   pelvis.position.y = 0.92;
   addPart(pelvis, hips);
 
@@ -448,13 +459,13 @@ export function createPlayerMesh(): THREE.Group {
     [0.22, 0],
     [-0.22, Math.PI],
   ] as const) {
-    const flap = triangleTasset(0.34, 0.28, 0.045, leatherDark);
+    const flap = triangleTasset(0.26, 0.2, 0.038, leatherDark);
     flap.position.set(0, 0.86, z);
     flap.rotation.y = ry;
     hips.add(flap);
   }
   for (const sx of [-1, 1]) {
-    const flap = triangleTasset(0.24, 0.24, 0.04, leatherMid);
+    const flap = triangleTasset(0.18, 0.18, 0.032, leatherMid);
     flap.position.set(sx * 0.24, 0.86, 0);
     flap.rotation.y = sx * Math.PI * 0.5;
     hips.add(flap);
@@ -475,18 +486,18 @@ export function createPlayerMesh(): THREE.Group {
         [0.26, 0.24],
         [0.16, 0.32],
       ],
-      6,
+        12,
     ),
     leather,
   );
   addPart(vest, torso);
 
-  const pecs = new THREE.Mesh(new THREE.SphereGeometry(0.16, 6, 5), leatherMid);
+  const pecs = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10), leatherMid);
   pecs.scale.set(1.35, 0.72, 0.55);
   pecs.position.set(0, 0.08, 0.12);
   addPart(pecs, torso);
 
-  const belt = new THREE.Mesh(new THREE.TorusGeometry(0.255, 0.038, 5, 8), leatherDark);
+  const belt = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.034, 8, 16), leatherDark);
   belt.rotation.x = Math.PI / 2;
   belt.position.y = -0.26;
   torso.add(belt);
@@ -515,62 +526,63 @@ export function createPlayerMesh(): THREE.Group {
   torso.add(chestBuckle);
 
   for (const sx of [-1, 1]) {
-    const pad = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 4), leatherMid);
+    const pad = new THREE.Mesh(new THREE.SphereGeometry(0.095, 10, 8), leatherMid);
     pad.scale.set(1.15, 0.55, 1.05);
     pad.position.set(sx * 0.26, 0.24, 0.02);
     pad.rotation.z = sx * -0.28;
     addPart(pad, torso);
   }
 
-  const collarBase = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.075, 5, 8), furMid);
+  const collarBase = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.07, 8, 16), furMid);
   collarBase.rotation.x = Math.PI / 2;
   collarBase.position.set(0, 0.26, 0.01);
   collarBase.scale.set(1.22, 1.05, 0.95);
   addPart(collarBase, torso);
-  addFurFringe(torso, 0, 0.28, 0.01, 0.26, 22, 0.16, fur, furDark, furMid, 0.62);
-  addFurFringe(torso, 0, 0.36, -0.03, 0.2, 16, 0.13, fur, furDark, furMid, 0.5);
+  addFurFringe(torso, 0, 0.28, 0.01, 0.25, 18, 0.12, fur, furDark, furMid, 0.5);
+  addFurFringe(torso, 0, 0.34, -0.03, 0.19, 12, 0.1, fur, furDark, furMid, 0.42);
   for (const sx of [-1, 1]) {
-    addFurFringe(torso, sx * 0.28, 0.2, 0.03, 0.1, 10, 0.12, fur, furDark, furMid, 0.7);
+    addFurFringe(torso, sx * 0.26, 0.2, 0.03, 0.09, 8, 0.09, fur, furDark, furMid, 0.5);
   }
 
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.068, 0.074, 0.12, 6), skin);
+  const neck = new THREE.Mesh(new THREE.CapsuleGeometry(0.068, 0.08, 5, 12), skin);
   neck.position.set(0, 0.34, 0.01);
   addPart(neck, torso);
 
   const makeArm = (side: number) => {
     const clav = new THREE.Group();
     clav.name = side < 0 ? 'clavL' : 'clavR';
-    clav.position.set(side * 0.12, 0.22, 0);
+    // Wide enough that hanging arms clear the vest instead of fusing into it.
+    clav.position.set(side * 0.18, 0.22, 0);
 
     const arm = new THREE.Group();
     arm.name = side < 0 ? 'armL' : 'armR';
-    arm.position.set(side * 0.2, 0, 0);
+    arm.position.set(side * 0.26, 0, 0);
 
-    const deltoid = new THREE.Mesh(new THREE.SphereGeometry(0.112, 6, 5), skin);
-    deltoid.scale.set(1.18, 0.88, 1.08);
+    const deltoid = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 10), skin);
+    deltoid.scale.set(1.12, 0.9, 1.05);
     addPart(deltoid, arm);
 
-    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.074, 0.086, 0.24, 6), skin);
-    upper.position.set(0, -0.14, 0);
+    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.072, 0.2, 5, 12), skin);
+    upper.position.set(0, -0.15, 0);
     addPart(upper, arm);
 
     const forearm = new THREE.Group();
     forearm.name = side < 0 ? 'forearmL' : 'forearmR';
-    forearm.position.set(0, -0.32, 0);
+    forearm.position.set(0, -0.34, 0);
 
-    const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 5), skin);
+    const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), skin);
     addPart(elbow, forearm);
 
-    const gauntlet = new THREE.Mesh(new THREE.CylinderGeometry(0.078, 0.09, 0.2, 6), leather);
-    gauntlet.position.set(0, -0.13, 0.012);
+    const gauntlet = new THREE.Mesh(new THREE.CapsuleGeometry(0.072, 0.16, 5, 12), leather);
+    gauntlet.position.set(0, -0.14, 0.01);
     addPart(gauntlet, forearm);
-    addCrissCross(forearm, -0.04, -0.2, 0.086, leatherDark, 0.012);
-    addFurFringe(forearm, 0, 0.02, 0.015, 0.092, 12, 0.08, fur, furDark, furMid, 0.65);
-    addFurFringe(forearm, 0, -0.22, 0.015, 0.086, 10, 0.065, fur, furDark, furMid, 0.55);
+    addCrissCross(forearm, -0.06, -0.2, 0.078, leatherDark, 0.01);
+    addFurFringe(forearm, 0, 0.0, 0.012, 0.082, 10, 0.06, fur, furDark, furMid, 0.5);
+    addFurFringe(forearm, 0, -0.22, 0.012, 0.076, 8, 0.05, fur, furDark, furMid, 0.42);
 
     const hand = makeHand(skin, leather, side < 0 ? 'spear' : 'fist');
     hand.name = side < 0 ? 'handL' : 'handR';
-    hand.position.set(0, -0.26, 0.02);
+    hand.position.set(0, -0.28, 0.02);
     forearm.add(hand);
 
     arm.add(forearm);
@@ -584,22 +596,22 @@ export function createPlayerMesh(): THREE.Group {
   head.name = 'playerHead';
   head.position.set(0, 0.5, 0.015);
 
-  const skull = new THREE.Mesh(new THREE.IcosahedronGeometry(0.168, 0), skin);
-  skull.scale.set(0.95, 1.06, 0.9);
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.165, 16, 14), skin);
+  skull.scale.set(0.96, 1.06, 0.92);
   addPart(skull, head);
 
-  const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 5), skinDark);
+  const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.118, 12, 10), skinDark);
   jaw.scale.set(1.02, 0.7, 0.92);
   jaw.position.set(0, -0.095, 0.045);
   addPart(jaw, head);
 
-  const chin = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 5), skinDark);
+  const chin = new THREE.Mesh(new THREE.SphereGeometry(0.042, 8, 6), skinDark);
   chin.scale.set(1.15, 0.85, 1.1);
   chin.position.set(0, -0.155, 0.11);
   head.add(chin);
 
   const stubble = new THREE.Mesh(
-    new THREE.SphereGeometry(0.09, 6, 4),
+    new THREE.SphereGeometry(0.088, 8, 6),
     mat(0x4a382c, { roughness: 0.95, sheen: 0.2, sheenColor: new THREE.Color(0x2a1c14) }),
   );
   stubble.scale.set(1.05, 0.45, 0.55);
@@ -607,7 +619,7 @@ export function createPlayerMesh(): THREE.Group {
   head.add(stubble);
 
   for (const sx of [-1, 1]) {
-    const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.055, 6, 4), skinDark);
+    const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.052, 8, 6), skinDark);
     cheek.scale.set(0.7, 1, 0.85);
     cheek.position.set(sx * 0.11, -0.02, 0.09);
     head.add(cheek);
@@ -621,7 +633,7 @@ export function createPlayerMesh(): THREE.Group {
         [0.022, -0.01],
         [0.012, -0.03],
       ],
-      5,
+      8,
     ),
     skinDark,
   );
@@ -661,7 +673,7 @@ export function createPlayerMesh(): THREE.Group {
   mouth.position.set(0, -0.11, 0.155);
   head.add(mouth);
 
-  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.17, 7, 5, 0, Math.PI * 2, 0, Math.PI * 0.58), hairCol);
+  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.17, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.58), hairCol);
   hairCap.position.set(0, 0.04, -0.02);
   hairCap.scale.set(1.05, 0.85, 1.08);
   addPart(hairCap, head);
@@ -686,7 +698,7 @@ export function createPlayerMesh(): THREE.Group {
     [0.08, 0.17, -0.08, 0.88],
   ];
   for (const [x, y, z, s] of spikePts) {
-    const spike = new THREE.Mesh(new THREE.ConeGeometry(0.028 * s, 0.11 * s, 4), hairCol);
+    const spike = new THREE.Mesh(new THREE.CapsuleGeometry(0.02 * s, 0.08 * s, 3, 6), hairCol);
     spike.position.set(x, y, z);
     spike.rotation.x = z * 0.7 - 0.12;
     spike.rotation.z = -x * 1.15;

@@ -136,12 +136,12 @@ export function animatePlayerIdle(player: THREE.Group, t: number): void {
     torso.scale.set(1 + breath * 0.01, 1 + breath * 0.016, 1 + breath * 0.008);
   }
   rot(get(player, 'playerHead'), -0.05 + breath * 0.32, look, -shift * 0.08);
-  rot(get(player, 'clavL'), 0.02, 0, 0.05 + shift * 0.08);
-  rot(get(player, 'clavR'), 0.02, 0, -0.05 - shift * 0.06);
-  rot(get(player, 'armL'), 0.1 + breath * 0.1, 0.04, 0.08 + shift * 0.08);
-  rot(get(player, 'armR'), 0.08 - breath * 0.08, -0.04, -0.1 - shift * 0.08);
-  rot(get(player, 'forearmL'), -0.18, 0.04, 0.02);
-  rot(get(player, 'forearmR'), -0.28, -0.04, -0.02);
+  rot(get(player, 'clavL'), 0.02, 0, -0.14 + shift * 0.04);
+  rot(get(player, 'clavR'), 0.02, 0, 0.14 - shift * 0.04);
+  rot(get(player, 'armL'), 0.12 + breath * 0.08, 0.04, -0.28);
+  rot(get(player, 'armR'), 0.1 - breath * 0.08, -0.04, 0.28);
+  rot(get(player, 'forearmL'), -0.2, 0.02, 0);
+  rot(get(player, 'forearmR'), -0.16, -0.02, 0);
   rot(get(player, 'handL'), 0.08, 0.03, 0.04);
   rot(get(player, 'handR'), 0.04, 0, -0.04);
   rot(get(player, 'legL'), 0.06 + shift * 0.1, 0, 0.035);
@@ -172,12 +172,12 @@ function animateSwordGuard(player: THREE.Group, t: number): void {
     torso.scale.set(1 + breath * 0.008, 1 + breath * 0.012, 1);
   }
   rot(get(player, 'playerHead'), -0.04 + breath * 0.2, 0.12, -0.04);
-  rot(get(player, 'clavL'), 0.04, 0.06, 0.08);
-  rot(get(player, 'clavR'), 0.08, -0.1, -0.12);
-  rot(get(player, 'armL'), 0.35 + breath * 0.08, 0.22, 0.38);
+  rot(get(player, 'clavL'), 0.04, 0.06, -0.1);
+  rot(get(player, 'clavR'), 0.08, -0.1, 0.1);
+  rot(get(player, 'armL'), 0.28 + breath * 0.08, 0.18, -0.22);
   rot(get(player, 'forearmL'), -0.85, 0.14, 0.1);
   rot(get(player, 'handL'), 0.1, 0.05, 0.12);
-  rot(get(player, 'armR'), 0.55 + breath * 0.05, -0.28, -0.22);
+  rot(get(player, 'armR'), 0.55 + breath * 0.05, -0.28, 0.12);
   rot(get(player, 'forearmR'), -1.35, 0.22, 0.12);
   rot(get(player, 'handR'), 0.22, 0.14, 0.32);
   rot(get(player, 'legL'), -0.2, 0.04, 0.05);
@@ -253,27 +253,27 @@ export function animatePlayerWalk(
   rot(get(player, 'footL'), -passingL * 0.32 + plantedL * Math.max(0, hipL) * 0.24, 0, 0);
   rot(get(player, 'footR'), -passingR * 0.32 + plantedR * Math.max(0, hipR) * 0.24, 0, 0);
 
-  rot(get(player, 'clavL'), -hipL * 0.04 * blend, 0, 0.05);
-  rot(get(player, 'clavR'), -hipR * 0.04 * blend, 0, -0.05);
+  rot(get(player, 'clavL'), -hipL * 0.04 * blend, 0, -0.12);
+  rot(get(player, 'clavR'), -hipR * 0.04 * blend, 0, 0.12);
 
   if (sword) {
-    rot(get(player, 'armL'), -hipL * 0.45 * blend + 0.18, 0.1, 0.22);
+    rot(get(player, 'armL'), -hipL * 0.45 * blend + 0.18, 0.1, -0.18);
     rot(get(player, 'forearmL'), -0.5 - Math.max(0, hipL) * 0.2, 0.08, 0.04);
     rot(get(player, 'handL'), 0.08, 0, 0.08);
-    rot(get(player, 'armR'), 0.5 - hipR * 0.05 * blend, -0.24, -0.2);
+    rot(get(player, 'armR'), 0.5 - hipR * 0.05 * blend, -0.24, 0.18);
     rot(get(player, 'forearmR'), -1.32, 0.18, 0.1);
     rot(get(player, 'handR'), 0.16, 0.1, 0.24);
     poseEquippedTool(player);
   } else if (spearHeld) {
-    rot(get(player, 'armL'), 0.1 - hipL * 0.08 * blend, 0.04, 0.08);
-    rot(get(player, 'forearmL'), -0.2, 0.04, 0.02);
+    rot(get(player, 'armL'), 0.12 - hipL * 0.08 * blend, 0.04, -0.26);
+    rot(get(player, 'forearmL'), -0.2, 0.02, 0);
     rot(get(player, 'handL'), 0.06, 0.02, 0.04);
-    rot(get(player, 'armR'), -hipR * 0.62 * amp * 1.4 + 0.08, -0.04, -0.08);
+    rot(get(player, 'armR'), -hipR * 0.62 * amp * 1.4 + 0.08, -0.04, 0.26);
     rot(get(player, 'forearmR'), -0.32 - Math.max(0, hipR) * 0.45, -0.04, 0);
     rot(get(player, 'handR'), -hipR * 0.12, 0, -0.04);
   } else {
-    rot(get(player, 'armL'), -hipL * 0.7 * amp * 1.35 + 0.1, 0.04, 0.08);
-    rot(get(player, 'armR'), -hipR * 0.7 * amp * 1.35 + 0.1, -0.04, -0.08);
+    rot(get(player, 'armL'), -hipL * 0.7 * amp * 1.35 + 0.1, 0.04, -0.26);
+    rot(get(player, 'armR'), -hipR * 0.7 * amp * 1.35 + 0.1, -0.04, 0.26);
     rot(get(player, 'forearmL'), -0.35 - Math.max(0, hipL) * 0.4, 0, 0);
     rot(get(player, 'forearmR'), -0.35 - Math.max(0, hipR) * 0.4, 0, 0);
     rot(get(player, 'handL'), -hipL * 0.1, 0, 0.04);
@@ -413,10 +413,10 @@ export function animatePlayerGather(player: THREE.Group, progress: number, kind:
   const raise = Math.max(0, Math.sin(p * Math.PI * 2 + 0.4));
   const strike = Math.max(0, Math.sin(p * Math.PI * 2 - 0.55));
   const amp = kind === 'tree' ? 1 : 0.88;
-  rot(get(player, 'armR'), -0.15 - raise * 1.15 * amp + strike * 0.85 * amp, -0.15, -0.22 - strike * 0.12);
+  rot(get(player, 'armR'), -0.15 - raise * 1.15 * amp + strike * 0.85 * amp, -0.15, 0.18 - strike * 0.08);
   rot(get(player, 'forearmR'), -0.85 + strike * 0.7 - raise * 0.25, 0.1, 0.08);
   rot(get(player, 'handR'), 0.15 + strike * 0.2, 0.08, 0.2);
-  rot(get(player, 'armL'), 0.25 + strike * 0.2, 0.1, 0.22);
+  rot(get(player, 'armL'), 0.25 + strike * 0.2, 0.1, -0.22);
   rot(get(player, 'forearmL'), -0.45, 0.06, 0.04);
   poseEquippedTool(player);
   const tool = get(player, 'toolRoot');

@@ -491,7 +491,7 @@ export function createFrostYeti(): THREE.Group {
   // Legs (thick, slightly bent forward for hunched stance)
   const makeLeg = (side: number) => {
     const leg = new THREE.Group();
-    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.35, 3, 6), fur);
+    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.35, 4, 10), fur);
     thigh.position.set(0, 0.55, 0.05);
     thigh.rotation.x = 0.25;
     thigh.castShadow = true;
@@ -500,7 +500,7 @@ export function createFrostYeti(): THREE.Group {
     const thStripe = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.1, 0.38), stripe);
     thStripe.position.set(0, 0.62, 0.08);
     leg.add(thStripe);
-    const shin = new THREE.Mesh(new THREE.CapsuleGeometry(0.18, 0.28, 3, 6), furBlue);
+    const shin = new THREE.Mesh(new THREE.CapsuleGeometry(0.18, 0.28, 4, 10), furBlue);
     shin.position.set(0, 0.22, 0.12);
     shin.rotation.x = -0.15;
     shin.castShadow = true;
@@ -571,7 +571,7 @@ export function createFrostYeti(): THREE.Group {
   // Shoulder / head ruff — a few pointed clumps, parented to the body so they
   // never read as extra floating arms.
   const makeManeClump = (parent: THREE.Object3D, x: number, y: number, z: number, s: number, matUse = fur) => {
-    const base = new THREE.Mesh(new THREE.ConeGeometry(0.12 * s, 0.32 * s, 5), matUse);
+    const base = new THREE.Mesh(new THREE.ConeGeometry(0.12 * s, 0.32 * s, 6), matUse);
     base.position.set(x, y, z);
     base.rotation.x = -0.45;
     base.rotation.z = (x > 0 ? 1 : x < 0 ? -1 : 0) * 0.12 * s;
@@ -604,7 +604,7 @@ export function createFrostYeti(): THREE.Group {
     arm.rotation.z = side * 0.28;
     arm.rotation.x = -0.22;
 
-    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.38, 3, 6), fur);
+    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.38, 4, 10), fur);
     upper.position.set(0, -0.22, 0);
     upper.castShadow = true;
     arm.add(upper);
@@ -615,7 +615,7 @@ export function createFrostYeti(): THREE.Group {
     const forearm = new THREE.Group();
     forearm.position.set(0, -0.46, 0);
     forearm.rotation.x = -0.38;
-    const forearmMesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.32, 3, 6), furBlue);
+    const forearmMesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.32, 4, 10), furBlue);
     forearmMesh.position.set(0, -0.2, 0);
     forearmMesh.castShadow = true;
     forearm.add(forearmMesh);
@@ -706,7 +706,7 @@ export function createFrostYeti(): THREE.Group {
   makeEye(0.15);
 
   // Snout
-  const snout = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.18, 3, 6), furBlue);
+  const snout = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.18, 4, 10), furBlue);
   snout.rotation.x = Math.PI / 2;
   snout.position.set(0, -0.08, 0.42);
   head.add(snout);
@@ -951,7 +951,7 @@ export function createOrcScout(): THREE.Group {
       const a = (i / count) * Math.PI * 2 + yawBias;
       const lenJ = length * (0.8 + (i % 4) * 0.08);
       const spike = new THREE.Mesh(
-        new THREE.ConeGeometry(tipRadius * (0.9 + (i % 3) * 0.08), lenJ, 4),
+        new THREE.ConeGeometry(tipRadius * (0.9 + (i % 3) * 0.08), lenJ, 6),
         i % 3 === 0 ? furDark : fur,
       );
       spike.position.set(
@@ -980,14 +980,14 @@ export function createOrcScout(): THREE.Group {
   // ===== Legs / dark trousers + fur-trimmed boots =====
   const makeLeg = (side: number) => {
     const leg = new THREE.Group();
-    const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.135, 0.36, 7), cloth);
+    const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.135, 0.36, 10), cloth);
     thigh.position.set(0, 0.62, 0);
     addPart(thigh, leg);
-    const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.115, 0.22, 7), cloth);
+    const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.115, 0.22, 10), cloth);
     shin.position.set(0, 0.34, 0.015);
     addPart(shin, leg);
 
-    const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.13, 0.22, 6), leather);
+    const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.13, 0.22, 10), leather);
     boot.position.set(0, 0.16, 0.02);
     addPart(boot, leg, 1.05);
     const foot = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.1, 0.28), leatherDark);
@@ -1012,7 +1012,7 @@ export function createOrcScout(): THREE.Group {
   g.add(orcLegR);
 
   // Hips / leather skirt flaps
-  const hips = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.29, 0.22, 8), leather);
+  const hips = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.29, 0.22, 12), leather);
   hips.position.y = 0.78;
   addPart(hips, g);
   for (const [z, ry] of [
@@ -1042,7 +1042,7 @@ export function createOrcScout(): THREE.Group {
   }
 
   // ===== Torso / brown leather vest =====
-  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.29, 0.55, 9), leather);
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.29, 0.55, 12), leather);
   torso.position.y = 1.12;
   addPart(torso, g, 1.07);
   torso.name = 'orcBody';
@@ -1120,12 +1120,12 @@ export function createOrcScout(): THREE.Group {
   const makeArm = (side: number) => {
     const arm = new THREE.Group();
     arm.name = side < 0 ? 'orcArmL' : 'orcArmR';
-    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.105, 0.34, 6), skin);
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.105, 0.34, 10), skin);
     upper.position.set(0, 0, 0);
     upper.rotation.z = side * 0.28;
     addPart(upper, arm);
 
-    const gauntlet = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.112, 0.3, 6), leather);
+    const gauntlet = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.112, 0.3, 10), leather);
     gauntlet.position.set(side * 0.1, -0.3, 0.02);
     gauntlet.rotation.z = side * 0.16;
     addPart(gauntlet, arm, 1.04);
@@ -1252,7 +1252,7 @@ export function createOrcScout(): THREE.Group {
     [0.16, 0.1, 0.04, 0.8],
   ];
   for (const [x, y, z, s] of spikePts) {
-    const spike = new THREE.Mesh(new THREE.ConeGeometry(0.05 * s, 0.15 * s, 4), hair);
+    const spike = new THREE.Mesh(new THREE.ConeGeometry(0.05 * s, 0.15 * s, 6), hair);
     spike.position.set(x, y, z);
     spike.rotation.x = z * 1.1;
     spike.rotation.z = -x * 1.4;
