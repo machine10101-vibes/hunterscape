@@ -692,18 +692,18 @@ export function createPlayerMesh(): THREE.Group {
   const idleSpear = createIdleSpear(wood, leatherDark, metal);
   idleSpear.name = 'idleSpear';
   const armL = torso.getObjectByName('armL') as THREE.Group;
-  const forearmL = armL.getObjectByName('forearmL') as THREE.Group;
-  idleSpear.position.set(-0.035, -0.26, 0.05);
-  idleSpear.rotation.set(0.1, 0, 0.06);
-  forearmL.add(idleSpear);
+  const handL = armL.getObjectByName('handL') as THREE.Group;
+  idleSpear.position.set(-0.02, -0.04, 0.04);
+  idleSpear.rotation.set(0.18, 0.04, 0.12);
+  handL.add(idleSpear);
 
   const toolRoot = new THREE.Group();
   toolRoot.name = 'toolRoot';
   toolRoot.visible = false;
   const armR = torso.getObjectByName('armR') as THREE.Group;
-  const forearmR = armR.getObjectByName('forearmR') as THREE.Group;
-  toolRoot.position.set(0.02, -0.28, 0.07);
-  forearmR.add(toolRoot);
+  const handR = armR.getObjectByName('handR') as THREE.Group;
+  handR.add(toolRoot);
+  poseToolRoot(toolRoot, null);
 
   const hatchet = createHatchetTool();
   hatchet.name = 'tool_hatchet';
@@ -801,28 +801,63 @@ function createPickaxeTool(): THREE.Group {
 
 function createSwordTool(): THREE.Group {
   const g = new THREE.Group();
+  const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.024, 0.16, 10), mat(0x5a3214, { roughness: 0.75 }));
+  g.add(hilt);
+  const wrap = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.05, 10), mat(0x3a2414, { roughness: 0.85 }));
+  wrap.position.y = 0.02;
+  g.add(wrap);
+  const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.032, 10, 8), mat(0xd4b050, { metalness: 0.68, roughness: 0.3 }));
+  pommel.position.y = -0.1;
+  g.add(pommel);
+  const guard = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.032, 0.04), mat(0xd4b050, { metalness: 0.7, roughness: 0.28 }));
+  guard.position.y = 0.09;
+  g.add(guard);
   const blade = new THREE.Mesh(
-    new THREE.BoxGeometry(0.045, 0.64, 0.016),
+    new THREE.BoxGeometry(0.038, 0.58, 0.012),
     mat(0xd0dce8, { metalness: 0.88, roughness: 0.16, clearcoat: 0.55, emissive: 0x223344, emissiveIntensity: 0.08 }),
   );
-  blade.position.y = 0.18;
+  blade.position.y = 0.4;
   g.add(blade);
+  const fuller = new THREE.Mesh(
+    new THREE.BoxGeometry(0.01, 0.46, 0.014),
+    mat(0xe8eef4, { metalness: 0.9, roughness: 0.12, clearcoat: 0.5 }),
+  );
+  fuller.position.y = 0.38;
+  g.add(fuller);
   const tip = new THREE.Mesh(
-    new THREE.ConeGeometry(0.032, 0.11, 8),
+    new THREE.ConeGeometry(0.028, 0.1, 8),
     mat(0xe4eef6, { metalness: 0.92, roughness: 0.12, clearcoat: 0.6 }),
   );
-  tip.position.y = 0.54;
+  tip.position.y = 0.73;
   g.add(tip);
-  const guard = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.038, 0.042), mat(0xd4b050, { metalness: 0.7, roughness: 0.28 }));
-  guard.position.y = -0.12;
-  g.add(guard);
-  const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.028, 0.18, 10), mat(0x5a3214, { roughness: 0.75 }));
-  hilt.position.y = -0.24;
-  g.add(hilt);
-  const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.032, 10, 8), mat(0xd4b050, { metalness: 0.68, roughness: 0.3 }));
-  pommel.position.y = -0.35;
-  g.add(pommel);
   return g;
+}
+
+function poseToolRoot(root: THREE.Object3D, tool: 'hatchet' | 'pickaxe' | 'sword' | null): void {
+  if (tool === 'sword') {
+    // Hammer grip: blade leaves the fist forward, then reads upright once the elbow bends.
+    root.position.set(0.012, -0.018, 0.038);
+    root.rotation.set(Math.PI / 2, 0.16, 0.22);
+  } else if (tool === 'hatchet') {
+    root.position.set(0.02, -0.02, 0.03);
+    root.rotation.set(1.25, 0.2, 0.45);
+  } else if (tool === 'pickaxe') {
+    root.position.set(0.02, -0.02, 0.03);
+    root.rotation.set(1.2, -0.15, 0.2);
+  } else {
+    root.position.set(0.012, -0.018, 0.038);
+    root.rotation.set(Math.PI / 2, 0.16, 0.22);
+  }
+}
+
+export function poseEquippedTool(player: THREE.Group): void {
+  const root = player.getObjectByName('toolRoot');
+  if (!root || !root.visible) return;
+  const sword = root.getObjectByName('tool_sword');
+  const hatchet = root.getObjectByName('tool_hatchet');
+  const pickaxe = root.getObjectByName('tool_pickaxe');
+  const kind = sword?.visible ? 'sword' : hatchet?.visible ? 'hatchet' : pickaxe?.visible ? 'pickaxe' : null;
+  poseToolRoot(root, kind);
 }
 
 export function setPlayerTool(player: THREE.Group, tool: 'hatchet' | 'pickaxe' | 'sword' | null): void {
@@ -835,4 +870,5 @@ export function setPlayerTool(player: THREE.Group, tool: 'hatchet' | 'pickaxe' |
   }
   const spear = player.getObjectByName('idleSpear');
   if (spear) spear.visible = tool === null;
+  poseToolRoot(root, tool);
 }
