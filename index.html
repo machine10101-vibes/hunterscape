@@ -9,8 +9,8 @@
     <title>Hunterscape — Thornrest Camp</title>
     <link rel="icon" type="image/svg+xml" href="/hunterscape/favicon.svg" />
     <link rel="apple-touch-icon" href="/hunterscape/favicon.svg" />
-    <script type="module" crossorigin src="/hunterscape/assets/index-BiC0vXDm.js"></script>
-    <link rel="stylesheet" crossorigin href="/hunterscape/assets/index-BR-Z8kdV.css">
+    <script type="module" crossorigin src="/hunterscape/assets/index-CWZ_ENB5.js"></script>
+    <link rel="stylesheet" crossorigin href="/hunterscape/assets/index-BYQTflnz.css">
   </head>
   <body>
     <div id="app">
@@ -54,6 +54,7 @@
 
         <!-- Skills toggle button -->
         <button type="button" id="btn-skills" title="Skills (K)">⚔ Skills</button>
+        <button type="button" id="btn-studio" title="Model Studio (V)">◈ Studio</button>
 
         <!-- Skills panel -->
         <div id="skills-panel" class="panel" hidden>
@@ -111,6 +112,28 @@
         </div>
 
         <div id="touch-hint">Tap ground to move · Tap trees, rocks &amp; dummy to interact</div>
+      </div>
+
+      <div id="studio" hidden>
+        <div id="studio-top">
+          <div class="studio-brand">
+            <span class="studio-kicker">Inspect</span>
+            <span id="studio-model-name">Male Hunter</span>
+          </div>
+          <span id="studio-hint">Drag to orbit · Scroll to zoom · Shift-drag to pan · Esc to close</span>
+          <button type="button" id="studio-close" aria-label="Close studio">✕</button>
+        </div>
+        <div id="studio-side">
+          <div class="panel-head">Models</div>
+          <div id="studio-list"></div>
+        </div>
+        <div id="studio-bottom">
+          <div id="studio-poses"></div>
+          <div id="studio-tools">
+            <button type="button" id="studio-spin" title="Auto-rotate">Spin</button>
+            <button type="button" id="studio-reset" title="Reset camera">Reset</button>
+          </div>
+        </div>
       </div>
     </div>
   </body>
