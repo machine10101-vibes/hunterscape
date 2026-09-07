@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 
+export { createGround } from './terrain';
+
 const matCache = new Map<string, THREE.MeshStandardMaterial>();
 
 function mat(
@@ -999,9 +1001,9 @@ export function createSkyDome(radius = 60): THREE.Mesh {
   // Vertex colors: zenith blue → horizon warm
   const colors = new Float32Array(geo.attributes.position.count * 3);
   const pos = geo.attributes.position;
-  const zenith = new THREE.Color(0x3a6aaa);
-  const mid = new THREE.Color(0x7aa0c8);
-  const horizon = new THREE.Color(0xd0b898);
+  const zenith = new THREE.Color(0x4a96e0);
+  const mid = new THREE.Color(0x8ebce8);
+  const horizon = new THREE.Color(0xf2d6a4);
   const tmp = new THREE.Color();
   for (let i = 0; i < pos.count; i++) {
     const y = pos.getY(i) / radius; // -1..1
@@ -1026,79 +1028,6 @@ export function createSkyDome(radius = 60): THREE.Mesh {
     }),
   );
   mesh.name = 'sky';
-  return mesh;
-}
-
-export function createGround(size = 48): THREE.Mesh {
-  const segments = 96;
-  const geo = new THREE.PlaneGeometry(size, size, segments, segments);
-  const pos = geo.attributes.position;
-  const colors = new Float32Array(pos.count * 3);
-
-  const grassA = new THREE.Color(0x3d6b35);
-  const grassB = new THREE.Color(0x4f8240);
-  const grassC = new THREE.Color(0x2a5628);
-  const dirt = new THREE.Color(0x6b5a3a);
-  const dirtDark = new THREE.Color(0x524028);
-  const moss = new THREE.Color(0x355a30);
-  const snow = new THREE.Color(0xd8e8f0);
-  const snowBlue = new THREE.Color(0xb8d0e0);
-  const tmp = new THREE.Color();
-
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i);
-    const y = pos.getY(i); // plane local Y; world Z = -y after rotation.x = -PI/2
-    const n =
-      Math.sin(x * 0.35) * Math.cos(y * 0.3) * 0.12 +
-      Math.sin(x * 0.9 + y * 0.4) * 0.05 +
-      Math.sin(x * 2.4 + y * 1.8) * 0.02;
-    pos.setZ(i, n);
-
-    // Dirt paths: camp spokes + west trail toward orc clearing
-    const pathT = Math.exp(-Math.pow(x * 0.15 + 0.05, 2) * 8 - Math.pow(y * 0.12 - 0.15, 2) * 3);
-    const path2 = Math.exp(-Math.pow(x + 0.5 - y * 0.35, 2) * 2.2 - Math.pow(y - 1.2, 2) * 0.08);
-    const pathWest = Math.exp(-Math.pow(x + 3.2 - y * 0.15, 2) * 1.4 - Math.pow(y + 2.5, 2) * 0.06);
-    const pathAmt = Math.max(pathT, path2 * 0.85, pathWest * 0.75);
-
-    // Snowy NE yeti clearing — after rotation.x=-PI/2, worldZ = -localY
-    const wz = -y;
-    const snowAmt = Math.exp(-Math.pow(x - 4.2, 2) * 0.09 - Math.pow(wz - 7.2, 2) * 0.08);
-    const snowAmt2 = Math.exp(-Math.pow(x - 5.5, 2) * 0.15 - Math.pow(wz - 6.0, 2) * 0.12);
-
-    const noise = (Math.sin(x * 1.7) * Math.cos(y * 1.3) + 1) * 0.5;
-    const noise2 = (Math.sin(x * 3.1 + 1.7) * Math.cos(y * 2.6) + 1) * 0.5;
-    const snowTotal = Math.max(snowAmt, snowAmt2 * 0.85);
-    if (snowTotal > 0.24) {
-      tmp.copy(snow).lerp(snowBlue, noise);
-      tmp.lerp(grassA, 1 - Math.min(1, snowTotal * 1.7));
-    } else if (pathAmt > 0.28) {
-      tmp.copy(dirt).lerp(dirtDark, noise);
-      tmp.lerp(grassA, 1 - Math.min(1, pathAmt * 1.4));
-    } else if (noise > 0.74) {
-      tmp.copy(moss).lerp(grassC, noise2 * 0.4);
-    } else {
-      tmp.copy(grassA).lerp(noise > 0.5 ? grassB : grassC, noise * 0.85 + noise2 * 0.15);
-    }
-
-    colors[i * 3] = tmp.r;
-    colors[i * 3 + 1] = tmp.g;
-    colors[i * 3 + 2] = tmp.b;
-  }
-  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  geo.computeVertexNormals();
-
-  const mesh = new THREE.Mesh(
-    geo,
-    new THREE.MeshStandardMaterial({
-      vertexColors: true,
-      roughness: 0.92,
-      metalness: 0.02,
-      flatShading: false,
-    }),
-  );
-  mesh.rotation.x = -Math.PI / 2;
-  mesh.receiveShadow = true;
-  mesh.name = 'ground';
   return mesh;
 }
 
@@ -1580,9 +1509,9 @@ export function createGodRays(): THREE.Group {
   const g = new THREE.Group();
   g.name = 'godRays';
   const matRay = new THREE.MeshBasicMaterial({
-    color: 0xffe8c0,
+    color: 0xfff0c8,
     transparent: true,
-    opacity: 0.06,
+    opacity: 0.09,
     depthWrite: false,
     side: THREE.DoubleSide,
   });

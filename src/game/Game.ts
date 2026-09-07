@@ -21,6 +21,7 @@ import {
   flashDummy,
   setPlayerTool,
 } from '../rendering/meshes';
+import { createTerrainFoliage, groundHeight, tickTerrainFoliage } from '../rendering/terrain';
 import {
   animateDeath,
   animateHitFlinch,
@@ -193,11 +194,11 @@ export class Game {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.22;
-    this.renderer.setClearColor(0x7aa0c0);
+    this.renderer.toneMappingExposure = 1.42;
+    this.renderer.setClearColor(0x9ec6e4);
 
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2(0x8aa0b4, 0.022);
+    this.scene.fog = new THREE.FogExp2(0xc2d6e8, 0.012);
 
     this.camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 140);
 
@@ -205,10 +206,11 @@ export class Game {
     this.scene.add(createSkyDome(70));
     this.ground = createGround(48);
     this.scene.add(this.ground);
+    this.scene.add(createTerrainFoliage());
     this.buildWorld();
 
     this.player = createPlayerMesh();
-    this.player.position.set(this.save.x, 0, this.save.z);
+    this.player.position.set(this.save.x, groundHeight(this.save.x, this.save.z), this.save.z);
     this.scene.add(this.player);
 
     const app = document.getElementById('app') ?? document.body;
@@ -224,7 +226,7 @@ export class Game {
       }),
     );
     this.moveMarker.rotation.x = -Math.PI / 2;
-    this.moveMarker.position.y = 0.05;
+    this.moveMarker.position.y = 0.06;
     this.moveMarker.visible = false;
     this.scene.add(this.moveMarker);
 
@@ -244,11 +246,11 @@ export class Game {
   }
 
   private setupLights(): void {
-    const hemi = new THREE.HemisphereLight(0xdceeff, 0x3a4a22, 0.7);
+    const hemi = new THREE.HemisphereLight(0xf2f7ff, 0x5a7a32, 1.08);
     this.scene.add(hemi);
 
-    this.sun = new THREE.DirectionalLight(0xfff2d4, 1.62);
-    this.sun.position.set(16, 26, 12);
+    this.sun = new THREE.DirectionalLight(0xfff6e0, 2.08);
+    this.sun.position.set(18, 28, 10);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(2048, 2048);
     this.sun.shadow.bias = -0.0003;
@@ -264,43 +266,47 @@ export class Game {
     this.scene.add(this.sun.target);
 
     // Cool rim / fill opposite the sun for silhouette pop
-    this.rim = new THREE.DirectionalLight(0xb0d0f4, 0.82);
+    this.rim = new THREE.DirectionalLight(0xd0e6ff, 0.48);
     this.rim.position.set(-14, 10, -16);
     this.scene.add(this.rim);
 
     // Warm fill from camp side
-    const fill = new THREE.DirectionalLight(0xffd8a8, 0.28);
+    const fill = new THREE.DirectionalLight(0xffe2b0, 0.46);
     fill.position.set(-6, 6, 4);
     this.scene.add(fill);
 
-    this.scene.add(new THREE.AmbientLight(0x384858, 0.32));
+    this.scene.add(new THREE.AmbientLight(0x6a7c88, 0.44));
   }
 
   private buildWorld(): void {
+    const plant = (obj: THREE.Object3D, x: number, z: number, extraY = 0): void => {
+      obj.position.set(x, groundHeight(x, z) + extraY, z);
+    };
+
     const tent = createTent();
-    tent.position.set(-3.5, 0, -1.5);
+    plant(tent, -3.5, -1.5);
     this.scene.add(tent);
 
     const fire = createCampfire();
-    fire.position.set(-1.2, 0, -0.5);
+    plant(fire, -1.2, -0.5);
     this.scene.add(fire);
 
     const crate = createCrate();
-    crate.position.set(-2.4, 0, -2.2);
+    plant(crate, -2.4, -2.2);
     crate.rotation.y = 0.3;
     this.scene.add(crate);
 
     const barrel = createBarrel();
-    barrel.position.set(-4.2, 0, -0.4);
+    plant(barrel, -4.2, -0.4);
     this.scene.add(barrel);
 
     const barrel2 = createBarrel();
-    barrel2.position.set(-4.55, 0, 0.15);
+    plant(barrel2, -4.55, 0.15);
     barrel2.rotation.y = 0.6;
     this.scene.add(barrel2);
 
     const bed = createBedroll();
-    bed.position.set(-2.8, 0, 0.4);
+    plant(bed, -2.8, 0.4);
     bed.rotation.y = -0.4;
     this.scene.add(bed);
 
@@ -332,7 +338,7 @@ export class Game {
       b.position.set(0.25, 0.3, 0.1);
       b.castShadow = true;
       bush.add(b);
-      bush.position.set(x, 0, z);
+      bush.position.set(x, groundHeight(x, z), z);
       this.scene.add(bush);
     }
 
@@ -353,7 +359,7 @@ export class Game {
     ];
     treeSpots.forEach(([x, z], i) => {
       const mesh = createTree(i);
-      mesh.position.set(x, 0, z);
+      mesh.position.set(x, groundHeight(x, z), z);
       this.scene.add(mesh);
       this.objects.push({
         kind: 'tree',
@@ -378,7 +384,7 @@ export class Game {
     ];
     rockSpots.forEach((r, i) => {
       const mesh = createRock(r.ore, i);
-      mesh.position.set(r.x, 0, r.z);
+      mesh.position.set(r.x, groundHeight(r.x, r.z), r.z);
       this.scene.add(mesh);
       this.objects.push({
         kind: 'rock',
@@ -393,7 +399,7 @@ export class Game {
     });
 
     const dummyMesh = createDummy();
-    dummyMesh.position.set(2.5, 0, -2.5);
+    dummyMesh.position.set(2.5, groundHeight(2.5, -2.5), -2.5);
     this.scene.add(dummyMesh);
     const dummy: WorldObject = {
       kind: 'dummy',
@@ -409,7 +415,7 @@ export class Game {
 
     // Frost Yeti — north-east snow clearing (must match ground snow at world ~4.2,7.2)
     const yetiMesh = createFrostYeti();
-    yetiMesh.position.set(YETI_HOME.x, 0, YETI_HOME.z);
+    yetiMesh.position.set(YETI_HOME.x, groundHeight(YETI_HOME.x, YETI_HOME.z), YETI_HOME.z);
     yetiMesh.rotation.y = Math.PI * 0.85; // face roughly toward camp
     yetiMesh.visible = true;
     yetiMesh.scale.setScalar(1.15);
@@ -427,7 +433,12 @@ export class Game {
     this.yetiTarget = yeti;
 
     // Snowy ground props around yeti clearing
-    this.scene.add(createSnowProps());
+    const snowProps = createSnowProps();
+    snowProps.traverse((c) => {
+      if (c === snowProps || !(c as THREE.Mesh).isMesh) return;
+      c.position.y += groundHeight(c.position.x, c.position.z);
+    });
+    this.scene.add(snowProps);
 
     // Light falling snow in NE (readability / atmosphere)
     const snowGroup = new THREE.Group();
@@ -456,7 +467,7 @@ export class Game {
 
     // Orc Scout — south-west clearing (different area than Yeti)
     const orcMesh = createOrcScout();
-    orcMesh.position.set(ORC_HOME.x, 0, ORC_HOME.z);
+    orcMesh.position.set(ORC_HOME.x, groundHeight(ORC_HOME.x, ORC_HOME.z), ORC_HOME.z);
     orcMesh.rotation.y = Math.PI * 0.25;
     this.scene.add(orcMesh);
     const orc: WorldObject = {
@@ -476,14 +487,14 @@ export class Game {
 
     // Denser camp props
     const crate2 = createCrate();
-    crate2.position.set(-3.6, 0, -2.6);
+    plant(crate2, -3.6, -2.6);
     crate2.rotation.y = -0.5;
     this.scene.add(crate2);
     const barrel3 = createBarrel();
-    barrel3.position.set(-1.8, 0, -2.4);
+    plant(barrel3, -1.8, -2.4);
     this.scene.add(barrel3);
     const bed2 = createBedroll();
-    bed2.position.set(-3.9, 0, 0.9);
+    plant(bed2, -3.9, 0.9);
     bed2.rotation.y = 0.8;
     this.scene.add(bed2);
     // Decorative stump + lantern-like emissive orb near fire
@@ -491,7 +502,7 @@ export class Game {
       new THREE.CylinderGeometry(0.22, 0.28, 0.35, 7),
       new THREE.MeshStandardMaterial({ color: 0x4a3014, flatShading: true, roughness: 0.9 }),
     );
-    stump.position.set(0.4, 0.18, -1.6);
+    stump.position.set(0.4, groundHeight(0.4, -1.6) + 0.18, -1.6);
     stump.castShadow = true;
     this.scene.add(stump);
     const lantern = new THREE.Mesh(
@@ -503,7 +514,7 @@ export class Game {
         flatShading: true,
       }),
     );
-    lantern.position.set(-0.2, 0.85, -1.8);
+    lantern.position.set(-0.2, groundHeight(-0.2, -1.8) + 0.85, -1.8);
     this.scene.add(lantern);
     const lanternLight = new THREE.PointLight(0xffaa55, 0.55, 6);
     lanternLight.position.copy(lantern.position);
@@ -710,7 +721,7 @@ export class Game {
     z = Math.max(-lim, Math.min(lim, z));
     this.activity = { type: 'move', tx: x, tz: z };
     setPlayerTool(this.player, null);
-    this.moveMarker.position.set(x, 0.05, z);
+    this.moveMarker.position.set(x, groundHeight(x, z) + 0.06, z);
     this.moveMarker.visible = true;
     this.hud.hideProgress();
     this.hud.hideTarget();
@@ -916,7 +927,7 @@ export class Game {
         o.depleted = false;
         o.mesh.visible = true;
         o.mesh.rotation.set(0, 0, 0);
-        o.mesh.position.y = 0;
+        o.mesh.position.y = groundHeight(o.mesh.position.x, o.mesh.position.z);
         o.mesh.scale.setScalar(1);
         this.hud.chat('The training dummy is patched up and ready again.', 'system');
       }
@@ -926,7 +937,7 @@ export class Game {
         o.mesh.visible = true;
         o.mesh.rotation.set(0, Math.PI * 0.85, 0);
         o.mesh.scale.setScalar(1.15);
-        o.mesh.position.set(YETI_HOME.x, 0, YETI_HOME.z);
+        o.mesh.position.set(YETI_HOME.x, groundHeight(YETI_HOME.x, YETI_HOME.z), YETI_HOME.z);
         // Drop any in-flight death anim so it cannot re-hide the mesh
         this.deathAnims = this.deathAnims.filter((d) => d.mesh !== o.mesh);
         this.yetiAggroed = false;
@@ -945,7 +956,7 @@ export class Game {
         o.mesh.visible = true;
         o.mesh.rotation.set(0, Math.PI * 0.25, 0);
         o.mesh.scale.setScalar(1);
-        o.mesh.position.set(ORC_HOME.x, 0, ORC_HOME.z);
+        o.mesh.position.set(ORC_HOME.x, groundHeight(ORC_HOME.x, ORC_HOME.z), ORC_HOME.z);
         this.orcAggroed = false;
         this.orcAttackCd = 0;
         this.orcSwipeT = 0;
@@ -1020,7 +1031,7 @@ export class Game {
     });
 
     // Follow sun target to player for stable shadows
-    this.sun.target.position.set(this.player.position.x, 0, this.player.position.z);
+    this.sun.target.position.set(this.player.position.x, this.player.position.y, this.player.position.z);
     this.sun.target.updateMatrixWorld();
 
     this.animTime += dt;
@@ -1065,6 +1076,7 @@ export class Game {
       d.t += dt;
       const p = Math.min(1, d.t / d.dur);
       animateDeath(d.mesh, d.kind, p);
+      d.mesh.position.y += groundHeight(d.mesh.position.x, d.mesh.position.z);
       if (p >= 1) {
         d.mesh.visible = false;
         d.mesh.rotation.set(0, d.mesh.rotation.y, 0);
@@ -1304,6 +1316,8 @@ export class Game {
         resetPlayerPose(this.player);
       }
     }
+    this.snapMoversToGround();
+    tickTerrainFoliage(this.animTime);
     this.updateCamera(dt);
 
     this.save.x = this.player.position.x;
@@ -1798,6 +1812,19 @@ export class Game {
     setPlayerTool(this.player, 'sword');
   }
 
+  private sitOnGround(obj: THREE.Object3D, extraY = 0): void {
+    obj.position.y = groundHeight(obj.position.x, obj.position.z) + extraY;
+  }
+
+  private snapMoversToGround(): void {
+    const dying = new Set(this.deathAnims.map((d) => d.mesh));
+    this.sitOnGround(this.player);
+    if (this.yetiTarget && !dying.has(this.yetiTarget.mesh)) this.sitOnGround(this.yetiTarget.mesh);
+    if (this.orcTarget && !dying.has(this.orcTarget.mesh)) this.sitOnGround(this.orcTarget.mesh);
+    if (this.dummyTarget && !dying.has(this.dummyTarget.mesh)) this.sitOnGround(this.dummyTarget.mesh);
+    if (this.moveMarker.visible) this.sitOnGround(this.moveMarker, 0.06);
+  }
+
   private updateCamera(dt: number): void {
     // Combat framing: lift + slight pull-back so pine canopy doesn't bury telegraphs
     const pull = Math.min(1, this.combatCamPull);
@@ -1820,7 +1847,7 @@ export class Game {
       lookX = this.player.position.x * 0.55 + t.x * 0.45;
       lookZ = this.player.position.z * 0.55 + t.z * 0.45;
     }
-    this.lookSmooth.set(lookX, 1.05 + pull * 0.55, lookZ);
+    this.lookSmooth.set(lookX, this.player.position.y + 1.05 + pull * 0.55, lookZ);
     this.camLook.lerp(this.lookSmooth, follow);
     this.camera.lookAt(this.camLook);
   }
