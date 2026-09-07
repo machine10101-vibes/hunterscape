@@ -193,7 +193,7 @@ export class Game {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.18;
+    this.renderer.toneMappingExposure = 1.22;
     this.renderer.setClearColor(0x7aa0c0);
 
     this.scene = new THREE.Scene();
@@ -247,7 +247,7 @@ export class Game {
     const hemi = new THREE.HemisphereLight(0xdceeff, 0x3a4a22, 0.7);
     this.scene.add(hemi);
 
-    this.sun = new THREE.DirectionalLight(0xfff0d0, 1.55);
+    this.sun = new THREE.DirectionalLight(0xfff2d4, 1.62);
     this.sun.position.set(16, 26, 12);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(2048, 2048);
@@ -264,7 +264,7 @@ export class Game {
     this.scene.add(this.sun.target);
 
     // Cool rim / fill opposite the sun for silhouette pop
-    this.rim = new THREE.DirectionalLight(0xa8c8f0, 0.72);
+    this.rim = new THREE.DirectionalLight(0xb0d0f4, 0.82);
     this.rim.position.set(-14, 10, -16);
     this.scene.add(this.rim);
 

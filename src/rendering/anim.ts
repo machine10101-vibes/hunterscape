@@ -21,8 +21,8 @@ function strideWave(phase: number): number {
   // phase radians; produce ≈sin but with longer ground contact
   const s = Math.sin(phase);
   const c = Math.cos(phase);
-  // squash positive peak (swing) and hold near zero longer on plant side
-  return s * (0.72 + 0.28 * Math.abs(c));
+  // stronger squash on swing + longer plant hold (fidelity-pass1 weight)
+  return s * (0.62 + 0.38 * Math.abs(c));
 }
 
 /** Reset player limb poses to rest (keep world rotation.y). */
@@ -131,8 +131,8 @@ export function animatePlayerWalk(
   const amp = (0.42 + sn * 0.22) * blend;
   const swingL = strideWave(phase) * amp;
   const swingR = strideWave(phase + Math.PI) * amp;
-  // Foot plant pulse — vertical dip on contact
-  const plant = Math.max(0, -Math.cos(phase * 2)) * 0.028 * blend * sn;
+  // Foot plant pulse — deeper vertical dip + heel settle
+  const plant = Math.max(0, -Math.cos(phase * 2)) * 0.04 * blend * sn;
   const bob = plant; // grounded, not |sin| float
 
   const legL = get(player, 'legL');
@@ -145,34 +145,34 @@ export function animatePlayerWalk(
 
   if (legL) {
     legL.rotation.x = swingL;
-    legL.rotation.z = Math.sin(phase) * 0.04 * blend;
+    legL.rotation.z = Math.sin(phase) * 0.055 * blend;
   }
   if (legR) {
     legR.rotation.x = swingR;
-    legR.rotation.z = -Math.sin(phase) * 0.04 * blend;
+    legR.rotation.z = -Math.sin(phase) * 0.055 * blend;
   }
   // Opposite arm swing + slight elbow carry
   if (armL) {
-    armL.rotation.x = -swingL * 0.9;
-    armL.rotation.z = 0.1 + Math.abs(swingL) * 0.08;
+    armL.rotation.x = -swingL * 0.95;
+    armL.rotation.z = 0.1 + Math.abs(swingL) * 0.1;
   }
   if (armR) {
-    armR.rotation.x = -swingR * 0.75;
-    armR.rotation.z = -0.1 - Math.abs(swingR) * 0.06;
+    armR.rotation.x = -swingR * 0.8;
+    armR.rotation.z = -0.1 - Math.abs(swingR) * 0.08;
   }
   if (torso) {
     // Hip yaw opposite to lead leg; shoulders counter via arms
-    torso.rotation.y = Math.sin(phase) * 0.1 * blend;
-    torso.rotation.x = -0.06 * blend - plant * 0.8;
-    torso.rotation.z = Math.sin(phase) * 0.05 * blend;
+    torso.rotation.y = Math.sin(phase) * 0.13 * blend;
+    torso.rotation.x = -0.08 * blend - plant * 1.1;
+    torso.rotation.z = Math.sin(phase) * 0.065 * blend;
   }
   if (head) {
-    head.rotation.x = -bob * 1.2;
-    head.rotation.y = -Math.sin(phase) * 0.04 * blend;
+    head.rotation.x = -bob * 1.4;
+    head.rotation.y = -Math.sin(phase) * 0.05 * blend;
   }
   if (spear && spear.visible) {
-    spear.rotation.x = -swingL * 0.12;
-    spear.rotation.z = 0.06 + Math.sin(phase) * 0.03;
+    spear.rotation.x = -swingL * 0.15;
+    spear.rotation.z = 0.06 + Math.sin(phase) * 0.04;
   }
   player.position.y = bob;
 }
@@ -205,61 +205,67 @@ export function animatePlayerAttack(player: THREE.Group, progress: number): void
     const w = easeInOut(Math.min(1, p / 0.28));
     // Hold pose after reaching windup
     const hold = p > 0.28 ? 1 : w;
-    raise = -1.15 * hold;
-    slash = 0.55 * hold;
-    lean = -0.18 * hold;
-    twist = -0.28 * hold;
-    plant = 0.2 * hold;
+    raise = -1.25 * hold;
+    slash = 0.62 * hold;
+    lean = -0.24 * hold;
+    twist = -0.36 * hold;
+    plant = 0.28 * hold;
   } else if (p < 0.58) {
-    // Strike — committed arc
+    // Strike — heavier body commit through the arc
     const w = easeInOut((p - 0.4) / 0.18);
-    raise = -1.15 + 2.45 * w;
-    slash = 0.55 - 1.55 * w;
-    lean = -0.18 + 0.48 * w;
-    twist = -0.28 + 0.85 * w;
-    plant = 0.2 + 0.15 * w;
+    raise = -1.25 + 2.65 * w;
+    slash = 0.62 - 1.7 * w;
+    lean = -0.24 + 0.62 * w;
+    twist = -0.36 + 1.05 * w;
+    plant = 0.28 + 0.22 * w;
   } else {
     // Recovery — settle residual motion
     const w = smooth((p - 0.58) / 0.42);
-    raise = 1.3 * (1 - w);
-    slash = -1.0 * (1 - w);
-    lean = 0.3 * (1 - w);
-    twist = 0.57 * (1 - w);
-    plant = 0.35 * (1 - w);
+    raise = 1.4 * (1 - w);
+    slash = -1.08 * (1 - w);
+    lean = 0.38 * (1 - w);
+    twist = 0.69 * (1 - w);
+    plant = 0.5 * (1 - w);
   }
 
   if (armR) {
     armR.rotation.x = raise;
-    armR.rotation.z = slash * 0.55;
-    armR.rotation.y = twist * 0.35;
+    armR.rotation.z = slash * 0.6;
+    armR.rotation.y = twist * 0.4;
   }
   if (armL) {
-    armL.rotation.x = -raise * 0.3 + lean * 0.4;
-    armL.rotation.z = 0.2 + plant * 0.15;
+    armL.rotation.x = -raise * 0.35 + lean * 0.5;
+    armL.rotation.z = 0.22 + plant * 0.2;
   }
   if (tool) {
-    tool.rotation.x = raise * 0.95;
-    tool.rotation.z = slash * 0.65;
-    tool.rotation.y = twist * 0.25;
+    tool.rotation.x = raise * 0.98;
+    tool.rotation.z = slash * 0.7;
+    tool.rotation.y = twist * 0.3;
     tool.position.set(
-      0.42 + slash * 0.1,
-      0.95 + raise * 0.06,
-      0.15 + Math.max(0, raise) * 0.28,
+      0.42 + slash * 0.12,
+      0.95 + raise * 0.07,
+      0.15 + Math.max(0, raise) * 0.32,
     );
   }
   if (torso) {
     torso.rotation.y = twist;
     torso.rotation.x = lean;
-    torso.rotation.z = slash * 0.12;
+    torso.rotation.z = slash * 0.16;
   }
   if (head) {
-    head.rotation.y = twist * 0.35;
-    head.rotation.x = lean * 0.4;
+    head.rotation.y = twist * 0.4;
+    head.rotation.x = lean * 0.45;
   }
-  // Leading / trailing foot plant
-  if (legL) legL.rotation.x = lean * 0.55 + plant * 0.15;
-  if (legR) legR.rotation.x = -lean * 0.7 - plant * 0.25;
-  player.position.y = Math.abs(lean) * 0.08;
+  // Leading / trailing foot plant — clearer weight transfer
+  if (legL) {
+    legL.rotation.x = lean * 0.7 + plant * 0.22;
+    legL.rotation.z = -plant * 0.08;
+  }
+  if (legR) {
+    legR.rotation.x = -lean * 0.85 - plant * 0.35;
+    legR.rotation.z = plant * 0.06;
+  }
+  player.position.y = Math.abs(lean) * 0.1 + plant * 0.02;
 }
 
 /** Gather chop/mine swing with body lean (progress loops 0→1) */
@@ -303,15 +309,19 @@ export function animateHitFlinch(root: THREE.Object3D, amount: number, intensity
   const inten = Math.max(0.2, Math.min(1.4, intensity));
   const wave = Math.sin(a * Math.PI);
   // Only tip root X/Z — never touch yaw (facing must stay intact across frames)
-  root.rotation.z = wave * 0.22 * inten;
-  root.rotation.x = -wave * (inten > 0.7 ? 0.18 : 0.09) * inten;
+  // Stronger tip/recoil than pass3 without touching position.y (walk/attack own that)
+  root.rotation.z = wave * 0.3 * inten;
+  root.rotation.x = -wave * (inten > 0.7 ? 0.24 : 0.13) * inten;
   // Big stagger: twist a torso child if present (absolute set, never root yaw)
-  const twist = inten > 0.7 ? wave * 0.22 * (inten - 0.7) : 0;
+  const twist = inten > 0.7 ? wave * 0.3 * (inten - 0.7) : wave * 0.08 * inten;
   const torso =
     root.getObjectByName('playerTorso') ||
     root.getObjectByName('yetiBody') ||
     root.getObjectByName('orcBody');
-  if (torso) torso.rotation.y = twist;
+  if (torso) {
+    torso.rotation.y = twist;
+    torso.rotation.x = -wave * 0.1 * inten;
+  }
 }
 
 /** Soft look-at turn for yaw (shortest path lerp) */
@@ -344,45 +354,45 @@ export function animateYetiAttack(yeti: THREE.Group, progress: number): void {
   if (p < 0.42) {
     const w = easeInOut(Math.min(1, p / 0.3));
     const hold = p > 0.3 ? 1 : w;
-    raise = -1.55 * hold;
-    swipe = -0.55 * hold;
-    lean = -0.22 * hold;
-    roar = 0.35 * hold;
+    raise = -1.65 * hold;
+    swipe = -0.62 * hold;
+    lean = -0.28 * hold;
+    roar = 0.4 * hold;
   } else if (p < 0.62) {
     const w = easeInOut((p - 0.42) / 0.2);
-    raise = -1.55 + 2.85 * w;
-    swipe = -0.55 + 2.05 * w;
-    lean = -0.22 + 0.55 * w;
-    roar = 0.35 + 0.25 * w;
+    raise = -1.65 + 3.05 * w;
+    swipe = -0.62 + 2.2 * w;
+    lean = -0.28 + 0.7 * w;
+    roar = 0.4 + 0.3 * w;
   } else {
     const w = smooth((p - 0.62) / 0.38);
-    raise = 1.3 * (1 - w);
-    swipe = 1.5 * (1 - w);
-    lean = 0.33 * (1 - w);
-    roar = 0.6 * (1 - w);
+    raise = 1.4 * (1 - w);
+    swipe = 1.58 * (1 - w);
+    lean = 0.42 * (1 - w);
+    roar = 0.7 * (1 - w);
   }
 
   if (armR) {
     armR.rotation.x = raise;
-    armR.rotation.y = swipe * 0.65;
-    armR.rotation.z = swipe * 0.35;
+    armR.rotation.y = swipe * 0.7;
+    armR.rotation.z = swipe * 0.4;
   }
   if (armL) {
-    armL.rotation.x = raise * 0.65;
-    armL.rotation.y = -swipe * 0.25;
-    armL.rotation.z = -swipe * 0.15;
+    armL.rotation.x = raise * 0.7;
+    armL.rotation.y = -swipe * 0.3;
+    armL.rotation.z = -swipe * 0.18;
   }
   if (head) {
-    head.rotation.x = -0.15 - roar * 0.45;
-    head.rotation.y = swipe * 0.12;
+    head.rotation.x = -0.15 - roar * 0.5;
+    head.rotation.y = swipe * 0.14;
   }
   if (body) {
     body.rotation.x = 0.2 + lean;
-    body.rotation.y = swipe * 0.18;
+    body.rotation.y = swipe * 0.22;
   }
-  if (legL) legL.rotation.x = lean * 0.35;
-  if (legR) legR.rotation.x = -lean * 0.45;
-  yeti.position.y = Math.max(0, lean) * 0.06;
+  if (legL) legL.rotation.x = lean * 0.45;
+  if (legR) legR.rotation.x = -lean * 0.55;
+  yeti.position.y = Math.max(0, lean) * 0.08;
 }
 
 /**
@@ -407,46 +417,52 @@ export function animateOrcAttack(orc: THREE.Group, progress: number): void {
     const w = easeInOut(Math.min(1, p / 0.28));
     const hold = p > 0.28 ? 1 : w;
     pull = hold;
-    thrust = -0.45 * hold;
-    lean = -0.14 * hold;
+    thrust = -0.52 * hold;
+    lean = -0.2 * hold;
   } else if (p < 0.58) {
     const w = easeInOut((p - 0.4) / 0.18);
     pull = 1 - w;
-    thrust = -0.45 + 1.75 * w;
-    lean = -0.14 + 0.42 * w;
+    thrust = -0.52 + 1.95 * w;
+    lean = -0.2 + 0.55 * w;
   } else {
     const w = smooth((p - 0.58) / 0.42);
     pull = 0;
-    thrust = 1.3 * (1 - w);
-    lean = 0.28 * (1 - w);
+    thrust = 1.43 * (1 - w);
+    lean = 0.35 * (1 - w);
   }
 
   if (spear) {
-    spear.rotation.x = -thrust * 1.05;
-    spear.position.z = 0.12 + thrust * 0.7 - pull * 0.32;
-    spear.position.y = 0.2 + pull * 0.1 - thrust * 0.04;
+    spear.rotation.x = -thrust * 1.12;
+    spear.position.z = 0.12 + thrust * 0.82 - pull * 0.38;
+    spear.position.y = 0.2 + pull * 0.12 - thrust * 0.05;
   }
   if (armR) {
-    armR.rotation.x = -thrust * 1.2 + pull * 0.5;
-    armR.rotation.z = pull * 0.2;
-    armR.rotation.y = thrust * 0.15;
+    armR.rotation.x = -thrust * 1.3 + pull * 0.55;
+    armR.rotation.z = pull * 0.25;
+    armR.rotation.y = thrust * 0.18;
   }
   if (armL) {
-    armL.rotation.x = pull * 0.35 + thrust * 0.25;
-    armL.rotation.z = 0.15;
+    armL.rotation.x = pull * 0.4 + thrust * 0.3;
+    armL.rotation.z = 0.18;
   }
   if (head) {
-    head.rotation.x = -thrust * 0.18 + lean * 0.3;
-    head.rotation.y = thrust * 0.06;
+    head.rotation.x = -thrust * 0.22 + lean * 0.35;
+    head.rotation.y = thrust * 0.08;
   }
   if (body) {
     body.rotation.x = lean;
-    body.rotation.y = thrust * 0.12;
+    body.rotation.y = thrust * 0.16;
   }
-  // Lunging step
-  if (legL) legL.rotation.x = lean * 0.5 + thrust * 0.25;
-  if (legR) legR.rotation.x = -lean * 0.7 - thrust * 0.15;
-  orc.position.y = Math.abs(lean) * 0.05;
+  // Lunging step — clearer front-foot plant
+  if (legL) {
+    legL.rotation.x = lean * 0.65 + thrust * 0.32;
+    legL.rotation.z = -lean * 0.05;
+  }
+  if (legR) {
+    legR.rotation.x = -lean * 0.85 - thrust * 0.2;
+    legR.rotation.z = lean * 0.04;
+  }
+  orc.position.y = Math.abs(lean) * 0.07;
 }
 
 /**
@@ -485,7 +501,7 @@ export function animateYetiWalk(yeti: THREE.Group, t: number, moving: boolean, m
   const phase = t * freq;
   const amp = 0.42 * blend;
   const swing = strideWave(phase) * amp;
-  const plant = Math.max(0, -Math.cos(phase * 2)) * 0.05 * blend;
+  const plant = Math.max(0, -Math.cos(phase * 2)) * 0.065 * blend;
 
   if (legL) {
     legL.rotation.x = swing + 0.1;
@@ -551,7 +567,7 @@ export function animateOrcWalk(orc: THREE.Group, t: number, moving: boolean, mov
   const phase = t * freq;
   const amp = 0.48 * blend;
   const swing = strideWave(phase) * amp;
-  const plant = Math.max(0, -Math.cos(phase * 2)) * 0.032 * blend;
+  const plant = Math.max(0, -Math.cos(phase * 2)) * 0.042 * blend;
 
   if (legL) {
     legL.rotation.x = swing;
