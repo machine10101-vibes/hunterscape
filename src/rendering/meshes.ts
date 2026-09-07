@@ -724,24 +724,23 @@ export function createFrostYeti(): THREE.Group {
     pupil.position.set(sx, 0.06, 0.5);
     head.add(pupil);
     const glow = new THREE.Mesh(
-      new THREE.SphereGeometry(0.2, 8, 6),
+      new THREE.SphereGeometry(0.16, 8, 6),
       new THREE.MeshBasicMaterial({
         color: 0xffaa22,
         transparent: true,
-        opacity: 0.55,
+        opacity: 0.4,
         depthWrite: false,
       }),
     );
     glow.position.set(sx, 0.06, 0.4);
     glow.name = 'yetiEyeGlow';
     head.add(glow);
-    // Outer halo for distance read (not neon — warm amber wash)
     const halo = new THREE.Mesh(
-      new THREE.SphereGeometry(0.28, 8, 6),
+      new THREE.SphereGeometry(0.2, 8, 6),
       new THREE.MeshBasicMaterial({
         color: 0xff8800,
         transparent: true,
-        opacity: 0.22,
+        opacity: 0.14,
         depthWrite: false,
       }),
     );
@@ -800,37 +799,37 @@ export function createFrostYeti(): THREE.Group {
 
   g.add(head);
 
-  // Frost breath cone + mist puffs (animated via name) — more visible mid-fight
+  // Frost breath sits on the muzzle, not as a trail of spheres in front of the body.
   const breath = new THREE.Mesh(
-    new THREE.ConeGeometry(0.32, 1.05, 8, 1, true),
+    new THREE.ConeGeometry(0.12, 0.38, 8, 1, true),
     new THREE.MeshStandardMaterial({
       color: 0xd0f6ff,
       emissive: 0x66eeff,
-      emissiveIntensity: 1.45,
+      emissiveIntensity: 0.9,
       transparent: true,
-      opacity: 0.55,
+      opacity: 0.32,
       flatShading: true,
       side: THREE.DoubleSide,
       depthWrite: false,
     }),
   );
   breath.rotation.x = Math.PI / 2;
-  breath.position.set(0, 2.0, 1.05);
+  breath.position.set(0, -0.12, 0.72);
   breath.name = 'yetiBreath';
-  g.add(breath);
-  for (let i = 0; i < 5; i++) {
+  head.add(breath);
+  for (let i = 0; i < 3; i++) {
     const mist = new THREE.Mesh(
-      new THREE.SphereGeometry(0.14 + i * 0.05, 6, 5),
+      new THREE.SphereGeometry(0.07 + i * 0.025, 6, 5),
       new THREE.MeshBasicMaterial({
         color: 0xb8e8ff,
         transparent: true,
-        opacity: 0.32 - i * 0.04,
+        opacity: 0.22 - i * 0.04,
         depthWrite: false,
       }),
     );
-    mist.position.set((i - 2) * 0.06, 1.95 - i * 0.015, 1.2 + i * 0.28);
+    mist.position.set((i - 1) * 0.04, -0.1, 0.85 + i * 0.1);
     mist.name = 'yetiBreathMist';
-    g.add(mist);
+    head.add(mist);
   }
 
   // Invisible hit volume
