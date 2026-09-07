@@ -384,18 +384,20 @@ export function createPlayerMesh(): THREE.Group {
     const knee = new THREE.Mesh(new THREE.SphereGeometry(0.095, 14, 12), cloth);
     addPart(knee, shin);
 
+    // Calf/boot sit slightly behind the knee axis (posterior muscle). Putting
+    // them on +Z made bent knees silhouette as reverse-jointed from the camera.
     const calf = new THREE.Mesh(new THREE.CapsuleGeometry(0.085, 0.18, 5, 12), clothDark);
-    calf.position.set(0, -0.12, 0.01);
+    calf.position.set(0, -0.12, -0.035);
     addPart(calf, shin);
 
     const boot = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.2, 5, 12), leather);
-    boot.position.set(0, -0.22, 0.018);
+    boot.position.set(0, -0.22, -0.02);
     addPart(boot, shin);
 
     for (let i = 0; i < 3; i++) {
       const strap = new THREE.Mesh(new THREE.TorusGeometry(0.112, 0.012, 8, 16), leatherMid);
       strap.rotation.x = Math.PI / 2;
-      strap.position.set(0, -0.1 - i * 0.085, 0.018);
+      strap.position.set(0, -0.1 - i * 0.085, -0.02);
       shin.add(strap);
     }
 
@@ -415,7 +417,7 @@ export function createPlayerMesh(): THREE.Group {
     shin.add(foot);
 
     addFurFringe(shin, 0, -0.01, 0.02, 0.11, 16, 0.07, fur, furDark, furMid, 0.7);
-    addFurFringe(shin, 0, -0.3, 0.04, 0.1, 14, 0.055, fur, furDark, furMid, 0.55);
+    addFurFringe(shin, 0, -0.3, -0.02, 0.1, 14, 0.055, fur, furDark, furMid, 0.55);
 
     hip.add(shin);
     return hip;

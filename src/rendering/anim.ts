@@ -43,11 +43,14 @@ function rot(obj: THREE.Object3D | undefined, x: number, y: number, z: number): 
 }
 
 /**
- * Anatomical knee flex on this rig. Hip/shin hang down -Y; negative
- * rotation.x folds the calf back toward the butt. Positive X bird-legs.
+ * Human knee flex for this rig. Do not negate.
+ *
+ * Shin hangs down -Y. Three.js +rotation.x on that bone sends the ankle
+ * to local -Z (heel toward the butt). Negative X kicks the shin forward
+ * (bird-leg). Verified by dumping ankle world Z: +0.6 → z < 0, -0.6 → z > 0.
  */
 function knee(flex: number): number {
-  return -Math.max(0, flex);
+  return Math.max(0, flex);
 }
 
 function isToolVisible(player: THREE.Group, name: string): boolean {
@@ -202,6 +205,12 @@ export function animatePlayerWalk(
   const passingR = Math.max(0, -Math.cos(phase + Math.PI));
   const plantedL = Math.max(0, Math.cos(phase));
   const plantedR = Math.max(0, Math.cos(phase + Math.PI));
+  // Extra calf-tuck while the thigh is still behind the hips (early swing).
+  const tuckL = Math.max(0, hipL) * passingL;
+  const tuckR = Math.max(0, hipR) * passingR;
+  // Keep a little flex on the reaching leg so it never goose-steps locked.
+  const reachL = Math.max(0, -hipL) * (1 - plantedL);
+  const reachR = Math.max(0, -hipR) * (1 - plantedR);
   const plant = Math.max(0, -Math.cos(phase * 2)) * 0.018 * blend * sn;
 
   const hips = get(player, 'playerHips');
@@ -211,12 +220,22 @@ export function animatePlayerWalk(
     hips.rotation.z = hipL * 0.025 * blend;
     hips.position.x = -hipL * 0.018 * blend;
   }
-  rot(get(player, 'legL'), hipL * amp, -hipL * 0.05 * blend, 0.04);
-  rot(get(player, 'legR'), hipR * amp, -hipR * 0.05 * blend, -0.04);
-  rot(get(player, 'shinL'), knee(0.1 + passingL * (0.85 + amp * 0.35) + plantedL * 0.06), 0, 0);
-  rot(get(player, 'shinR'), knee(0.1 + passingR * (0.85 + amp * 0.35) + plantedR * 0.06), 0, 0);
-  rot(get(player, 'footL'), -passingL * 0.35 + plantedL * Math.max(0, hipL) * 0.28, 0, 0);
-  rot(get(player, 'footR'), -passingR * 0.35 + plantedR * Math.max(0, hipR) * 0.28, 0, 0);
+  rot(get(player, 'legL'), hipL * amp, 0, 0.03);
+  rot(get(player, 'legR'), hipR * amp, 0, -0.03);
+  rot(
+    get(player, 'shinL'),
+    knee(0.14 + passingL * (0.92 + amp * 0.4) + tuckL * 0.4 + reachL * 0.22 + plantedL * 0.1),
+    0,
+    0,
+  );
+  rot(
+    get(player, 'shinR'),
+    knee(0.14 + passingR * (0.92 + amp * 0.4) + tuckR * 0.4 + reachR * 0.22 + plantedR * 0.1),
+    0,
+    0,
+  );
+  rot(get(player, 'footL'), -passingL * 0.32 + plantedL * Math.max(0, hipL) * 0.24, 0, 0);
+  rot(get(player, 'footR'), -passingR * 0.32 + plantedR * Math.max(0, hipR) * 0.24, 0, 0);
 
   rot(get(player, 'clavL'), -hipL * 0.04 * blend, 0, 0.05);
   rot(get(player, 'clavR'), -hipR * 0.04 * blend, 0, -0.05);
@@ -287,8 +306,8 @@ export function animatePlayerAttack(player: THREE.Group, progress: number): void
     clavL: { x: 0.04, y: 0.06, z: 0.08 },
     legL: { x: -0.2, y: 0.04, z: 0.05 },
     legR: { x: 0.08, y: -0.02, z: -0.04 },
-    shinL: { x: -0.28, y: 0, z: 0 },
-    shinR: { x: -0.18, y: 0, z: 0 },
+    shinL: { x: 0.28, y: 0, z: 0 },
+    shinR: { x: 0.18, y: 0, z: 0 },
   };
   const windup = {
     armR: { x: -1.05, y: -0.72, z: -0.58 },
@@ -304,8 +323,8 @@ export function animatePlayerAttack(player: THREE.Group, progress: number): void
     clavL: { x: 0.1, y: 0.12, z: 0.14 },
     legL: { x: -0.28, y: 0.06, z: 0.06 },
     legR: { x: 0.12, y: -0.04, z: -0.05 },
-    shinL: { x: -0.32, y: 0, z: 0 },
-    shinR: { x: -0.22, y: 0, z: 0 },
+    shinL: { x: 0.32, y: 0, z: 0 },
+    shinR: { x: 0.22, y: 0, z: 0 },
   };
   const strike = {
     armR: { x: 0.98, y: 0.58, z: 0.62 },
@@ -321,8 +340,8 @@ export function animatePlayerAttack(player: THREE.Group, progress: number): void
     clavL: { x: 0.02, y: 0.04, z: 0.08 },
     legL: { x: -0.42, y: 0.05, z: -0.05 },
     legR: { x: 0.22, y: -0.04, z: 0.04 },
-    shinL: { x: -0.18, y: 0, z: 0 },
-    shinR: { x: -0.38, y: 0, z: 0 },
+    shinL: { x: 0.18, y: 0, z: 0 },
+    shinR: { x: 0.38, y: 0, z: 0 },
   };
 
   let from = guard;
