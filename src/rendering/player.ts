@@ -403,7 +403,7 @@ export function createPlayerMesh(): THREE.Group {
 
     const foot = new THREE.Group();
     foot.name = side < 0 ? 'footL' : 'footR';
-    foot.position.set(0, -0.4, 0.02);
+    foot.position.set(0, -0.48, 0.02);
     const ankle = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 10), leather);
     addPart(ankle, foot);
     const toe = new THREE.Mesh(new THREE.CapsuleGeometry(0.072, 0.16, 5, 10), leatherDark);
@@ -530,7 +530,7 @@ export function createPlayerMesh(): THREE.Group {
 
     const arm = new THREE.Group();
     arm.name = side < 0 ? 'armL' : 'armR';
-    arm.position.set(side * 0.26, 0, 0);
+    arm.position.set(side * 0.2, 0, 0);
 
     const deltoid = new THREE.Mesh(new THREE.SphereGeometry(0.112, 14, 12), skin);
     deltoid.scale.set(1.18, 0.88, 1.08);
@@ -560,7 +560,7 @@ export function createPlayerMesh(): THREE.Group {
 
     const hand = makeHand(skin, side < 0 ? 'spear' : 'fist');
     hand.name = side < 0 ? 'handL' : 'handR';
-    hand.position.set(0, -0.3, 0.025);
+    hand.position.set(0, -0.26, 0.02);
     forearm.add(hand);
 
     arm.add(forearm);

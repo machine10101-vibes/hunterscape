@@ -386,6 +386,9 @@ export class ModelStudio {
     this.current = entry.build();
     this.current.position.set(0, 0, 0);
     this.current.rotation.set(0, 0, 0);
+    this.current.traverse((obj) => {
+      if (obj.name === 'contactShadow') obj.visible = false;
+    });
     this.stage.add(this.current);
     this.animT = 0;
     this.pose = entry.poses?.[0] ?? 'idle';

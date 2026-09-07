@@ -330,20 +330,41 @@ export function createCampfire(): THREE.Group {
 
 export function createTent(): THREE.Group {
   const g = new THREE.Group();
-  const canvas = new THREE.Mesh(new THREE.ConeGeometry(1.15, 1.45, 4), mat(0x6a5030));
-  canvas.position.y = 0.72;
-  canvas.rotation.y = Math.PI / 4;
-  canvas.castShadow = true;
-  canvas.receiveShadow = true;
-  g.add(canvas);
+  const canvasMat = mat(0x6a5030, { roughness: 0.92, side: THREE.DoubleSide });
+  const shadeMat = mat(0x4a3818, { roughness: 0.94, side: THREE.DoubleSide });
 
-  // Entrance flap darker
-  const flap = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.7), mat(0x4a3818));
-  flap.position.set(0.55, 0.4, 0.55);
-  flap.rotation.y = Math.PI / 4;
-  g.add(flap);
+  const ridge = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.55, 6), mat(0x3a2a10, { roughness: 1 }));
+  ridge.rotation.z = Math.PI / 2;
+  ridge.position.y = 1.18;
+  g.add(ridge);
 
-  // Pegs
+  for (const side of [-1, 1]) {
+    const wall = new THREE.Mesh(new THREE.PlaneGeometry(1.55, 1.42), canvasMat);
+    wall.position.set(side * 0.52, 0.62, 0);
+    wall.rotation.y = side * -0.72;
+    wall.castShadow = true;
+    wall.receiveShadow = true;
+    g.add(wall);
+    const inner = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.36), shadeMat);
+    inner.position.set(side * 0.5, 0.62, 0);
+    inner.rotation.y = side * -0.72 + Math.PI;
+    g.add(inner);
+  }
+
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(1.05, 1.05), shadeMat);
+  back.position.set(0, 0.52, -0.72);
+  back.castShadow = true;
+  g.add(back);
+
+  const flapL = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.85), shadeMat);
+  flapL.position.set(-0.18, 0.42, 0.7);
+  flapL.rotation.y = 0.35;
+  g.add(flapL);
+  const flapR = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.85), canvasMat);
+  flapR.position.set(0.22, 0.42, 0.68);
+  flapR.rotation.y = -0.55;
+  g.add(flapR);
+
   for (const [x, z] of [
     [-0.9, -0.9],
     [0.9, -0.9],
@@ -468,6 +489,7 @@ export function createFrostYeti(): THREE.Group {
       depthWrite: false,
     }),
   );
+  shadow.name = 'contactShadow';
   shadow.rotation.x = -Math.PI / 2;
   shadow.position.y = 0.03;
   g.add(shadow);
@@ -614,53 +636,56 @@ export function createFrostYeti(): THREE.Group {
     g.add(strip);
   }
 
-  // Arms
+  // Arms — parented chain so walk/attack rotate a real limb, not disconnected chunks.
   const makeArm = (side: number) => {
     const arm = new THREE.Group();
     arm.name = side < 0 ? 'yetiArmL' : 'yetiArmR';
-    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.4, 3, 6), fur);
-    upper.position.set(0, 0, 0);
-    upper.rotation.z = side * 0.55;
-    upper.rotation.x = -0.35;
+    arm.position.set(side * 0.68, 1.72, 0.08);
+    arm.rotation.z = side * 0.28;
+    arm.rotation.x = -0.22;
+
+    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.38, 3, 6), fur);
+    upper.position.set(0, -0.22, 0);
     upper.castShadow = true;
     arm.add(upper);
     const uStripe = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.09, 0.28), stripe);
-    uStripe.position.set(side * 0.05, -0.05, 0.05);
-    uStripe.rotation.z = side * 0.55;
+    uStripe.position.set(0, -0.18, 0.04);
     arm.add(uStripe);
-    const forearm = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.35, 3, 6), furBlue);
-    forearm.position.set(side * 0.28, -0.45, 0.25);
-    forearm.rotation.z = side * 0.35;
-    forearm.rotation.x = -0.5;
-    forearm.castShadow = true;
-    arm.add(forearm);
+
+    const forearm = new THREE.Group();
+    forearm.position.set(0, -0.46, 0);
+    forearm.rotation.x = -0.38;
+    const forearmMesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.32, 3, 6), furBlue);
+    forearmMesh.position.set(0, -0.2, 0);
+    forearmMesh.castShadow = true;
+    forearm.add(forearmMesh);
     const fStripe = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.08, 0.24), stripe);
-    fStripe.position.set(side * 0.28, -0.4, 0.28);
-    arm.add(fStripe);
-    // Hand
-    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.16, 6, 5), fur);
-    hand.position.set(side * 0.42, -0.72, 0.45);
-    hand.castShadow = true;
-    arm.add(hand);
-    // Claws — longer knife-clear polished black (thumb + 4 fingers) pass2
+    fStripe.position.set(0, -0.18, 0.04);
+    forearm.add(fStripe);
+
+    const hand = new THREE.Group();
+    hand.position.set(0, -0.4, 0.05);
+    const palm = new THREE.Mesh(new THREE.SphereGeometry(0.16, 6, 5), fur);
+    palm.castShadow = true;
+    hand.add(palm);
     for (let i = 0; i < 4; i++) {
-      const c = new THREE.Mesh(new THREE.ConeGeometry(0.038, 0.5, 5), i % 2 ? clawEdge : claw);
-      c.rotation.x = Math.PI / 2 + 0.48;
-      c.position.set(side * 0.42 + (i - 1.5) * 0.075, -0.88, 0.82);
-      arm.add(c);
-      // Polished edge facet
-      const edge = new THREE.Mesh(new THREE.ConeGeometry(0.016, 0.32, 4), clawEdge);
-      edge.rotation.x = Math.PI / 2 + 0.48;
-      edge.position.set(side * 0.42 + (i - 1.5) * 0.075, -0.9, 0.92);
-      arm.add(edge);
+      const c = new THREE.Mesh(new THREE.ConeGeometry(0.034, 0.28, 5), i % 2 ? clawEdge : claw);
+      c.rotation.x = Math.PI / 2 + 0.18;
+      c.position.set((i - 1.5) * 0.068, -0.06, 0.18);
+      hand.add(c);
+      const edge = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.18, 4), clawEdge);
+      edge.rotation.x = Math.PI / 2 + 0.18;
+      edge.position.set((i - 1.5) * 0.068, -0.05, 0.26);
+      hand.add(edge);
     }
-    // Opposable thumb claw
-    const thumb = new THREE.Mesh(new THREE.ConeGeometry(0.034, 0.4, 5), claw);
-    thumb.rotation.x = Math.PI / 2 + 0.2;
-    thumb.rotation.z = side * 0.75;
-    thumb.position.set(side * 0.28, -0.72, 0.68);
-    arm.add(thumb);
-    arm.position.set(side * 0.72, 1.7, 0.05);
+    const thumb = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.22, 5), claw);
+    thumb.rotation.x = Math.PI / 2 + 0.1;
+    thumb.rotation.z = side * 0.7;
+    thumb.position.set(side * 0.12, -0.02, 0.1);
+    hand.add(thumb);
+
+    forearm.add(hand);
+    arm.add(forearm);
     return arm;
   };
   g.add(makeArm(-1));
@@ -998,6 +1023,7 @@ export function createOrcScout(): THREE.Group {
     new THREE.CircleGeometry(0.4, 18),
     new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.4, depthWrite: false }),
   );
+  shadow.name = 'contactShadow';
   shadow.rotation.x = -Math.PI / 2;
   shadow.position.y = 0.03;
   g.add(shadow);
@@ -1005,15 +1031,15 @@ export function createOrcScout(): THREE.Group {
   // ===== Legs / dark trousers + fur-trimmed boots =====
   const makeLeg = (side: number) => {
     const leg = new THREE.Group();
-    const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.135, 0.42, 7), cloth);
-    thigh.position.set(0, 0.55, 0);
+    const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.135, 0.36, 7), cloth);
+    thigh.position.set(0, 0.62, 0);
     addPart(thigh, leg);
-    const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.115, 0.28, 7), cloth);
-    shin.position.set(0, 0.28, 0.02);
+    const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.115, 0.22, 7), cloth);
+    shin.position.set(0, 0.34, 0.015);
     addPart(shin, leg);
 
-    const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.135, 0.38, 7), leather);
-    boot.position.set(0, 0.2, 0.02);
+    const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.13, 0.22, 7), leather);
+    boot.position.set(0, 0.16, 0.02);
     addPart(boot, leg, 1.05);
     const foot = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.1, 0.28), leatherDark);
     foot.position.set(0, 0.05, 0.08);
@@ -1022,10 +1048,10 @@ export function createOrcScout(): THREE.Group {
     for (let i = 0; i < 3; i++) {
       const strap = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.018, 4, 10), leatherMid);
       strap.rotation.x = Math.PI / 2;
-      strap.position.set(0, 0.12 + i * 0.1, 0.02);
+      strap.position.set(0, 0.1 + i * 0.07, 0.02);
       leg.add(strap);
     }
-    addFurSpikes(leg, 0, 0.36, 0.02, 0.13, 12, 0.11, 0.03);
+    addFurSpikes(leg, 0, 0.26, 0.02, 0.13, 12, 0.11, 0.03);
     leg.position.x = side * 0.17;
     return leg;
   };
