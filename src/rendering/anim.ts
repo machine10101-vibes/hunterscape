@@ -149,12 +149,12 @@ function animateSwordGuard(player: THREE.Group, t: number): void {
   rot(get(player, 'playerHead'), -0.04 + breath * 0.2, 0.12, -0.04);
   rot(get(player, 'clavL'), 0.04, 0.06, 0.08);
   rot(get(player, 'clavR'), 0.08, -0.1, -0.12);
-  rot(get(player, 'armL'), 0.28 + breath * 0.08, 0.18, 0.32);
-  rot(get(player, 'forearmL'), -0.62, 0.12, 0.08);
+  rot(get(player, 'armL'), 0.35 + breath * 0.08, 0.22, 0.38);
+  rot(get(player, 'forearmL'), -0.85, 0.14, 0.1);
   rot(get(player, 'handL'), 0.1, 0.05, 0.12);
-  rot(get(player, 'armR'), 0.38 + breath * 0.05, -0.22, -0.28);
-  rot(get(player, 'forearmR'), -1.22, 0.18, 0.1);
-  rot(get(player, 'handR'), 0.18, 0.12, 0.28);
+  rot(get(player, 'armR'), 0.55 + breath * 0.05, -0.28, -0.22);
+  rot(get(player, 'forearmR'), -1.35, 0.22, 0.12);
+  rot(get(player, 'handR'), 0.22, 0.14, 0.32);
   rot(get(player, 'legL'), 0.22, 0.04, 0.05);
   rot(get(player, 'legR'), -0.06, -0.02, -0.04);
   rot(get(player, 'shinL'), -0.28, 0, 0);
@@ -204,8 +204,8 @@ export function animatePlayerWalk(
   }
   rot(get(player, 'legL'), hipL * amp, -hipL * 0.05 * blend, 0.04);
   rot(get(player, 'legR'), hipR * amp, -hipR * 0.05 * blend, -0.04);
-  rot(get(player, 'shinL'), -0.06 - swingL * (0.95 + amp * 0.5) - stanceL * 0.1, 0, 0);
-  rot(get(player, 'shinR'), -0.06 - swingR * (0.95 + amp * 0.5) - stanceR * 0.1, 0, 0);
+  rot(get(player, 'shinL'), -0.06 - swingL * (1.15 + amp * 0.55) - stanceL * 0.08, 0, 0);
+  rot(get(player, 'shinR'), -0.06 - swingR * (1.15 + amp * 0.55) - stanceR * 0.08, 0, 0);
   rot(get(player, 'footL'), -swingL * 0.38 + stanceL * Math.max(0, -hipL) * 0.32, 0, 0);
   rot(get(player, 'footR'), -swingR * 0.38 + stanceR * Math.max(0, -hipR) * 0.32, 0, 0);
 
@@ -216,8 +216,8 @@ export function animatePlayerWalk(
     rot(get(player, 'armL'), -hipL * 0.45 * blend + 0.18, 0.1, 0.22);
     rot(get(player, 'forearmL'), -0.5 - Math.max(0, hipL) * 0.2, 0.08, 0.04);
     rot(get(player, 'handL'), 0.08, 0, 0.08);
-    rot(get(player, 'armR'), 0.34 - hipR * 0.06 * blend, -0.2, -0.24);
-    rot(get(player, 'forearmR'), -1.18, 0.16, 0.08);
+    rot(get(player, 'armR'), 0.5 - hipR * 0.05 * blend, -0.24, -0.2);
+    rot(get(player, 'forearmR'), -1.32, 0.18, 0.1);
     rot(get(player, 'handR'), 0.16, 0.1, 0.24);
     poseEquippedTool(player);
   } else if (spearHeld) {
@@ -265,12 +265,12 @@ export function animatePlayerAttack(player: THREE.Group, progress: number): void
   const p = Math.max(0, Math.min(1, progress));
 
   const guard = {
-    armR: { x: 0.38, y: -0.22, z: -0.28 },
-    forearmR: { x: -1.22, y: 0.18, z: 0.1 },
-    handR: { x: 0.18, y: 0.12, z: 0.28 },
+    armR: { x: 0.55, y: -0.28, z: -0.22 },
+    forearmR: { x: -1.35, y: 0.22, z: 0.12 },
+    handR: { x: 0.22, y: 0.14, z: 0.32 },
     tool: { x: Math.PI / 2, y: 0.16, z: 0.22 },
-    armL: { x: 0.28, y: 0.18, z: 0.32 },
-    forearmL: { x: -0.62, y: 0.12, z: 0.08 },
+    armL: { x: 0.35, y: 0.22, z: 0.38 },
+    forearmL: { x: -0.85, y: 0.14, z: 0.1 },
     torso: { x: 0.08, y: -0.16, z: 0.05 },
     hips: { x: 0.02, y: -0.08, z: 0 },
     head: { x: -0.04, y: 0.12, z: -0.04 },

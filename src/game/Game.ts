@@ -1291,7 +1291,6 @@ export class Game {
               act.hitDone = false;
               this.playerTeleDone = false;
               act.cooldown = 0.72;
-              resetPlayerPose(this.player);
               setPlayerTool(this.player, 'sword');
             }
           } else {
