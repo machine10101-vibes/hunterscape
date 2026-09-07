@@ -269,7 +269,7 @@ function squareBuckle(size: number, thick: number, _hole: number, metal: THREE.M
   return mesh;
 }
 
-/** Drive-style faceted fur: overlapping tetra clumps forming a cuff, not capsule blobs. */
+/** Drive-style faceted fur: overlapping icosa lumps forming a cuff, not cones or popcorn. */
 function addFurCuff(
   parent: THREE.Object3D,
   cx: number,
@@ -283,10 +283,10 @@ function addFurCuff(
 ): void {
   for (let i = 0; i < count; i++) {
     const a = (i / count) * Math.PI * 2;
-    const clump = new THREE.Mesh(new THREE.TetrahedronGeometry(size, 0), i % 2 ? furDark : fur);
-    clump.position.set(cx + Math.cos(a) * radius, cy + (i % 3) * 0.008, cz + Math.sin(a) * radius);
-    clump.rotation.set(0.4, a * 1.1, 0.35 + (i % 2) * 0.55);
-    clump.scale.set(1.1, 1.25, 0.92);
+    const clump = new THREE.Mesh(new THREE.IcosahedronGeometry(size, 0), i % 2 ? furDark : fur);
+    clump.position.set(cx + Math.cos(a) * radius, cy + (i % 2) * 0.012, cz + Math.sin(a) * radius);
+    clump.rotation.set(0.2, a, 0.15);
+    clump.scale.set(1.15, 0.85, 1.05);
     clump.castShadow = true;
     parent.add(clump);
   }
@@ -428,10 +428,10 @@ export function createPlayerMesh(): THREE.Group {
     addCrissCross(shin, -0.15, -0.25, 0.094, leatherDark, 0.02);
 
     // Long, skinny ankle so the joint reads between shaft and foot.
-    const ankleCol = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.042, 0.18, 14), skinDark);
+    const ankleCol = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.058, 0.14, 12), leatherDark);
     ankleCol.position.set(0, -0.36, -0.006);
     addPart(ankleCol, shin);
-    const ankleWrap = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.04, 0.05, 14), leatherDark);
+    const ankleWrap = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.055, 0.045, 12), leather);
     ankleWrap.position.set(0, -0.34, -0.006);
     addPart(ankleWrap, shin);
 
@@ -454,8 +454,8 @@ export function createPlayerMesh(): THREE.Group {
     shin.add(foot);
 
     // Fur cuffs on the shaft: mid-calf and above the ankle pinch.
-    addFurCuff(shin, 0, -0.14, 0.02, 0.095, 7, 0.038, fur, furDark);
-    addFurCuff(shin, 0, -0.24, 0.0, 0.082, 6, 0.032, fur, furDark);
+    addFurCuff(shin, 0, -0.14, 0.02, 0.09, 6, 0.032, fur, furDark);
+    addFurCuff(shin, 0, -0.24, 0.0, 0.08, 5, 0.028, fur, furDark);
 
     hip.add(shin);
     return hip;
@@ -538,10 +538,10 @@ export function createPlayerMesh(): THREE.Group {
   torso.add(chestBuckle);
 
   for (const sx of [-1, 1]) {
-    const pad = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), leatherMid);
-    pad.scale.set(1.2, 0.55, 1.05);
-    pad.position.set(sx * 0.24, 0.24, 0.02);
-    pad.rotation.z = sx * -0.28;
+    const pad = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), leatherMid);
+    pad.scale.set(1.25, 0.62, 1.1);
+    pad.position.set(sx * 0.25, 0.22, 0.02);
+    pad.rotation.z = sx * -0.35;
     addPart(pad, torso);
   }
 
@@ -550,8 +550,8 @@ export function createPlayerMesh(): THREE.Group {
   collarBase.position.set(0, 0.26, 0.01);
   collarBase.scale.set(1.2, 1.05, 0.95);
   addPart(collarBase, torso);
-  addFurCuff(torso, 0, 0.28, 0.01, 0.22, 10, 0.055, fur, furDark);
-  addFurCuff(torso, 0, 0.33, -0.02, 0.17, 8, 0.048, fur, furDark);
+  addFurCuff(torso, 0, 0.28, 0.01, 0.21, 8, 0.05, fur, furDark);
+  addFurCuff(torso, 0, 0.32, -0.02, 0.16, 6, 0.042, fur, furDark);
 
   const neck = new THREE.Mesh(new THREE.CapsuleGeometry(0.068, 0.08, 6, 14), skin);
   neck.position.set(0, 0.34, 0.01);
@@ -560,19 +560,18 @@ export function createPlayerMesh(): THREE.Group {
   const makeArm = (side: number) => {
     const clav = new THREE.Group();
     clav.name = side < 0 ? 'clavL' : 'clavR';
-    // Deltoid sits on the vest shoulder so the arm is attached, not floating.
-    clav.position.set(side * 0.24, 0.24, 0);
+    clav.position.set(side * 0.2, 0.22, 0);
 
     const arm = new THREE.Group();
     arm.name = side < 0 ? 'armL' : 'armR';
-    arm.position.set(side * 0.1, -0.02, 0);
+    arm.position.set(side * 0.08, -0.02, 0);
 
-    const deltoid = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), skin);
-    deltoid.scale.set(1.18, 0.92, 1.08);
+    const deltoid = new THREE.Mesh(new THREE.IcosahedronGeometry(0.105, 0), skin);
+    deltoid.scale.set(1.15, 0.88, 1.05);
     addPart(deltoid, arm);
 
     const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.2, 4, 10), skin);
-    upper.position.set(0, -0.15, 0);
+    upper.position.set(0, -0.16, 0);
     addPart(upper, arm);
 
     const forearm = new THREE.Group();
@@ -586,8 +585,8 @@ export function createPlayerMesh(): THREE.Group {
     gauntlet.position.set(0, -0.14, 0.01);
     addPart(gauntlet, forearm);
     addCrissCross(forearm, -0.06, -0.2, 0.074, leatherDark, 0.01);
-    addFurCuff(forearm, 0, -0.02, 0.01, 0.075, 6, 0.032, fur, furDark);
-    addFurCuff(forearm, 0, -0.22, 0.01, 0.07, 6, 0.028, fur, furDark);
+    addFurCuff(forearm, 0, -0.02, 0.01, 0.072, 5, 0.028, fur, furDark);
+    addFurCuff(forearm, 0, -0.22, 0.01, 0.068, 5, 0.024, fur, furDark);
 
     const hand = makeHand(skin, leather, side < 0 ? 'spear' : 'fist');
     hand.name = side < 0 ? 'handL' : 'handR';
@@ -697,10 +696,10 @@ export function createPlayerMesh(): THREE.Group {
     [0.05, 0.17, -0.02, 0.05],
   ];
   for (const [x, y, z, s] of hairClumps) {
-    const clump = new THREE.Mesh(new THREE.OctahedronGeometry(s, 0), hairCol);
+    const clump = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 0), hairCol);
     clump.position.set(x, y, z);
-    clump.rotation.set(z * 0.8, x * 2, -x * 0.6);
-    clump.scale.set(1.05, 1.2, 0.9);
+    clump.rotation.set(z * 0.5, x * 1.2, 0);
+    clump.scale.set(1.15, 0.9, 1.05);
     head.add(clump);
   }
   torso.add(head);
