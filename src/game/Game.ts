@@ -138,7 +138,7 @@ export class Game {
   private moveMarker: THREE.Mesh;
   private saveTimer = 0;
   private keys = new Set<string>();
-  private camOffset = new THREE.Vector3(0, 11, 9);
+  private camOffset = new THREE.Vector3(0, 8.7, 7.15);
   private camLook = new THREE.Vector3();
   private dummyTarget: WorldObject | null = null;
   private yetiTarget: WorldObject | null = null;
