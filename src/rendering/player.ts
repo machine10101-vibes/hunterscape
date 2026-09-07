@@ -544,14 +544,14 @@ export function createPlayerMesh(): THREE.Group {
   torso.add(chestBuckle);
 
   for (const sx of [-1, 1]) {
-    const pad = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), leatherMid);
-    pad.scale.set(1.35, 0.7, 1.15);
-    pad.position.set(sx * 0.22, 0.2, 0.01);
-    pad.rotation.z = sx * -0.4;
+    const pad = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), leatherMid);
+    pad.scale.set(1.15, 0.55, 1.05);
+    pad.position.set(sx * 0.24, 0.16, 0.01);
+    pad.rotation.z = sx * -0.32;
     addPart(pad, torso);
-    const deltoid = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), skin);
-    deltoid.scale.set(1.15, 0.9, 1.05);
-    deltoid.position.set(sx * 0.26, 0.16, 0);
+    const deltoid = new THREE.Mesh(new THREE.SphereGeometry(0.095, 8, 6), skin);
+    deltoid.scale.set(1.1, 0.95, 1.05);
+    deltoid.position.set(sx * 0.25, 0.1, 0);
     addPart(deltoid, torso);
   }
 
@@ -569,14 +569,14 @@ export function createPlayerMesh(): THREE.Group {
   const makeArm = (side: number) => {
     const clav = new THREE.Group();
     clav.name = side < 0 ? 'clavL' : 'clavR';
-    clav.position.set(side * 0.18, 0.18, 0);
+    clav.position.set(side * 0.18, 0.14, 0);
 
     const arm = new THREE.Group();
     arm.name = side < 0 ? 'armL' : 'armR';
-    arm.position.set(side * 0.08, -0.02, 0);
+    arm.position.set(side * 0.07, 0, 0);
 
-    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.072, 0.18, 4, 10), skin);
-    upper.position.set(0, -0.12, 0);
+    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.072, 0.2, 4, 10), skin);
+    upper.position.set(0, -0.08, 0);
     addPart(upper, arm);
 
     const forearm = new THREE.Group();
