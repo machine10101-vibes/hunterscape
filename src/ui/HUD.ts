@@ -238,14 +238,14 @@ export class HUD {
 
     // Soft grass gradient fill
     const grad = ctx.createRadialGradient(cx, cy, 4, cx, cy, radius);
-    grad.addColorStop(0, '#2a3e24');
-    grad.addColorStop(0.65, '#1a2a18');
-    grad.addColorStop(1, '#121c10');
+    grad.addColorStop(0, '#4a7a30');
+    grad.addColorStop(0.65, '#2c4e20');
+    grad.addColorStop(1, '#1a3014');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
 
     for (let i = 0; i < 36; i++) {
-      ctx.fillStyle = i % 2 ? '#243820' : '#1e301c';
+      ctx.fillStyle = i % 2 ? '#3a6828' : '#2e5420';
       ctx.fillRect((i * 41) % w, (i * 59) % h, 7, 7);
     }
 

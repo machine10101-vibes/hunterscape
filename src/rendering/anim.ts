@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { poseEquippedTool } from './player';
 
 /** Smoothstep helper */
 function smooth(t: number): number {
@@ -25,97 +26,165 @@ function strideWave(phase: number): number {
   return s * (0.62 + 0.38 * Math.abs(c));
 }
 
+function setLocomotionY(player: THREE.Group, y: number): void {
+  player.userData.locomotionY = y;
+}
+
+function resetLimb(obj: THREE.Object3D | undefined): void {
+  if (obj) obj.rotation.set(0, 0, 0);
+}
+
+function mix(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
+
+function rot(obj: THREE.Object3D | undefined, x: number, y: number, z: number): void {
+  if (obj) obj.rotation.set(x, y, z);
+}
+
+/**
+ * Human knee flex for this rig. Do not negate.
+ *
+ * Shin hangs down -Y. Three.js +rotation.x on that bone sends the ankle
+ * to local -Z (heel toward the butt). Negative X kicks the shin forward
+ * (bird-leg). Verified by dumping ankle world Z: +0.6 → z < 0, -0.6 → z > 0.
+ */
+function knee(flex: number): number {
+  return Math.max(0, flex);
+}
+
+function isToolVisible(player: THREE.Group, name: string): boolean {
+  const obj = get(player, name);
+  return !!obj?.visible;
+}
+
 /** Reset player limb poses to rest (keep world rotation.y). */
 export function resetPlayerPose(player: THREE.Group): void {
-  const legL = get(player, 'legL');
-  const legR = get(player, 'legR');
-  const armL = get(player, 'armL');
-  const armR = get(player, 'armR');
-  const head = get(player, 'playerHead');
+  resetLimb(get(player, 'playerHips'));
+  resetLimb(get(player, 'legL'));
+  resetLimb(get(player, 'legR'));
+  resetLimb(get(player, 'shinL'));
+  resetLimb(get(player, 'shinR'));
+  resetLimb(get(player, 'footL'));
+  resetLimb(get(player, 'footR'));
+  resetLimb(get(player, 'clavL'));
+  resetLimb(get(player, 'clavR'));
+  resetLimb(get(player, 'armL'));
+  resetLimb(get(player, 'armR'));
+  resetLimb(get(player, 'forearmL'));
+  resetLimb(get(player, 'forearmR'));
+  resetLimb(get(player, 'handL'));
+  resetLimb(get(player, 'handR'));
+  resetLimb(get(player, 'playerHead'));
+  resetLimb(get(player, 'playerTorso'));
+  const hips = get(player, 'playerHips');
+  if (hips) hips.position.set(0, 0, 0);
   const torso = get(player, 'playerTorso');
+  if (torso) {
+    torso.position.x = 0;
+    torso.position.z = 0;
+    torso.scale.set(1, 1, 1);
+  }
   const spear = get(player, 'idleSpear');
-  const tool = get(player, 'toolRoot');
-  if (legL) legL.rotation.set(0, 0, 0);
-  if (legR) legR.rotation.set(0, 0, 0);
-  if (armL) armL.rotation.set(0, 0, 0);
-  if (armR) armR.rotation.set(0, 0, 0);
-  if (head) head.rotation.set(0, 0, 0);
-  if (torso) torso.rotation.set(0, 0, 0);
-  if (spear) {
-    spear.rotation.set(0, 0, 0);
-    spear.position.set(-0.42, 0.15, 0.12);
-  }
-  if (tool) {
-    tool.rotation.set(0, 0, 0);
-    tool.position.set(0.42, 0.95, 0.15);
-  }
-  player.position.y = 0;
+  if (spear) spear.rotation.set(0.18, 0.04, 0.12);
+  poseEquippedTool(player);
   player.rotation.z = 0;
   player.rotation.x = 0;
+  setLocomotionY(player, 0);
 }
 
 /**
- * Idle: breathing, slow weight shift, soft weapon sway.
- * Looks planted — no floaty bob.
+ * Idle: spear rest, or a human sword guard when the blade is drawn.
  */
 export function animatePlayerIdle(player: THREE.Group, t: number): void {
+  if (isToolVisible(player, 'tool_sword')) {
+    animateSwordGuard(player, t);
+    return;
+  }
+
   const breath = Math.sin(t * 1.35) * 0.018;
-  const shift = Math.sin(t * 0.55) * 0.022;
-  const sway = Math.sin(t * 0.85) * 0.03;
+  const shift = Math.sin(t * 0.55) * 0.032;
+  const look = Math.sin(t * 0.28) * 0.08 + Math.sin(t * 0.11) * 0.04;
+  const hips = get(player, 'playerHips');
   const torso = get(player, 'playerTorso');
-  const head = get(player, 'playerHead');
-  const armL = get(player, 'armL');
-  const armR = get(player, 'armR');
-  const legL = get(player, 'legL');
-  const legR = get(player, 'legR');
   const spear = get(player, 'idleSpear');
   const tool = get(player, 'toolRoot');
 
+  if (hips) {
+    hips.rotation.y = shift * 0.18;
+    hips.position.x = shift * 0.22;
+  }
   if (torso) {
-    torso.rotation.x = breath * 0.9;
-    torso.rotation.y = shift * 0.35;
-    torso.rotation.z = shift * 0.2;
+    torso.rotation.x = breath * 0.7;
+    torso.rotation.y = shift * 0.22;
+    torso.rotation.z = shift * 0.1;
+    torso.position.x = shift * 0.14;
+    torso.scale.set(1 + breath * 0.01, 1 + breath * 0.016, 1 + breath * 0.008);
   }
-  if (head) {
-    head.rotation.x = breath * 0.45;
-    head.rotation.y = Math.sin(t * 0.4) * 0.04;
-  }
-  if (armL) {
-    armL.rotation.x = breath * 0.35 + 0.05;
-    armL.rotation.z = 0.12 + shift * 0.4;
-  }
-  if (armR) {
-    armR.rotation.x = -breath * 0.25 - 0.08;
-    armR.rotation.z = -0.1 - shift * 0.35;
-  }
-  // Soft knee bend on weight-bearing side
-  if (legL) {
-    legL.rotation.x = shift * 0.12;
-    legL.rotation.z = -shift * 0.08;
-  }
-  if (legR) {
-    legR.rotation.x = -shift * 0.12;
-    legR.rotation.z = shift * 0.08;
-  }
+  rot(get(player, 'playerHead'), -0.05 + breath * 0.32, look, -shift * 0.08);
+  rot(get(player, 'clavL'), 0.02, 0, 0.05 + shift * 0.08);
+  rot(get(player, 'clavR'), 0.02, 0, -0.05 - shift * 0.06);
+  rot(get(player, 'armL'), 0.22 + breath * 0.12, 0.06, 0.1 + shift * 0.08);
+  rot(get(player, 'armR'), 0.08 - breath * 0.08, -0.04, -0.1 - shift * 0.08);
+  rot(get(player, 'forearmL'), -0.72, 0.08, 0.04);
+  rot(get(player, 'forearmR'), -0.28, -0.04, -0.02);
+  rot(get(player, 'handL'), 0.12, 0.05, 0.08);
+  rot(get(player, 'handR'), 0.04, 0, -0.04);
+  rot(get(player, 'legL'), 0.06 + shift * 0.1, 0, 0.035);
+  rot(get(player, 'legR'), -0.04 - shift * 0.08, 0, -0.035);
+  rot(get(player, 'shinL'), knee(0.16 + Math.max(0, shift) * 0.12), 0, 0);
+  rot(get(player, 'shinR'), knee(0.2 + Math.max(0, -shift) * 0.1), 0, 0);
+  rot(get(player, 'footL'), 0.04, 0, 0);
+  rot(get(player, 'footR'), 0.06, 0, 0);
   if (spear && spear.visible) {
-    spear.rotation.z = Math.sin(t * 1.05) * 0.035;
-    spear.rotation.x = sway * 0.4;
+    spear.rotation.z = 0.12 + Math.sin(t * 0.9) * 0.015;
+    spear.rotation.x = 0.18 + Math.sin(t * 0.7) * 0.012;
   }
-  if (tool && tool.visible) {
-    tool.rotation.z = Math.sin(t * 0.95) * 0.025;
-    tool.rotation.x = -0.15 + breath * 0.2;
+  if (tool && tool.visible) poseEquippedTool(player);
+  setLocomotionY(player, breath * 0.025);
+}
+
+/** One-handed high-forward guard. Blade reads upright in front of the right shoulder. */
+function animateSwordGuard(player: THREE.Group, t: number): void {
+  const breath = Math.sin(t * 1.4) * 0.016;
+  const sway = Math.sin(t * 0.7) * 0.012;
+  rot(get(player, 'playerHips'), 0.02, -0.08 + sway, 0);
+  const hips = get(player, 'playerHips');
+  if (hips) hips.position.x = 0.02;
+  const torso = get(player, 'playerTorso');
+  if (torso) {
+    torso.rotation.set(0.08 + breath * 0.5, -0.16, 0.05);
+    torso.position.x = 0;
+    torso.scale.set(1 + breath * 0.008, 1 + breath * 0.012, 1);
   }
-  // Tiny grounded settle — not a bob
-  player.position.y = breath * 0.35;
+  rot(get(player, 'playerHead'), -0.04 + breath * 0.2, 0.12, -0.04);
+  rot(get(player, 'clavL'), 0.04, 0.06, 0.08);
+  rot(get(player, 'clavR'), 0.08, -0.1, -0.12);
+  rot(get(player, 'armL'), 0.35 + breath * 0.08, 0.22, 0.38);
+  rot(get(player, 'forearmL'), -0.85, 0.14, 0.1);
+  rot(get(player, 'handL'), 0.1, 0.05, 0.12);
+  rot(get(player, 'armR'), 0.55 + breath * 0.05, -0.28, -0.22);
+  rot(get(player, 'forearmR'), -1.35, 0.22, 0.12);
+  rot(get(player, 'handR'), 0.22, 0.14, 0.32);
+  rot(get(player, 'legL'), -0.2, 0.04, 0.05);
+  rot(get(player, 'legR'), 0.08, -0.02, -0.04);
+  rot(get(player, 'shinL'), knee(0.28), 0, 0);
+  rot(get(player, 'shinR'), knee(0.18), 0, 0);
+  rot(get(player, 'footL'), 0.06, 0, 0);
+  rot(get(player, 'footR'), 0.04, 0, 0);
+  poseEquippedTool(player);
+  const tool = get(player, 'toolRoot');
+  if (tool) {
+    tool.rotation.x += breath * 0.04;
+    tool.rotation.z += sway * 0.08;
+  }
+  setLocomotionY(player, breath * 0.02);
 }
 
 /**
- * Weightier walk/run cycle.
- * - Proper stride timing with foot-plant bias
- * - Hip / shoulder counter-rotation
- * - Small grounded bob (not floaty)
- * speedNorm ~0.45 crawl → 1.0 run
- * moveBlend 0→1 eases limb amplitude during accel/decel
+ * Human walk: opposite arm/leg, knee flex on swing only, heel-toe plant.
+ * Swing also pulls the thigh forward so the knee lifts in front of the hips
+ * (a vertical thigh + tucked calf reads as a backward-pointing joint).
  */
 export function animatePlayerWalk(
   player: THREE.Group,
@@ -125,179 +194,236 @@ export function animatePlayerWalk(
 ): void {
   const blend = Math.max(0, Math.min(1, moveBlend));
   const sn = Math.max(0.25, speedNorm);
-  // Slower cadence feels weightier; run still quicker
-  const freq = (5.2 + sn * 2.4) * (0.85 + blend * 0.15);
+  const freq = 4.15 + sn * 1.55;
   const phase = t * freq;
-  const amp = (0.42 + sn * 0.22) * blend;
-  const swingL = strideWave(phase) * amp;
-  const swingR = strideWave(phase + Math.PI) * amp;
-  // Foot plant pulse — deeper vertical dip + heel settle
-  const plant = Math.max(0, -Math.cos(phase * 2)) * 0.04 * blend * sn;
-  const bob = plant; // grounded, not |sin| float
+  const amp = (0.4 + sn * 0.16) * blend;
+  const sword = isToolVisible(player, 'tool_sword');
+  const spearHeld = !!get(player, 'idleSpear')?.visible && !sword;
 
-  const legL = get(player, 'legL');
-  const legR = get(player, 'legR');
-  const armL = get(player, 'armL');
-  const armR = get(player, 'armR');
+  const hipL = Math.sin(phase);
+  const hipR = Math.sin(phase + Math.PI);
+  // +hip X = thigh back. Passing/swing is back → front (cos < 0).
+  const passingL = Math.max(0, -Math.cos(phase));
+  const passingR = Math.max(0, -Math.cos(phase + Math.PI));
+  const plantedL = Math.max(0, Math.cos(phase));
+  const plantedR = Math.max(0, Math.cos(phase + Math.PI));
+  // Extra calf-tuck while the thigh is still behind the hips (early swing).
+  const tuckL = Math.max(0, hipL) * passingL;
+  const tuckR = Math.max(0, hipR) * passingR;
+  // Keep a little flex on the reaching leg so it never goose-steps locked.
+  const reachL = Math.max(0, -hipL) * (1 - plantedL);
+  const reachR = Math.max(0, -hipR) * (1 - plantedR);
+  const plant = Math.max(0, -Math.cos(phase * 2)) * 0.018 * blend * sn;
+
+  const hips = get(player, 'playerHips');
   const torso = get(player, 'playerTorso');
-  const head = get(player, 'playerHead');
-  const spear = get(player, 'idleSpear');
+  if (hips) {
+    hips.rotation.y = hipL * 0.1 * blend;
+    hips.rotation.z = hipL * 0.025 * blend;
+    hips.position.x = -hipL * 0.018 * blend;
+  }
+  rot(get(player, 'legL'), hipL * amp - passingL * 0.5, 0, 0.03);
+  rot(get(player, 'legR'), hipR * amp - passingR * 0.5, 0, -0.03);
+  rot(
+    get(player, 'shinL'),
+    knee(0.14 + passingL * (0.7 + amp * 0.22) + tuckL * 0.28 + reachL * 0.18 + plantedL * 0.1),
+    0,
+    0,
+  );
+  rot(
+    get(player, 'shinR'),
+    knee(0.14 + passingR * (0.7 + amp * 0.22) + tuckR * 0.28 + reachR * 0.18 + plantedR * 0.1),
+    0,
+    0,
+  );
+  rot(get(player, 'footL'), -passingL * 0.32 + plantedL * Math.max(0, hipL) * 0.24, 0, 0);
+  rot(get(player, 'footR'), -passingR * 0.32 + plantedR * Math.max(0, hipR) * 0.24, 0, 0);
 
-  if (legL) {
-    legL.rotation.x = swingL;
-    legL.rotation.z = Math.sin(phase) * 0.055 * blend;
+  rot(get(player, 'clavL'), -hipL * 0.04 * blend, 0, 0.05);
+  rot(get(player, 'clavR'), -hipR * 0.04 * blend, 0, -0.05);
+
+  if (sword) {
+    rot(get(player, 'armL'), -hipL * 0.45 * blend + 0.18, 0.1, 0.22);
+    rot(get(player, 'forearmL'), -0.5 - Math.max(0, hipL) * 0.2, 0.08, 0.04);
+    rot(get(player, 'handL'), 0.08, 0, 0.08);
+    rot(get(player, 'armR'), 0.5 - hipR * 0.05 * blend, -0.24, -0.2);
+    rot(get(player, 'forearmR'), -1.32, 0.18, 0.1);
+    rot(get(player, 'handR'), 0.16, 0.1, 0.24);
+    poseEquippedTool(player);
+  } else if (spearHeld) {
+    rot(get(player, 'armL'), 0.2 - hipL * 0.12 * blend, 0.05, 0.1);
+    rot(get(player, 'forearmL'), -0.7, 0.08, 0.04);
+    rot(get(player, 'handL'), 0.1, 0.04, 0.06);
+    rot(get(player, 'armR'), -hipR * 0.62 * amp * 1.4 + 0.08, -0.04, -0.08);
+    rot(get(player, 'forearmR'), -0.32 - Math.max(0, hipR) * 0.45, -0.04, 0);
+    rot(get(player, 'handR'), -hipR * 0.12, 0, -0.04);
+  } else {
+    rot(get(player, 'armL'), -hipL * 0.7 * amp * 1.35 + 0.1, 0.04, 0.08);
+    rot(get(player, 'armR'), -hipR * 0.7 * amp * 1.35 + 0.1, -0.04, -0.08);
+    rot(get(player, 'forearmL'), -0.35 - Math.max(0, hipL) * 0.4, 0, 0);
+    rot(get(player, 'forearmR'), -0.35 - Math.max(0, hipR) * 0.4, 0, 0);
+    rot(get(player, 'handL'), -hipL * 0.1, 0, 0.04);
+    rot(get(player, 'handR'), -hipR * 0.1, 0, -0.04);
   }
-  if (legR) {
-    legR.rotation.x = swingR;
-    legR.rotation.z = -Math.sin(phase) * 0.055 * blend;
-  }
-  // Opposite arm swing + slight elbow carry
-  if (armL) {
-    armL.rotation.x = -swingL * 0.95;
-    armL.rotation.z = 0.1 + Math.abs(swingL) * 0.1;
-  }
-  if (armR) {
-    armR.rotation.x = -swingR * 0.8;
-    armR.rotation.z = -0.1 - Math.abs(swingR) * 0.08;
-  }
+
   if (torso) {
-    // Hip yaw opposite to lead leg; shoulders counter via arms
-    torso.rotation.y = Math.sin(phase) * 0.13 * blend;
-    torso.rotation.x = -0.08 * blend - plant * 1.1;
-    torso.rotation.z = Math.sin(phase) * 0.065 * blend;
+    torso.rotation.y = -hipL * 0.12 * blend;
+    torso.rotation.x = -0.06 * sn * blend - plant * 0.4;
+    torso.rotation.z = hipL * 0.03 * blend;
+    torso.position.x = -hipL * 0.01 * blend;
+    torso.scale.set(1, 1, 1);
   }
-  if (head) {
-    head.rotation.x = -bob * 1.4;
-    head.rotation.y = -Math.sin(phase) * 0.05 * blend;
-  }
+  rot(get(player, 'playerHead'), -0.03 - plant * 0.5, hipL * 0.05 * blend, -hipL * 0.02 * blend);
+  const spear = get(player, 'idleSpear');
   if (spear && spear.visible) {
-    spear.rotation.x = -swingL * 0.15;
-    spear.rotation.z = 0.06 + Math.sin(phase) * 0.04;
+    spear.rotation.set(0.18 - hipL * 0.03, 0.04, 0.12 + hipL * 0.015);
   }
-  player.position.y = bob;
+  setLocomotionY(player, plant);
 }
 
-/**
- * Player sword/spear attack with readable telegraph.
- * Phases (progress 0→1):
- *  0–0.40  windup held (pull back, lean, plant feet) — telegraph window
- *  0.40–0.58 connect arc (body commit + blade through)
- *  0.58–1.0  recovery / follow-through
- */
+type Pose3 = { x: number; y: number; z: number };
+
+function mixPose(a: Pose3, b: Pose3, t: number): Pose3 {
+  return { x: mix(a.x, b.x, t), y: mix(a.y, b.y, t), z: mix(a.z, b.z, t) };
+}
+
+function applyPose(obj: THREE.Object3D | undefined, p: Pose3): void {
+  rot(obj, p.x, p.y, p.z);
+}
+
 export function animatePlayerAttack(player: THREE.Group, progress: number): void {
   const p = Math.max(0, Math.min(1, progress));
-  const armR = get(player, 'armR');
-  const armL = get(player, 'armL');
-  const torso = get(player, 'playerTorso');
-  const head = get(player, 'playerHead');
-  const tool = get(player, 'toolRoot');
-  const legL = get(player, 'legL');
-  const legR = get(player, 'legR');
 
-  let raise = 0;
-  let slash = 0;
-  let lean = 0;
-  let twist = 0;
-  let plant = 0;
+  const guard = {
+    armR: { x: 0.55, y: -0.28, z: -0.22 },
+    forearmR: { x: -1.35, y: 0.22, z: 0.12 },
+    handR: { x: 0.22, y: 0.14, z: 0.32 },
+    tool: { x: Math.PI / 2, y: 0.16, z: 0.22 },
+    armL: { x: 0.35, y: 0.22, z: 0.38 },
+    forearmL: { x: -0.85, y: 0.14, z: 0.1 },
+    torso: { x: 0.08, y: -0.16, z: 0.05 },
+    hips: { x: 0.02, y: -0.08, z: 0 },
+    head: { x: -0.04, y: 0.12, z: -0.04 },
+    clavR: { x: 0.08, y: -0.1, z: -0.12 },
+    clavL: { x: 0.04, y: 0.06, z: 0.08 },
+    legL: { x: -0.2, y: 0.04, z: 0.05 },
+    legR: { x: 0.08, y: -0.02, z: -0.04 },
+    shinL: { x: 0.28, y: 0, z: 0 },
+    shinR: { x: 0.18, y: 0, z: 0 },
+  };
+  const windup = {
+    armR: { x: -1.05, y: -0.72, z: -0.58 },
+    forearmR: { x: -1.48, y: -0.22, z: 0.12 },
+    handR: { x: -0.28, y: 0.2, z: 0.42 },
+    tool: { x: 1.05, y: 0.62, z: -0.45 },
+    armL: { x: 0.48, y: 0.22, z: 0.42 },
+    forearmL: { x: -0.78, y: 0.1, z: 0.1 },
+    torso: { x: -0.16, y: -0.52, z: -0.1 },
+    hips: { x: 0.04, y: -0.2, z: -0.05 },
+    head: { x: -0.1, y: -0.28, z: 0.04 },
+    clavR: { x: -0.12, y: -0.22, z: -0.28 },
+    clavL: { x: 0.1, y: 0.12, z: 0.14 },
+    legL: { x: -0.28, y: 0.06, z: 0.06 },
+    legR: { x: 0.12, y: -0.04, z: -0.05 },
+    shinL: { x: 0.32, y: 0, z: 0 },
+    shinR: { x: 0.22, y: 0, z: 0 },
+  };
+  const strike = {
+    armR: { x: 0.98, y: 0.58, z: 0.62 },
+    forearmR: { x: -0.22, y: 0.28, z: 0.06 },
+    handR: { x: 0.48, y: -0.08, z: -0.32 },
+    tool: { x: 1.92, y: -0.42, z: 0.55 },
+    armL: { x: -0.12, y: 0.08, z: 0.22 },
+    forearmL: { x: -0.38, y: 0.06, z: 0.04 },
+    torso: { x: 0.24, y: 0.58, z: 0.14 },
+    hips: { x: -0.02, y: 0.22, z: 0.06 },
+    head: { x: 0.1, y: 0.32, z: -0.06 },
+    clavR: { x: 0.18, y: 0.16, z: 0.12 },
+    clavL: { x: 0.02, y: 0.04, z: 0.08 },
+    legL: { x: -0.42, y: 0.05, z: -0.05 },
+    legR: { x: 0.22, y: -0.04, z: 0.04 },
+    shinL: { x: 0.18, y: 0, z: 0 },
+    shinR: { x: 0.38, y: 0, z: 0 },
+  };
 
-  if (p < 0.4) {
-    // Anticipation — hold windup long enough to read
-    const w = easeInOut(Math.min(1, p / 0.28));
-    // Hold pose after reaching windup
-    const hold = p > 0.28 ? 1 : w;
-    raise = -1.25 * hold;
-    slash = 0.62 * hold;
-    lean = -0.24 * hold;
-    twist = -0.36 * hold;
-    plant = 0.28 * hold;
-  } else if (p < 0.58) {
-    // Strike — heavier body commit through the arc
-    const w = easeInOut((p - 0.4) / 0.18);
-    raise = -1.25 + 2.65 * w;
-    slash = 0.62 - 1.7 * w;
-    lean = -0.24 + 0.62 * w;
-    twist = -0.36 + 1.05 * w;
-    plant = 0.28 + 0.22 * w;
+  let from = guard;
+  let to = windup;
+  let w = 0;
+  if (p < 0.36) {
+    from = guard;
+    to = windup;
+    w = easeInOut(p / 0.36);
+  } else if (p < 0.52) {
+    from = windup;
+    to = strike;
+    w = easeInOut((p - 0.36) / 0.16);
   } else {
-    // Recovery — settle residual motion
-    const w = smooth((p - 0.58) / 0.42);
-    raise = 1.4 * (1 - w);
-    slash = -1.08 * (1 - w);
-    lean = 0.38 * (1 - w);
-    twist = 0.69 * (1 - w);
-    plant = 0.5 * (1 - w);
+    from = strike;
+    to = guard;
+    w = smooth((p - 0.52) / 0.48);
   }
 
-  if (armR) {
-    armR.rotation.x = raise;
-    armR.rotation.z = slash * 0.6;
-    armR.rotation.y = twist * 0.4;
-  }
-  if (armL) {
-    armL.rotation.x = -raise * 0.35 + lean * 0.5;
-    armL.rotation.z = 0.22 + plant * 0.2;
-  }
-  if (tool) {
-    tool.rotation.x = raise * 0.98;
-    tool.rotation.z = slash * 0.7;
-    tool.rotation.y = twist * 0.3;
-    tool.position.set(
-      0.42 + slash * 0.12,
-      0.95 + raise * 0.07,
-      0.15 + Math.max(0, raise) * 0.32,
-    );
-  }
+  applyPose(get(player, 'armR'), mixPose(from.armR, to.armR, w));
+  applyPose(get(player, 'forearmR'), mixPose(from.forearmR, to.forearmR, w));
+  applyPose(get(player, 'handR'), mixPose(from.handR, to.handR, w));
+  applyPose(get(player, 'toolRoot'), mixPose(from.tool, to.tool, w));
+  applyPose(get(player, 'armL'), mixPose(from.armL, to.armL, w));
+  applyPose(get(player, 'forearmL'), mixPose(from.forearmL, to.forearmL, w));
+  applyPose(get(player, 'playerTorso'), mixPose(from.torso, to.torso, w));
+  applyPose(get(player, 'playerHips'), mixPose(from.hips, to.hips, w));
+  applyPose(get(player, 'playerHead'), mixPose(from.head, to.head, w));
+  applyPose(get(player, 'clavR'), mixPose(from.clavR, to.clavR, w));
+  applyPose(get(player, 'clavL'), mixPose(from.clavL, to.clavL, w));
+  applyPose(get(player, 'legL'), mixPose(from.legL, to.legL, w));
+  applyPose(get(player, 'legR'), mixPose(from.legR, to.legR, w));
+  applyPose(get(player, 'shinL'), mixPose(from.shinL, to.shinL, w));
+  applyPose(get(player, 'shinR'), mixPose(from.shinR, to.shinR, w));
+  rot(get(player, 'footL'), 0.05, 0, 0);
+  rot(get(player, 'footR'), 0.04, 0, 0);
+  rot(get(player, 'handL'), 0.1, 0.05, 0.1);
+
+  const hips = get(player, 'playerHips');
+  if (hips) hips.position.x = 0;
+  const torso = get(player, 'playerTorso');
   if (torso) {
-    torso.rotation.y = twist;
-    torso.rotation.x = lean;
-    torso.rotation.z = slash * 0.16;
+    torso.position.x = 0;
+    torso.scale.set(1, 1, 1);
   }
-  if (head) {
-    head.rotation.y = twist * 0.4;
-    head.rotation.x = lean * 0.45;
-  }
-  // Leading / trailing foot plant — clearer weight transfer
-  if (legL) {
-    legL.rotation.x = lean * 0.7 + plant * 0.22;
-    legL.rotation.z = -plant * 0.08;
-  }
-  if (legR) {
-    legR.rotation.x = -lean * 0.85 - plant * 0.35;
-    legR.rotation.z = plant * 0.06;
-  }
-  player.position.y = Math.abs(lean) * 0.1 + plant * 0.02;
+  const strikeAmt = p < 0.36 ? 0 : p < 0.52 ? w : 1 - w;
+  setLocomotionY(player, 0.02 + strikeAmt * 0.04);
 }
 
 /** Gather chop/mine swing with body lean (progress loops 0→1) */
 export function animatePlayerGather(player: THREE.Group, progress: number, kind: 'tree' | 'rock'): void {
   const p = progress % 1;
-  const swing = Math.sin(p * Math.PI * 2);
-  const strike = Math.max(0, Math.sin(p * Math.PI * 2 - 0.4));
-  const armR = get(player, 'armR');
-  const armL = get(player, 'armL');
-  const torso = get(player, 'playerTorso');
+  const raise = Math.max(0, Math.sin(p * Math.PI * 2 + 0.4));
+  const strike = Math.max(0, Math.sin(p * Math.PI * 2 - 0.55));
+  const amp = kind === 'tree' ? 1 : 0.88;
+  rot(get(player, 'armR'), -0.15 - raise * 1.15 * amp + strike * 0.85 * amp, -0.15, -0.22 - strike * 0.12);
+  rot(get(player, 'forearmR'), -0.85 + strike * 0.7 - raise * 0.25, 0.1, 0.08);
+  rot(get(player, 'handR'), 0.15 + strike * 0.2, 0.08, 0.2);
+  rot(get(player, 'armL'), 0.25 + strike * 0.2, 0.1, 0.22);
+  rot(get(player, 'forearmL'), -0.45, 0.06, 0.04);
+  poseEquippedTool(player);
   const tool = get(player, 'toolRoot');
-  const legL = get(player, 'legL');
-  const legR = get(player, 'legR');
-  const amp = kind === 'tree' ? 1.1 : 0.95;
-  if (armR) {
-    armR.rotation.x = -0.55 + swing * amp;
-    armR.rotation.z = -0.2 - strike * 0.28;
-  }
-  if (armL) {
-    armL.rotation.x = 0.2 + strike * 0.35;
-    armL.rotation.z = 0.25;
-  }
   if (tool) {
-    tool.rotation.x = swing * amp * 0.95;
-    tool.rotation.z = strike * 0.4;
+    tool.rotation.x += -raise * 0.25 + strike * 0.45;
+    tool.rotation.z += strike * 0.2;
   }
+  const hips = get(player, 'playerHips');
+  if (hips) hips.position.x = 0;
+  const torso = get(player, 'playerTorso');
   if (torso) {
-    torso.rotation.x = strike * 0.22;
-    torso.rotation.y = swing * 0.1;
+    torso.rotation.x = strike * 0.22 - raise * 0.08;
+    torso.rotation.y = (raise - strike) * 0.08;
+    torso.position.x = 0;
+    torso.scale.set(1, 1, 1);
   }
-  if (legL) legL.rotation.x = strike * 0.12;
-  if (legR) legR.rotation.x = -strike * 0.18;
+  rot(get(player, 'legL'), -strike * 0.14, 0, 0.03);
+  rot(get(player, 'legR'), strike * 0.18, 0, -0.03);
+  rot(get(player, 'shinL'), knee(0.16 + strike * 0.1), 0, 0);
+  rot(get(player, 'shinR'), knee(0.2 + strike * 0.18), 0, 0);
+  setLocomotionY(player, strike * 0.025);
 }
 
 /**
@@ -644,8 +770,8 @@ export function animateDeath(mesh: THREE.Group, kind: 'yeti' | 'orc' | 'dummy', 
 }
 
 /** Attack phase helpers — longer windups, clearer connect */
-export const PLAYER_ATTACK_CONNECT_START = 0.42;
-export const PLAYER_ATTACK_CONNECT_END = 0.58;
+export const PLAYER_ATTACK_CONNECT_START = 0.44;
+export const PLAYER_ATTACK_CONNECT_END = 0.56;
 export const YETI_ATTACK_CONNECT_START = 0.48;
 export const YETI_ATTACK_CONNECT_END = 0.62;
 export const ORC_ATTACK_CONNECT_START = 0.45;
@@ -655,6 +781,6 @@ export const YETI_ATTACK_DURATION = 1.05;
 export const ORC_ATTACK_DURATION = 0.82;
 
 /** Windup ends (for telegraph lifetime) */
-export const PLAYER_ATTACK_WINDUP_END = 0.4;
+export const PLAYER_ATTACK_WINDUP_END = 0.36;
 export const YETI_ATTACK_WINDUP_END = 0.42;
 export const ORC_ATTACK_WINDUP_END = 0.4;
