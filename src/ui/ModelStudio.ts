@@ -216,17 +216,17 @@ export class ModelStudio {
   }
 
   render(renderer: THREE.WebGLRenderer): void {
-    renderer.setClearColor(0x1a1c22);
+    renderer.setClearColor(0x6e746c);
     renderer.render(this.scene, this.camera);
     renderer.setClearColor(0x9ec6e4);
   }
 
   private buildScene(): void {
-    this.scene.background = new THREE.Color(0x1a1c22);
-    this.scene.fog = new THREE.Fog(0x1a1c22, 12, 28);
+    this.scene.background = new THREE.Color(0x6e746c);
+    this.scene.fog = new THREE.Fog(0x6e746c, 16, 36);
 
-    this.scene.add(new THREE.HemisphereLight(0xf4f7ff, 0x3a4038, 0.95));
-    const key = new THREE.DirectionalLight(0xfff4dc, 2.15);
+    this.scene.add(new THREE.HemisphereLight(0xf4f7ff, 0x3a4038, 1.05));
+    const key = new THREE.DirectionalLight(0xfff4dc, 2.05);
     key.position.set(4.5, 7.5, 5.5);
     key.castShadow = true;
     key.shadow.mapSize.set(1024, 1024);
@@ -239,20 +239,20 @@ export class ModelStudio {
     key.shadow.camera.bottom = -5;
     this.scene.add(key);
 
-    const fill = new THREE.DirectionalLight(0xc8dcff, 0.55);
+    const fill = new THREE.DirectionalLight(0xc8dcff, 0.62);
     fill.position.set(-6, 3.5, -2);
     this.scene.add(fill);
-    const rim = new THREE.DirectionalLight(0xffe0b8, 0.42);
+    const rim = new THREE.DirectionalLight(0xffe0b8, 0.38);
     rim.position.set(-2, 4, 7);
     this.scene.add(rim);
-    this.scene.add(new THREE.AmbientLight(0x6a7480, 0.35));
+    this.scene.add(new THREE.AmbientLight(0x6a7480, 0.42));
 
     const floor = new THREE.Mesh(
       new THREE.CircleGeometry(6.5, 48),
       new THREE.MeshStandardMaterial({
-        color: 0x2a2e34,
-        roughness: 0.92,
-        metalness: 0.08,
+        color: 0x5c625c,
+        roughness: 0.94,
+        metalness: 0.04,
       }),
     );
     floor.rotation.x = -Math.PI / 2;

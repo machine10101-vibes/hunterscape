@@ -17,6 +17,20 @@ function get(root: THREE.Object3D, name: string): THREE.Object3D | undefined {
   return root.getObjectByName(name);
 }
 
+type SpearRest = { x: number; y: number; z: number; rx: number; ry: number; rz: number };
+
+/** Keep a hand-parented spear on its authored rest pose, plus a local offset. */
+function applySpearHeld(
+  spear: THREE.Object3D | undefined,
+  extra: { x?: number; y?: number; z?: number; rx?: number } = {},
+): void {
+  if (!spear) return;
+  const r = spear.userData.rest as SpearRest | undefined;
+  if (!r) return;
+  spear.position.set(r.x + (extra.x ?? 0), r.y + (extra.y ?? 0), r.z + (extra.z ?? 0));
+  spear.rotation.set(r.rx + (extra.rx ?? 0), r.ry, r.rz);
+}
+
 /** Foot-plant biased stride wave: flatter near plant, sharper lift */
 function strideWave(phase: number): number {
   // phase radians; produce ≈sin but with longer ground contact
@@ -86,7 +100,7 @@ export function resetPlayerPose(player: THREE.Group): void {
     torso.scale.set(1, 1, 1);
   }
   const spear = get(player, 'idleSpear');
-  if (spear) spear.rotation.set(0.18, 0.04, 0.12);
+  if (spear) spear.rotation.set(0.04, 0.02, 0.03);
   poseEquippedTool(player);
   player.rotation.z = 0;
   player.rotation.x = 0;
@@ -124,11 +138,11 @@ export function animatePlayerIdle(player: THREE.Group, t: number): void {
   rot(get(player, 'playerHead'), -0.05 + breath * 0.32, look, -shift * 0.08);
   rot(get(player, 'clavL'), 0.02, 0, 0.05 + shift * 0.08);
   rot(get(player, 'clavR'), 0.02, 0, -0.05 - shift * 0.06);
-  rot(get(player, 'armL'), 0.22 + breath * 0.12, 0.06, 0.1 + shift * 0.08);
+  rot(get(player, 'armL'), 0.1 + breath * 0.1, 0.04, 0.08 + shift * 0.08);
   rot(get(player, 'armR'), 0.08 - breath * 0.08, -0.04, -0.1 - shift * 0.08);
-  rot(get(player, 'forearmL'), -0.72, 0.08, 0.04);
+  rot(get(player, 'forearmL'), -0.18, 0.04, 0.02);
   rot(get(player, 'forearmR'), -0.28, -0.04, -0.02);
-  rot(get(player, 'handL'), 0.12, 0.05, 0.08);
+  rot(get(player, 'handL'), 0.08, 0.03, 0.04);
   rot(get(player, 'handR'), 0.04, 0, -0.04);
   rot(get(player, 'legL'), 0.06 + shift * 0.1, 0, 0.035);
   rot(get(player, 'legR'), -0.04 - shift * 0.08, 0, -0.035);
@@ -137,8 +151,8 @@ export function animatePlayerIdle(player: THREE.Group, t: number): void {
   rot(get(player, 'footL'), 0.04, 0, 0);
   rot(get(player, 'footR'), 0.06, 0, 0);
   if (spear && spear.visible) {
-    spear.rotation.z = 0.12 + Math.sin(t * 0.9) * 0.015;
-    spear.rotation.x = 0.18 + Math.sin(t * 0.7) * 0.012;
+    spear.rotation.z = 0.03 + Math.sin(t * 0.9) * 0.01;
+    spear.rotation.x = 0.04 + Math.sin(t * 0.7) * 0.008;
   }
   if (tool && tool.visible) poseEquippedTool(player);
   setLocomotionY(player, breath * 0.025);
@@ -251,9 +265,9 @@ export function animatePlayerWalk(
     rot(get(player, 'handR'), 0.16, 0.1, 0.24);
     poseEquippedTool(player);
   } else if (spearHeld) {
-    rot(get(player, 'armL'), 0.2 - hipL * 0.12 * blend, 0.05, 0.1);
-    rot(get(player, 'forearmL'), -0.7, 0.08, 0.04);
-    rot(get(player, 'handL'), 0.1, 0.04, 0.06);
+    rot(get(player, 'armL'), 0.1 - hipL * 0.08 * blend, 0.04, 0.08);
+    rot(get(player, 'forearmL'), -0.2, 0.04, 0.02);
+    rot(get(player, 'handL'), 0.06, 0.02, 0.04);
     rot(get(player, 'armR'), -hipR * 0.62 * amp * 1.4 + 0.08, -0.04, -0.08);
     rot(get(player, 'forearmR'), -0.32 - Math.max(0, hipR) * 0.45, -0.04, 0);
     rot(get(player, 'handR'), -hipR * 0.12, 0, -0.04);
@@ -276,7 +290,7 @@ export function animatePlayerWalk(
   rot(get(player, 'playerHead'), -0.03 - plant * 0.5, hipL * 0.05 * blend, -hipL * 0.02 * blend);
   const spear = get(player, 'idleSpear');
   if (spear && spear.visible) {
-    spear.rotation.set(0.18 - hipL * 0.03, 0.04, 0.12 + hipL * 0.015);
+    spear.rotation.set(0.04 - hipL * 0.02, 0.02, 0.03 + hipL * 0.01);
   }
   setLocomotionY(player, plant);
 }
@@ -557,11 +571,7 @@ export function animateOrcAttack(orc: THREE.Group, progress: number): void {
     lean = 0.35 * (1 - w);
   }
 
-  if (spear) {
-    spear.rotation.x = -thrust * 1.12;
-    spear.position.z = 0.12 + thrust * 0.82 - pull * 0.38;
-    spear.position.y = 0.2 + pull * 0.12 - thrust * 0.05;
-  }
+  if (spear) applySpearHeld(spear, { rx: -thrust * 0.35, z: thrust * 0.22 - pull * 0.1, y: pull * 0.04 - thrust * 0.02 });
   if (armR) {
     armR.rotation.x = -thrust * 1.3 + pull * 0.55;
     armR.rotation.z = pull * 0.25;
@@ -676,12 +686,8 @@ export function animateOrcWalk(orc: THREE.Group, t: number, moving: boolean, mov
     const breath = Math.sin(t * 1.6) * 0.028;
     orc.position.y = Math.abs(breath) * 0.5;
     if (armL) armL.rotation.x = breath;
-    if (armR) armR.rotation.x = -0.35 + breath * 0.4; // spear-ready idle
-    if (spear) {
-      spear.rotation.x = -0.15;
-      spear.position.z = 0.12;
-      spear.position.y = 0.2;
-    }
+    if (armR) armR.rotation.x = -0.18 + breath * 0.4; // spear-ready idle
+    if (spear) applySpearHeld(spear);
     if (body) body.rotation.x = 0.04;
     if (head) head.rotation.x = breath * 0.4;
     if (legL) legL.rotation.set(0, 0, 0);
@@ -709,14 +715,10 @@ export function animateOrcWalk(orc: THREE.Group, t: number, moving: boolean, mov
     armL.rotation.z = 0.12;
   }
   if (armR) {
-    armR.rotation.x = -0.4 - swing * 0.15;
+    armR.rotation.x = -0.22 - swing * 0.12;
     armR.rotation.z = -0.08;
   }
-  if (spear) {
-    spear.rotation.x = -0.2 - swing * 0.08;
-    spear.position.z = 0.14 + Math.abs(swing) * 0.04;
-    spear.position.y = 0.22 + plant * 0.5;
-  }
+  if (spear) applySpearHeld(spear, { rx: -swing * 0.04, y: plant * 0.3 });
   if (body) {
     body.rotation.x = 0.08 * blend + plant * 0.4;
     body.rotation.y = Math.sin(phase) * 0.07 * blend;
@@ -758,10 +760,7 @@ export function animateDeath(mesh: THREE.Group, kind: 'yeti' | 'orc' | 'dummy', 
     if (armR) armR.rotation.x = -secondary * 0.9;
     if (armL) armL.rotation.x = secondary * 0.6;
     const spear = get(mesh, 'orcSpear');
-    if (spear) {
-      spear.rotation.x = secondary * 0.8;
-      spear.position.y = 0.2 - secondary * 0.3;
-    }
+    if (spear) applySpearHeld(spear, { rx: secondary * 0.5, y: -secondary * 0.12 });
   } else {
     mesh.rotation.z = primary * 0.7;
     mesh.rotation.x = secondary * 0.2;
