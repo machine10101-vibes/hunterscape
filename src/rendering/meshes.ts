@@ -722,15 +722,15 @@ export function createFrostYeti(): THREE.Group {
 
   // Fangs
   const makeFang = (x: number, y: number, upper: boolean) => {
-    const fang = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.16, 4), fangMat);
+    const fang = new THREE.Mesh(new THREE.ConeGeometry(0.042, 0.2, 4), fangMat);
     fang.rotation.x = upper ? Math.PI : 0;
     fang.position.set(x, y, 0.5);
     head.add(fang);
   };
-  makeFang(-0.1, -0.12, true);
-  makeFang(0.1, -0.12, true);
-  makeFang(-0.08, -0.28, false);
-  makeFang(0.08, -0.28, false);
+  makeFang(-0.11, -0.1, true);
+  makeFang(0.11, -0.1, true);
+  makeFang(-0.09, -0.3, false);
+  makeFang(0.09, -0.3, false);
 
   // Smaller teeth row
   for (let i = 0; i < 5; i++) {
@@ -1079,10 +1079,14 @@ export function createOrcScout(): THREE.Group {
       g.add(rivet);
     }
   };
-  makeStrap(0.55, 0.25);
-  makeStrap(-0.55, 0.25);
-  makeStrap(0.55, -0.22);
-  makeStrap(-0.55, -0.22);
+  makeStrap(0.55, 0.27);
+  makeStrap(-0.55, 0.27);
+  makeStrap(0.55, -0.27);
+  makeStrap(-0.55, -0.27);
+  const backJoin = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.04, 6), metal);
+  backJoin.rotation.x = Math.PI / 2;
+  backJoin.position.set(0, 1.18, -0.29);
+  g.add(backJoin);
 
   const chestBuckle = new THREE.Mesh(new THREE.OctahedronGeometry(0.075, 0), metal);
   chestBuckle.scale.set(1.15, 0.9, 0.45);

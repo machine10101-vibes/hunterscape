@@ -416,7 +416,7 @@ export function createPlayerMesh(): THREE.Group {
     boot.position.set(0, -0.22, -0.02);
     addPart(boot, shin);
 
-    addCrissCross(shin, -0.1, -0.34, 0.1, leatherDark, -0.02);
+    addCrissCross(shin, -0.08, -0.36, 0.118, leatherDark, 0.04);
 
     const foot = new THREE.Group();
     foot.name = side < 0 ? 'footL' : 'footR';
@@ -445,17 +445,17 @@ export function createPlayerMesh(): THREE.Group {
   addPart(pelvis, hips);
 
   for (const [z, ry] of [
-    [0.18, 0],
-    [-0.18, Math.PI],
+    [0.22, 0],
+    [-0.22, Math.PI],
   ] as const) {
-    const flap = triangleTasset(0.28, 0.22, 0.04, leatherDark);
-    flap.position.set(0, 0.84, z);
+    const flap = triangleTasset(0.34, 0.28, 0.045, leatherDark);
+    flap.position.set(0, 0.86, z);
     flap.rotation.y = ry;
     hips.add(flap);
   }
   for (const sx of [-1, 1]) {
-    const flap = triangleTasset(0.2, 0.18, 0.035, leatherMid);
-    flap.position.set(sx * 0.22, 0.84, 0);
+    const flap = triangleTasset(0.24, 0.24, 0.04, leatherMid);
+    flap.position.set(sx * 0.24, 0.86, 0);
     flap.rotation.y = sx * Math.PI * 0.5;
     hips.add(flap);
   }
@@ -495,16 +495,16 @@ export function createPlayerMesh(): THREE.Group {
   torso.add(beltBuckle);
 
   const makeStrap = (rotZ: number, z: number) => {
-    const strap = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.52, 0.038), leatherDark);
+    const strap = new THREE.Mesh(new THREE.BoxGeometry(0.078, 0.56, 0.045), leatherDark);
     strap.position.set(0, 0.02, z);
     strap.rotation.z = rotZ;
     strap.castShadow = true;
     torso.add(strap);
   };
-  makeStrap(0.5, 0.2);
-  makeStrap(-0.5, 0.2);
-  makeStrap(0.5, -0.16);
-  makeStrap(-0.5, -0.16);
+  makeStrap(0.55, 0.265);
+  makeStrap(-0.55, 0.265);
+  makeStrap(0.55, -0.22);
+  makeStrap(-0.55, -0.22);
 
   const bucklePad = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.03), leatherDark);
   bucklePad.position.set(0, 0.05, 0.24);
