@@ -183,6 +183,8 @@ function animateSwordGuard(player: THREE.Group, t: number): void {
 
 /**
  * Human walk: opposite arm/leg, knee flex on swing only, heel-toe plant.
+ * Swing also pulls the thigh forward so the knee lifts in front of the hips
+ * (a vertical thigh + tucked calf reads as a backward-pointing joint).
  */
 export function animatePlayerWalk(
   player: THREE.Group,
@@ -220,17 +222,17 @@ export function animatePlayerWalk(
     hips.rotation.z = hipL * 0.025 * blend;
     hips.position.x = -hipL * 0.018 * blend;
   }
-  rot(get(player, 'legL'), hipL * amp, 0, 0.03);
-  rot(get(player, 'legR'), hipR * amp, 0, -0.03);
+  rot(get(player, 'legL'), hipL * amp - passingL * 0.5, 0, 0.03);
+  rot(get(player, 'legR'), hipR * amp - passingR * 0.5, 0, -0.03);
   rot(
     get(player, 'shinL'),
-    knee(0.14 + passingL * (0.92 + amp * 0.4) + tuckL * 0.4 + reachL * 0.22 + plantedL * 0.1),
+    knee(0.14 + passingL * (0.7 + amp * 0.22) + tuckL * 0.28 + reachL * 0.18 + plantedL * 0.1),
     0,
     0,
   );
   rot(
     get(player, 'shinR'),
-    knee(0.14 + passingR * (0.92 + amp * 0.4) + tuckR * 0.4 + reachR * 0.22 + plantedR * 0.1),
+    knee(0.14 + passingR * (0.7 + amp * 0.22) + tuckR * 0.28 + reachR * 0.18 + plantedR * 0.1),
     0,
     0,
   );
