@@ -472,12 +472,6 @@ export function createFrostYeti(): THREE.Group {
   const noseMat = uniq(0x0a0a0a, { roughness: 0.35 });
   const mouthMat = uniq(0x8a3040, { roughness: 0.7 });
   const fangMat = uniq(0xf2ebd4, { roughness: 0.4 });
-  const eyeMat = uniq(0xffc040, {
-    emissive: 0xff8800,
-    emissiveIntensity: 3.4,
-    roughness: 0.12,
-    metalness: 0.08,
-  });
 
   // Contact shadow
   const shadow = new THREE.Mesh(
@@ -559,16 +553,13 @@ export function createFrostYeti(): THREE.Group {
   addOutline(torso, 1.06, 0x0a1520);
   g.add(torso);
 
-  // Horizontal charcoal stripes on torso
-  for (let i = 0; i < 4; i++) {
-    const band = new THREE.Mesh(
-      new THREE.TorusGeometry(0.58 + i * 0.02, 0.055, 5, 16),
-      stripe,
-    );
-    band.rotation.x = Math.PI / 2 + 0.15;
-    band.position.set(0, 1.55 - i * 0.18, -0.05 + i * 0.02);
-    band.scale.set(1.05, 0.85, 1);
-    g.add(band);
+  // Horizontal charcoal tiger stripes on the torso SIDES (not full hoops).
+  for (let i = 0; i < 3; i++) {
+    for (const sx of [-1, 1]) {
+      const band = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.07, 0.42), stripe);
+      band.position.set(sx * 0.52, 1.58 - i * 0.18, 0.02);
+      g.add(band);
+    }
   }
 
   // Belly slightly bluer
@@ -684,28 +675,31 @@ export function createFrostYeti(): THREE.Group {
 
   // Solid glowing amber eyes — Drive ref has no pupils.
   const makeEye = (sx: number) => {
-    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.11, 6, 5), uniq(0x0a0606));
+    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.1, 5, 4), uniq(0x080604));
     socket.position.set(sx, 0.06, 0.3);
     head.add(socket);
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.09, 7, 6), eyeMat);
+    const eye = new THREE.Mesh(
+      new THREE.CircleGeometry(0.07, 6),
+      new THREE.MeshBasicMaterial({ color: 0xffb018 }),
+    );
     eye.position.set(sx, 0.06, 0.4);
     eye.name = 'yetiEye';
     head.add(eye);
     const glow = new THREE.Mesh(
-      new THREE.SphereGeometry(0.12, 7, 6),
+      new THREE.CircleGeometry(0.1, 6),
       new THREE.MeshBasicMaterial({
         color: 0xffaa22,
         transparent: true,
-        opacity: 0.28,
+        opacity: 0.22,
         depthWrite: false,
       }),
     );
-    glow.position.set(sx, 0.06, 0.4);
+    glow.position.set(sx, 0.06, 0.38);
     glow.name = 'yetiEyeGlow';
     head.add(glow);
-    const eyeLight = new THREE.PointLight(0xff9900, 0.7, 3.2);
+    const eyeLight = new THREE.PointLight(0xff9900, 0.45, 2.6);
     eyeLight.name = 'yetiEyeLight';
-    eyeLight.position.set(sx, 0.06, 0.5);
+    eyeLight.position.set(sx, 0.06, 0.48);
     head.add(eyeLight);
   };
   makeEye(-0.15);
@@ -1195,18 +1189,18 @@ export function createOrcScout(): THREE.Group {
 
   // White tusks from lower jaw — larger Drive-ref silhouette
   for (const sx of [-1, 1]) {
-    const t = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.22, 5), tusk);
-    t.position.set(sx * 0.08, -0.1, 0.2);
-    t.rotation.x = Math.PI + 0.2;
-    t.rotation.z = sx * -0.38;
+    const t = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.26, 5), tusk);
+    t.position.set(sx * 0.075, -0.08, 0.22);
+    t.rotation.x = Math.PI + 0.15;
+    t.rotation.z = sx * -0.32;
     head.add(t);
     const tip = new THREE.Mesh(
-      new THREE.ConeGeometry(0.02, 0.07, 4),
+      new THREE.ConeGeometry(0.022, 0.08, 4),
       uniq(0xfff8f0, { roughness: 0.28, metalness: 0.12 }),
     );
-    tip.position.set(sx * 0.08, 0.02, 0.26);
-    tip.rotation.x = Math.PI + 0.2;
-    tip.rotation.z = sx * -0.38;
+    tip.position.set(sx * 0.075, 0.06, 0.3);
+    tip.rotation.x = Math.PI + 0.15;
+    tip.rotation.z = sx * -0.32;
     head.add(tip);
   }
 

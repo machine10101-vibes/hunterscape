@@ -258,33 +258,14 @@ function addCrissCross(
   }
 }
 
-function squareBuckle(size: number, thick: number, hole: number, metal: THREE.Material): THREE.Mesh {
-  const s = size / 2;
-  const h = hole / 2;
-  const shape = new THREE.Shape();
-  shape.moveTo(-s, -s);
-  shape.lineTo(s, -s);
-  shape.lineTo(s, s);
-  shape.lineTo(-s, s);
-  shape.lineTo(-s, -s);
-  const inner = new THREE.Path();
-  inner.moveTo(-h, -h);
-  inner.lineTo(-h, h);
-  inner.lineTo(h, h);
-  inner.lineTo(h, -h);
-  inner.lineTo(-h, -h);
-  shape.holes.push(inner);
-  const geo = new THREE.ExtrudeGeometry(shape, {
-    depth: thick,
-    bevelEnabled: true,
-    bevelThickness: 0.006,
-    bevelSize: 0.005,
-    bevelSegments: 2,
-    curveSegments: 1,
-  });
-  geo.center();
-  const mesh = new THREE.Mesh(geo, metal);
+function squareBuckle(size: number, thick: number, _hole: number, metal: THREE.Material): THREE.Mesh {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(size, size, thick), metal);
   mesh.castShadow = true;
+  const inner = new THREE.Mesh(
+    new THREE.BoxGeometry(size * 0.42, size * 0.42, thick + 0.008),
+    new THREE.MeshPhysicalMaterial({ color: 0x2a2418, roughness: 0.7, metalness: 0.2, flatShading: true }),
+  );
+  mesh.add(inner);
   return mesh;
 }
 
@@ -514,7 +495,7 @@ export function createPlayerMesh(): THREE.Group {
   torso.add(beltBuckle);
 
   const makeStrap = (rotZ: number, z: number) => {
-    const strap = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.5, 0.03), leatherDark);
+    const strap = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.52, 0.038), leatherDark);
     strap.position.set(0, 0.02, z);
     strap.rotation.z = rotZ;
     strap.castShadow = true;
@@ -603,8 +584,8 @@ export function createPlayerMesh(): THREE.Group {
   head.name = 'playerHead';
   head.position.set(0, 0.5, 0.015);
 
-  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.168, 8, 6), skin);
-  skull.scale.set(0.98, 1.08, 0.94);
+  const skull = new THREE.Mesh(new THREE.IcosahedronGeometry(0.168, 0), skin);
+  skull.scale.set(0.95, 1.06, 0.9);
   addPart(skull, head);
 
   const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 5), skinDark);
@@ -654,20 +635,20 @@ export function createPlayerMesh(): THREE.Group {
     brow.position.set(sx * 0.055, 0.055, 0.145);
     head.add(brow);
 
-    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.038, 6, 4), mat(0x1a100c, { roughness: 0.8 }));
-    socket.position.set(sx * 0.052, 0.018, 0.132);
+    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.032, 5, 4), mat(0x1a100c, { roughness: 0.8 }));
+    socket.position.set(sx * 0.05, 0.02, 0.128);
     head.add(socket);
-    const sclera = new THREE.Mesh(new THREE.SphereGeometry(0.028, 6, 4), mat(0xf2ebe0, { roughness: 0.32, metalness: 0.04 }));
-    sclera.position.set(sx * 0.052, 0.018, 0.155);
+    const sclera = new THREE.Mesh(new THREE.CircleGeometry(0.018, 5), mat(0xe8ddd0, { roughness: 0.4 }));
+    sclera.position.set(sx * 0.05, 0.02, 0.158);
     head.add(sclera);
     const iris = new THREE.Mesh(
-      new THREE.SphereGeometry(0.016, 6, 4),
-      mat(0x5a3c28, { roughness: 0.4, emissive: 0x3a2414, emissiveIntensity: 0.2 }),
+      new THREE.CircleGeometry(0.011, 5),
+      mat(0x4a301c, { roughness: 0.45, emissive: 0x2a180c, emissiveIntensity: 0.15 }),
     );
-    iris.position.set(sx * 0.052, 0.018, 0.172);
+    iris.position.set(sx * 0.05, 0.02, 0.162);
     head.add(iris);
-    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.008, 5, 4), mat(0x080604));
-    pupil.position.set(sx * 0.052, 0.018, 0.184);
+    const pupil = new THREE.Mesh(new THREE.CircleGeometry(0.005, 5), mat(0x080604));
+    pupil.position.set(sx * 0.05, 0.02, 0.164);
     head.add(pupil);
 
     const ear = new THREE.Mesh(new THREE.SphereGeometry(0.032, 6, 4), skin);

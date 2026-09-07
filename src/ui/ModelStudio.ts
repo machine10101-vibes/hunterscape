@@ -387,7 +387,14 @@ export class ModelStudio {
     this.current.position.set(0, 0, 0);
     this.current.rotation.set(0, 0, 0);
     this.current.traverse((obj) => {
-      if (obj.name === 'contactShadow' || obj.name === 'hit' || obj.name === 'yetiBreath' || obj.name === 'yetiBreathMist') {
+      if (
+        obj.name === 'contactShadow' ||
+        obj.name === 'hit' ||
+        obj.name === 'yetiBreath' ||
+        obj.name === 'yetiBreathMist' ||
+        obj.name === 'yetiEyeGlow' ||
+        obj.name === 'yetiEyeLight'
+      ) {
         obj.visible = false;
       }
     });
