@@ -287,9 +287,9 @@ function addFurFringe(
     const a = (i / count) * Math.PI * 2 + (i % 5) * 0.03;
     const ring = radius * (0.88 + (i % 4) * 0.035);
     const len = length * (0.78 + (i % 5) * 0.05);
-    const rad = 0.012 + (i % 3) * 0.004;
+    const rad = 0.016 + (i % 3) * 0.005;
     const tuft = new THREE.Mesh(
-      new THREE.CapsuleGeometry(rad, len, 5, 10),
+      new THREE.CapsuleGeometry(rad, len * 0.85, 5, 10),
       i % 4 === 0 ? furDark : i % 3 === 0 ? furMid : fur,
     );
     tuft.position.set(cx + Math.cos(a) * ring, cy + len * 0.18, cz + Math.sin(a) * ring);
@@ -409,46 +409,45 @@ export function createPlayerMesh(): THREE.Group {
     addPart(knee, shin);
 
     // Trousers stop above the boot cuff.
-    const calf = new THREE.Mesh(new THREE.CapsuleGeometry(0.076, 0.12, 5, 14), clothDark);
-    calf.position.set(0, -0.1, -0.024);
+    const calf = new THREE.Mesh(new THREE.CapsuleGeometry(0.076, 0.1, 5, 14), clothDark);
+    calf.position.set(0, -0.09, -0.024);
     addPart(calf, shin);
 
-    // Calf-high boot shaft — stops well above the foot so the ankle can read.
-    const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.088, 0.096, 0.12, 14), leather);
-    boot.position.set(0, -0.22, -0.016);
+    // Short boot shaft — two fur rings live on this, not on the ankle.
+    const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.098, 0.1, 14), leather);
+    boot.position.set(0, -0.2, -0.016);
     addPart(boot, shin);
-    addCrissCross(shin, -0.16, -0.28, 0.094, leatherDark, 0.02);
+    addCrissCross(shin, -0.15, -0.25, 0.094, leatherDark, 0.02);
 
-    // Pinched ankle column between shaft and foot (was swallowed by the boot).
-    const ankleCol = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.14, 14), leatherDark);
-    ankleCol.position.set(0, -0.38, -0.008);
+    // Long, skinny ankle so the joint reads between shaft and foot.
+    const ankleCol = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.042, 0.18, 14), skinDark);
+    ankleCol.position.set(0, -0.36, -0.006);
     addPart(ankleCol, shin);
-    const ankleSkin = new THREE.Mesh(new THREE.TorusGeometry(0.044, 0.012, 8, 14), leatherMid);
-    ankleSkin.rotation.x = Math.PI / 2;
-    ankleSkin.position.set(0, -0.38, -0.008);
-    shin.add(ankleSkin);
+    const ankleWrap = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.04, 0.05, 14), leatherDark);
+    ankleWrap.position.set(0, -0.34, -0.006);
+    addPart(ankleWrap, shin);
 
     const foot = new THREE.Group();
     foot.name = side < 0 ? 'footL' : 'footR';
-    foot.position.set(0, -0.47, 0.03);
-    const ankle = new THREE.Mesh(new THREE.SphereGeometry(0.044, 12, 10), leatherDark);
+    foot.position.set(0, -0.48, 0.04);
+    const ankle = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 10), leatherDark);
     addPart(ankle, foot);
-    const heel = new THREE.Mesh(new THREE.SphereGeometry(0.048, 10, 8), leatherDark);
-    heel.position.set(0, -0.018, -0.045);
+    const heel = new THREE.Mesh(new THREE.SphereGeometry(0.046, 10, 8), leatherDark);
+    heel.position.set(0, -0.016, -0.05);
     addPart(heel, foot);
-    const toe = new THREE.Mesh(new THREE.CapsuleGeometry(0.052, 0.15, 5, 12), leather);
+    const toe = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.16, 5, 12), leather);
     toe.rotation.x = Math.PI / 2;
-    toe.position.set(0, 0.0, 0.11);
-    toe.scale.set(1.12, 1, 0.7);
+    toe.position.set(0, -0.004, 0.12);
+    toe.scale.set(1.2, 1, 0.68);
     addPart(toe, foot);
-    const sole = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.03, 0.28), mat(0x140e0a, { roughness: 0.96 }));
-    sole.position.set(0, -0.028, 0.09);
+    const sole = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.028, 0.3), mat(0x140e0a, { roughness: 0.96 }));
+    sole.position.set(0, -0.026, 0.1);
     foot.add(sole);
     shin.add(foot);
 
-    // Fur sits on the shaft: mid-calf cuff, then a second ring above the ankle pinch.
-    addFurFringe(shin, 0, -0.15, 0.02, 0.1, 10, 0.055, fur, furDark, furMid, 0.5);
-    addFurFringe(shin, 0, -0.28, 0.0, 0.088, 9, 0.045, fur, furDark, furMid, 0.4);
+    // Fur on the shaft only: calf cuff, then a second ring above the skin ankle.
+    addFurFringe(shin, 0, -0.14, 0.02, 0.1, 10, 0.05, fur, furDark, furMid, 0.48);
+    addFurFringe(shin, 0, -0.24, 0.0, 0.086, 8, 0.04, fur, furDark, furMid, 0.38);
 
     hip.add(shin);
     return hip;
@@ -703,7 +702,7 @@ export function createPlayerMesh(): THREE.Group {
     [0.08, 0.17, -0.08, 0.88],
   ];
   for (const [x, y, z, s] of spikePts) {
-    const spike = new THREE.Mesh(new THREE.CapsuleGeometry(0.022 * s, 0.07 * s, 4, 8), hairCol);
+    const spike = new THREE.Mesh(new THREE.CapsuleGeometry(0.026 * s, 0.055 * s, 4, 8), hairCol);
     spike.position.set(x, y, z);
     spike.rotation.x = z * 0.7 - 0.12;
     spike.rotation.z = -x * 1.15;
