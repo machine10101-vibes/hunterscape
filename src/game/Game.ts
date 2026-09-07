@@ -407,10 +407,12 @@ export class Game {
     this.objects.push(dummy);
     this.dummyTarget = dummy;
 
-    // Frost Yeti — north-east clearing off camp (visible, not on spawn)
+    // Frost Yeti — north-east snow clearing (must match ground snow at world ~4.2,7.2)
     const yetiMesh = createFrostYeti();
     yetiMesh.position.set(YETI_HOME.x, 0, YETI_HOME.z);
     yetiMesh.rotation.y = Math.PI * 0.85; // face roughly toward camp
+    yetiMesh.visible = true;
+    yetiMesh.scale.setScalar(1.15);
     this.scene.add(yetiMesh);
     const yeti: WorldObject = {
       kind: 'yeti',
@@ -925,11 +927,16 @@ export class Game {
         o.mesh.rotation.set(0, Math.PI * 0.85, 0);
         o.mesh.scale.setScalar(1.15);
         o.mesh.position.set(YETI_HOME.x, 0, YETI_HOME.z);
+        // Drop any in-flight death anim so it cannot re-hide the mesh
+        this.deathAnims = this.deathAnims.filter((d) => d.mesh !== o.mesh);
         this.yetiAggroed = false;
         this.yetiAttackCd = 0;
         this.yetiSwipeT = 0;
         this.yetiHitDone = false;
+        this.yetiTeleDone = false;
+        this.yetiMoveBlend = 0;
         animateYetiSwipe(o.mesh, 0);
+        animateYetiWalk(o.mesh, this.animTime, false);
         this.hud.chat('A Frost Yeti stomps back into the north-east clearing!', 'combat');
       }
       if (o.kind === 'orc' && o.depleted && now >= o.respawnAt) {
@@ -1495,6 +1502,22 @@ export class Game {
     }
 
     if (!this.yetiAggroed) {
+      // Always finish returning to the NE snow home after leash/de-aggro
+      // (previously a single lerp on leash-break left the yeti stranded on grass).
+      const hx = YETI_HOME.x - yeti.mesh.position.x;
+      const hz = YETI_HOME.z - yeti.mesh.position.z;
+      const hd = Math.hypot(hx, hz);
+      if (hd > 0.15) {
+        const step = Math.min(hd, 2.8 * dt);
+        yeti.mesh.position.x += (hx / hd) * step;
+        yeti.mesh.position.z += (hz / hd) * step;
+        yeti.mesh.rotation.y = turnTowardYaw(yeti.mesh.rotation.y, Math.atan2(hx, hz), 4, dt);
+        yeti.mesh.position.y = 0;
+        animateYetiWalk(yeti.mesh, this.animTime, true, Math.min(1, hd / 2));
+        animateYetiSwipe(yeti.mesh, 0);
+        return;
+      }
+      yeti.mesh.position.set(YETI_HOME.x, 0, YETI_HOME.z);
       animateYetiWalk(yeti.mesh, this.animTime, false);
       animateYetiSwipe(yeti.mesh, 0);
       return;

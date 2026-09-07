@@ -1047,7 +1047,7 @@ export function createGround(size = 48): THREE.Mesh {
 
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
-    const y = pos.getY(i); // plane local Y = world Z after rotate
+    const y = pos.getY(i); // plane local Y; world Z = -y after rotation.x = -PI/2
     const n =
       Math.sin(x * 0.35) * Math.cos(y * 0.3) * 0.12 +
       Math.sin(x * 0.9 + y * 0.4) * 0.05 +
@@ -1060,9 +1060,10 @@ export function createGround(size = 48): THREE.Mesh {
     const pathWest = Math.exp(-Math.pow(x + 3.2 - y * 0.15, 2) * 1.4 - Math.pow(y + 2.5, 2) * 0.06);
     const pathAmt = Math.max(pathT, path2 * 0.85, pathWest * 0.75);
 
-    // Snowy NE yeti clearing
-    const snowAmt = Math.exp(-Math.pow(x - 4.2, 2) * 0.09 - Math.pow(y - 7.2, 2) * 0.08);
-    const snowAmt2 = Math.exp(-Math.pow(x - 5.5, 2) * 0.15 - Math.pow(y - 6.0, 2) * 0.12);
+    // Snowy NE yeti clearing — after rotation.x=-PI/2, worldZ = -localY
+    const wz = -y;
+    const snowAmt = Math.exp(-Math.pow(x - 4.2, 2) * 0.09 - Math.pow(wz - 7.2, 2) * 0.08);
+    const snowAmt2 = Math.exp(-Math.pow(x - 5.5, 2) * 0.15 - Math.pow(wz - 6.0, 2) * 0.12);
 
     const noise = (Math.sin(x * 1.7) * Math.cos(y * 1.3) + 1) * 0.5;
     const noise2 = (Math.sin(x * 3.1 + 1.7) * Math.cos(y * 2.6) + 1) * 0.5;
