@@ -56,18 +56,25 @@ export function createPlayerMesh(): THREE.Group {
   shadow.name = 'contactShadow';
   g.add(shadow);
 
-  // --- Palette (Hunter Drive male hunter — fidelity-pass1) ---
+  // --- Palette (Hunter Drive male hunter — fidelity-pass2) ---
   const skin = mat(0xc8a07c, { roughness: 0.7, metalness: 0.03 });
   const skinDark = mat(0x9a7454, { roughness: 0.78, metalness: 0.03 });
   const hairCol = mat(0x1e1208, { roughness: 0.97 });
   const leather = mat(0x322012, { roughness: 0.78, metalness: 0.08 }); // darker matte leather
   const leatherDark = mat(0x1a1008, { roughness: 0.86, metalness: 0.06 });
   const leatherMid = mat(0x5c3a26, { roughness: 0.68, metalness: 0.1 });
-  const fur = mat(0xc8ac88, { roughness: 0.99, metalness: 0.0 });
-  const furDark = mat(0x8a6a46, { roughness: 0.99, metalness: 0.0 });
+  const fur = mat(0xa07848, { roughness: 0.99, metalness: 0.0 }); // Drive brown/tan leather-fur
+  const furDark = mat(0x5c3a22, { roughness: 0.99, metalness: 0.0 });
+  const furMid = mat(0x8a5e36, { roughness: 0.99, metalness: 0.0 });
   const cloth = mat(0x262c26, { roughness: 0.92 }); // charcoal/olive sleeves+pants
   const clothDark = mat(0x161a16, { roughness: 0.94 });
   const metal = mat(0xe4ecf4, { metalness: 0.9, roughness: 0.16 }); // brighter steel contrast
+  const metalBright = mat(0xf6fafc, {
+    metalness: 0.96,
+    roughness: 0.1,
+    emissive: 0xb8c8d8,
+    emissiveIntensity: 0.42,
+  });
   const wood = mat(0x3e2810, { roughness: 0.88 });
 
   const addPart = (
@@ -83,7 +90,7 @@ export function createPlayerMesh(): THREE.Group {
     return mesh;
   };
 
-  /** Spiky fur ring / clump helper — denser, length-jittered for shaggy silhouette */
+  /** Layered fur spikes — thinner tips + clump strands (less chunky, Drive-ish) */
   const addFurSpikes = (
     parent: THREE.Object3D,
     cx: number,
@@ -97,24 +104,40 @@ export function createPlayerMesh(): THREE.Group {
   ) => {
     for (let i = 0; i < count; i++) {
       const a = (i / count) * Math.PI * 2 + yawBias;
-      const lenJ = length * (0.78 + (i % 5) * 0.07);
-      const tipJ = tipRadius * (0.85 + (i % 3) * 0.1);
-      const spike = new THREE.Mesh(
-        new THREE.ConeGeometry(tipJ, lenJ, 4),
-        i % 3 === 0 ? furDark : fur,
-      );
-      const lift = (i % 4) * 0.018;
+      const radJ = radius * (0.92 + (i % 4) * 0.035);
+      const lenJ = length * (0.72 + (i % 5) * 0.08);
+      // Thinner tips than pass1 — strand/clump read instead of chunky cones
+      const tipJ = tipRadius * (0.55 + (i % 3) * 0.08);
+      const matUse = i % 4 === 0 ? furDark : i % 3 === 0 ? furMid : fur;
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(tipJ, lenJ, 5), matUse);
+      const lift = (i % 5) * 0.014;
       spike.position.set(
-        cx + Math.cos(a) * radius,
-        cy + lenJ * 0.22 + lift,
-        cz + Math.sin(a) * radius,
+        cx + Math.cos(a) * radJ,
+        cy + lenJ * 0.2 + lift,
+        cz + Math.sin(a) * radJ,
       );
-      // Point outward-up with slight stagger
-      spike.rotation.z = -Math.cos(a) * (0.5 + (i % 3) * 0.06);
-      spike.rotation.x = Math.sin(a) * (0.5 + (i % 2) * 0.08);
-      spike.rotation.y = (i % 7) * 0.12;
+      spike.rotation.z = -Math.cos(a) * (0.48 + (i % 3) * 0.07);
+      spike.rotation.x = Math.sin(a) * (0.48 + (i % 2) * 0.09);
+      spike.rotation.y = (i % 7) * 0.11;
       spike.castShadow = true;
       parent.add(spike);
+      // Secondary fine strand beside primary clump (cheap layered read)
+      if (i % 2 === 0) {
+        const strand = new THREE.Mesh(
+          new THREE.ConeGeometry(tipJ * 0.55, lenJ * 0.72, 4),
+          i % 4 === 0 ? furMid : furDark,
+        );
+        const a2 = a + 0.18;
+        strand.position.set(
+          cx + Math.cos(a2) * (radJ * 0.94),
+          cy + lenJ * 0.12 + lift * 0.5,
+          cz + Math.sin(a2) * (radJ * 0.94),
+        );
+        strand.rotation.z = -Math.cos(a2) * 0.55;
+        strand.rotation.x = Math.sin(a2) * 0.55;
+        strand.castShadow = true;
+        parent.add(strand);
+      }
     }
   };
 
@@ -151,9 +174,9 @@ export function createPlayerMesh(): THREE.Group {
     }
 
     // Fur trim at boot top (below knee) — denser
-    addFurSpikes(leg, 0, 0.36, 0.02, 0.125, 12, 0.11, 0.032);
+    addFurSpikes(leg, 0, 0.36, 0.02, 0.125, 14, 0.1, 0.024);
     // Fur trim at ankle
-    addFurSpikes(leg, 0, 0.08, 0.04, 0.115, 10, 0.085, 0.028);
+    addFurSpikes(leg, 0, 0.08, 0.04, 0.115, 12, 0.08, 0.02);
 
     leg.position.x = side * 0.16;
     return leg;
@@ -206,31 +229,53 @@ export function createPlayerMesh(): THREE.Group {
   const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.29, 0.29, 0.1, 10), leatherDark);
   belt.position.y = 0.88;
   addPart(belt, g);
-  const beltBuckle = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.09, 0.06), metal);
-  beltBuckle.position.set(0, 0.88, 0.28);
+  const beltBuckle = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.1, 0.07), metalBright);
+  beltBuckle.position.set(0, 0.88, 0.3);
   g.add(beltBuckle);
 
   // X chest straps (front)
   const makeStrap = (rotZ: number, z = 0.22) => {
-    const strap = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.55, 0.035), leatherDark);
+    const strap = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.56, 0.04), leatherDark);
     strap.position.set(0, 1.18, z);
     strap.rotation.z = rotZ;
     g.add(strap);
   };
-  makeStrap(0.55, 0.24);
-  makeStrap(-0.55, 0.24);
+  makeStrap(0.55, 0.26);
+  makeStrap(-0.55, 0.26);
   // X on back
   makeStrap(0.55, -0.22);
   makeStrap(-0.55, -0.22);
 
-  // Silver diamond chest buckle at X center (Drive ref)
-  const chestBuckle = new THREE.Mesh(new THREE.OctahedronGeometry(0.07, 0), metal);
-  chestBuckle.scale.set(1.1, 0.85, 0.45);
-  chestBuckle.position.set(0, 1.18, 0.28);
+  // Silver diamond chest buckle at X center — high-contrast Drive read
+  const bucklePad = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.14, 0.045), leatherDark);
+  bucklePad.position.set(0, 1.2, 0.3);
+  g.add(bucklePad);
+  const chestBuckle = new THREE.Mesh(new THREE.OctahedronGeometry(0.1, 0), metalBright);
+  chestBuckle.scale.set(1.35, 1.05, 0.55);
+  chestBuckle.position.set(0, 1.2, 0.36);
+  chestBuckle.name = 'chestBuckle';
   g.add(chestBuckle);
-  const chestBuckleRing = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.012, 4, 8), metal);
-  chestBuckleRing.position.set(0, 1.18, 0.31);
+  const chestBuckleFacet = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.055, 0),
+    mat(0xffffff, { metalness: 0.98, roughness: 0.08, emissive: 0xd0e0f0, emissiveIntensity: 0.55 }),
+  );
+  chestBuckleFacet.scale.set(1.2, 0.9, 0.4);
+  chestBuckleFacet.position.set(0, 1.2, 0.4);
+  g.add(chestBuckleFacet);
+  const chestBuckleRing = new THREE.Mesh(new THREE.TorusGeometry(0.058, 0.014, 4, 10), metalBright);
+  chestBuckleRing.position.set(0, 1.2, 0.385);
   g.add(chestBuckleRing);
+  // Cross-pin rivets at strap join for motion flash
+  for (const [dx, dy] of [
+    [-0.07, 0.06],
+    [0.07, 0.06],
+    [-0.07, -0.06],
+    [0.07, -0.06],
+  ] as const) {
+    const rivet = new THREE.Mesh(new THREE.SphereGeometry(0.018, 5, 4), metalBright);
+    rivet.position.set(dx, 1.2 + dy, 0.34);
+    g.add(rivet);
+  }
 
   // Layered shoulder pauldrons — break torso blob silhouette
   for (const sx of [-1, 1]) {
@@ -247,32 +292,43 @@ export function createPlayerMesh(): THREE.Group {
     g.add(ring);
   }
 
-  // ===== Fur collar (dense Drive-ref spikes around neck/shoulders) =====
-  const collarBase = new THREE.Mesh(new THREE.TorusGeometry(0.23, 0.1, 6, 14), fur);
+  // ===== Fur collar — Drive brown/tan, dense layered strands (less chunky) =====
+  const collarBase = new THREE.Mesh(new THREE.TorusGeometry(0.23, 0.095, 6, 14), furMid);
   collarBase.rotation.x = Math.PI / 2;
   collarBase.position.set(0, 1.42, 0);
   collarBase.scale.set(1.2, 1.05, 0.98);
   addPart(collarBase, g);
+  const collarUnder = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.07, 5, 12), furDark);
+  collarUnder.rotation.x = Math.PI / 2;
+  collarUnder.position.set(0, 1.38, 0.02);
+  collarUnder.scale.set(1.15, 1.0, 0.95);
+  g.add(collarUnder);
 
-  // Triple-layer dense spike clumps for collar volume
-  addFurSpikes(g, 0, 1.4, 0, 0.29, 28, 0.22, 0.046);
-  addFurSpikes(g, 0, 1.52, -0.04, 0.25, 22, 0.18, 0.04, 0.15);
-  addFurSpikes(g, 0, 1.34, 0.08, 0.32, 18, 0.15, 0.036, 0.32);
-  addFurSpikes(g, 0, 1.46, 0.02, 0.2, 14, 0.12, 0.03, 0.5);
-  // Shoulder drapes — thicker layered spikes
+  // Multi-layer dense spikes — thinner tips, keep spike count for silhouette
+  addFurSpikes(g, 0, 1.4, 0, 0.29, 30, 0.2, 0.032);
+  addFurSpikes(g, 0, 1.52, -0.04, 0.25, 24, 0.16, 0.028, 0.15);
+  addFurSpikes(g, 0, 1.34, 0.08, 0.32, 20, 0.14, 0.026, 0.32);
+  addFurSpikes(g, 0, 1.46, 0.02, 0.2, 16, 0.11, 0.022, 0.5);
+  addFurSpikes(g, 0, 1.48, -0.08, 0.22, 12, 0.13, 0.02, 0.7);
+  // Shoulder drapes — layered thinner clumps
   for (const sx of [-1, 1]) {
-    addFurSpikes(g, sx * 0.3, 1.35, 0.05, 0.14, 14, 0.16, 0.036);
-    addFurSpikes(g, sx * 0.36, 1.2, 0.02, 0.11, 11, 0.13, 0.032);
-    const drape = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.34, 5), furDark);
+    addFurSpikes(g, sx * 0.3, 1.35, 0.05, 0.14, 16, 0.15, 0.026);
+    addFurSpikes(g, sx * 0.36, 1.2, 0.02, 0.11, 12, 0.12, 0.022);
+    const drape = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.32, 5), furDark);
     drape.position.set(sx * 0.35, 1.26, 0);
     drape.rotation.z = sx * 0.72;
     drape.rotation.x = -0.32;
     addPart(drape, g);
-    const drape2 = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.24, 4), fur);
+    const drape2 = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.22, 4), furMid);
     drape2.position.set(sx * 0.4, 1.16, 0.06);
     drape2.rotation.z = sx * 0.85;
     drape2.rotation.x = -0.2;
     addPart(drape2, g);
+    const drape3 = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.18, 4), fur);
+    drape3.position.set(sx * 0.38, 1.2, -0.04);
+    drape3.rotation.z = sx * 0.65;
+    drape3.rotation.x = -0.15;
+    addPart(drape3, g);
   }
 
   // ===== Arms (bare muscular upper + leather gauntlets — Drive ref) =====
@@ -307,7 +363,7 @@ export function createPlayerMesh(): THREE.Group {
     // Fur trim at top of gauntlet (near elbow) — denser
     const furGroup = new THREE.Group();
     furGroup.position.set(side * 0.08, -0.12, 0.02);
-    addFurSpikes(furGroup, 0, 0, 0, 0.105, 12, 0.1, 0.028);
+    addFurSpikes(furGroup, 0, 0, 0, 0.105, 14, 0.095, 0.022);
     arm.add(furGroup);
 
     // Hand
@@ -321,110 +377,124 @@ export function createPlayerMesh(): THREE.Group {
   g.add(makeArm(-1));
   g.add(makeArm(1));
 
-  // ===== Head =====
+  // ===== Head — fidelity-pass2: readable jaw/eyes/brows/hair at closer cam =====
   const head = new THREE.Group();
   head.name = 'playerHead';
-  head.position.set(0, 1.58, 0);
+  head.position.set(0, 1.6, 0.02);
+  // Slight upward tilt so face planes catch isometric light
+  head.rotation.x = -0.14;
 
-  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.185, 11, 9), skin);
-  skull.scale.set(1.0, 1.12, 0.98);
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10), skin);
+  skull.scale.set(1.02, 1.14, 1.0);
   addPart(skull, head, 1.1, 0x1a1008);
 
-  // Strong jaw / chin — readable at closer combat cam
-  const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.15, 0.2), skinDark);
-  jaw.position.set(0, -0.12, 0.06);
+  // Strong jaw / chin — larger + more projected for iso read
+  const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.17, 0.22), skinDark);
+  jaw.position.set(0, -0.13, 0.08);
   addPart(jaw, head);
-  const chin = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.09, 0.11), skinDark);
-  chin.position.set(0, -0.18, 0.12);
+  const chin = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.1, 0.13), skinDark);
+  chin.position.set(0, -0.2, 0.15);
   head.add(chin);
   // Stubble plane for Drive-ref jaw grit
-  const stubble = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.08, 0.06), mat(0x6a5040, { roughness: 0.95 }));
-  stubble.position.set(0, -0.14, 0.14);
+  const stubble = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.09, 0.07), mat(0x5a4030, { roughness: 0.95 }));
+  stubble.position.set(0, -0.15, 0.17);
   head.add(stubble);
 
   // Cheek planes
   for (const sx of [-1, 1]) {
-    const cheek = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.12), skinDark);
-    cheek.position.set(sx * 0.135, -0.02, 0.1);
+    const cheek = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.13, 0.13), skinDark);
+    cheek.position.set(sx * 0.145, -0.02, 0.12);
     head.add(cheek);
   }
 
-  // Nose bridge + tip (more projected for side-read)
-  const noseBridge = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.09, 0.07), skinDark);
-  noseBridge.position.set(0, 0.025, 0.16);
+  // Nose bridge + tip (more projected for side/iso read)
+  const noseBridge = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.1, 0.08), skinDark);
+  noseBridge.position.set(0, 0.03, 0.19);
   head.add(noseBridge);
-  const nose = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.065, 0.1), skinDark);
-  nose.position.set(0, -0.03, 0.2);
+  const nose = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.12), skinDark);
+  nose.position.set(0, -0.03, 0.24);
   head.add(nose);
 
-  // Heavy brows
+  // Heavy dark brows — thicker for close-cam silhouette
   for (const sx of [-1, 1]) {
-    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.095, 0.035, 0.05), hairCol);
-    brow.position.set(sx * 0.08, 0.08, 0.16);
-    brow.rotation.z = sx * -0.2;
+    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.042, 0.055), hairCol);
+    brow.position.set(sx * 0.085, 0.095, 0.19);
+    brow.rotation.z = sx * -0.22;
     head.add(brow);
+    const browRidge = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.025, 0.04), mat(0x2a1a10, { roughness: 0.9 }));
+    browRidge.position.set(sx * 0.085, 0.075, 0.205);
+    browRidge.rotation.z = sx * -0.18;
+    head.add(browRidge);
   }
 
-  // Eyes (larger sockets + iris + highlight for close-cam read)
+  // Eyes — larger sockets + iris + sclera + highlight for close-cam read
   for (const sx of [-1, 1]) {
-    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.048, 7, 5), mat(0x120c0a));
-    socket.position.set(sx * 0.075, 0.025, 0.155);
+    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.055, 7, 5), mat(0x0c0806));
+    socket.position.set(sx * 0.08, 0.03, 0.175);
     head.add(socket);
+    const sclera = new THREE.Mesh(new THREE.SphereGeometry(0.038, 6, 5), mat(0xe8e0d4, { roughness: 0.45 }));
+    sclera.position.set(sx * 0.08, 0.03, 0.21);
+    head.add(sclera);
     const iris = new THREE.Mesh(
-      new THREE.SphereGeometry(0.028, 6, 5),
-      mat(0x5a4030, { emissive: 0x3a2818, emissiveIntensity: 0.55 }),
+      new THREE.SphereGeometry(0.026, 6, 5),
+      mat(0x4a3424, { emissive: 0x3a2818, emissiveIntensity: 0.65 }),
     );
-    iris.position.set(sx * 0.075, 0.025, 0.19);
+    iris.position.set(sx * 0.08, 0.03, 0.235);
     head.add(iris);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.012, 4, 3), mat(0x0a0604));
+    pupil.position.set(sx * 0.08, 0.03, 0.25);
+    head.add(pupil);
     const hl = new THREE.Mesh(
-      new THREE.SphereGeometry(0.012, 4, 3),
-      mat(0xf0e8d8, { emissive: 0xffffff, emissiveIntensity: 0.5 }),
+      new THREE.SphereGeometry(0.01, 4, 3),
+      mat(0xffffff, { emissive: 0xffffff, emissiveIntensity: 0.7 }),
     );
-    hl.position.set(sx * 0.068, 0.035, 0.205);
+    hl.position.set(sx * 0.072, 0.04, 0.255);
     head.add(hl);
   }
 
   // Mouth line
-  const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.02, 0.04), mat(0x4a2818));
-  mouth.position.set(0, -0.14, 0.17);
+  const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.022, 0.045), mat(0x3a2014));
+  mouth.position.set(0, -0.145, 0.2);
   head.add(mouth);
 
   // Ears
   for (const sx of [-1, 1]) {
-    const ear = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.09, 0.045), skin);
-    ear.position.set(sx * 0.175, 0.02, 0);
+    const ear = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.1, 0.05), skin);
+    ear.position.set(sx * 0.19, 0.02, 0);
     head.add(ear);
   }
 
-  // Short spiky dark brown hair — denser Drive clumps
-  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 5), hairCol);
-  hairCap.position.set(0, 0.07, -0.02);
-  hairCap.scale.set(1.06, 0.72, 1.06);
+  // Short spiky dark brown hair — denser Drive clumps, less face overhang
+  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.195, 8, 5), hairCol);
+  hairCap.position.set(0, 0.08, -0.04);
+  hairCap.scale.set(1.08, 0.72, 1.05);
   addPart(hairCap, head);
 
-  // Spiky clumps
+  // Spiky clumps — bias upward/back so face stays readable
   const spikePts: [number, number, number, number][] = [
-    [0, 0.22, 0.05, 1.15],
-    [-0.08, 0.2, 0.09, 1.0],
-    [0.08, 0.2, 0.09, 1.0],
-    [-0.13, 0.16, -0.02, 0.95],
-    [0.13, 0.16, -0.02, 0.95],
-    [0, 0.18, -0.13, 1.05],
-    [-0.11, 0.14, -0.1, 0.9],
-    [0.11, 0.14, -0.1, 0.9],
-    [-0.06, 0.22, -0.04, 1.1],
-    [0.06, 0.22, -0.04, 1.1],
-    [0, 0.24, 0.12, 0.85],
-    [-0.15, 0.1, 0.04, 0.8],
-    [0.15, 0.1, 0.04, 0.8],
-    [-0.04, 0.26, 0.02, 0.95],
-    [0.04, 0.26, 0.02, 0.95],
+    [0, 0.24, 0.0, 1.2],
+    [-0.09, 0.22, 0.04, 1.05],
+    [0.09, 0.22, 0.04, 1.05],
+    [-0.14, 0.17, -0.04, 1.0],
+    [0.14, 0.17, -0.04, 1.0],
+    [0, 0.2, -0.14, 1.1],
+    [-0.12, 0.15, -0.12, 0.95],
+    [0.12, 0.15, -0.12, 0.95],
+    [-0.07, 0.24, -0.06, 1.15],
+    [0.07, 0.24, -0.06, 1.15],
+    [0, 0.26, 0.06, 0.9],
+    [-0.16, 0.11, 0.0, 0.85],
+    [0.16, 0.11, 0.0, 0.85],
+    [-0.05, 0.28, -0.02, 1.0],
+    [0.05, 0.28, -0.02, 1.0],
+    [-0.1, 0.2, 0.08, 0.8],
+    [0.1, 0.2, 0.08, 0.8],
   ];
   for (const [x, y, z, s] of spikePts) {
-    const spike = new THREE.Mesh(new THREE.ConeGeometry(0.048 * s, 0.15 * s, 4), hairCol);
+    const spike = new THREE.Mesh(new THREE.ConeGeometry(0.042 * s, 0.145 * s, 4), hairCol);
     spike.position.set(x, y, z);
-    spike.rotation.x = z * 1.2;
-    spike.rotation.z = -x * 1.5;
+    spike.rotation.x = z * 0.9 - 0.15;
+    spike.rotation.z = -x * 1.4;
     head.add(spike);
   }
 
@@ -1049,8 +1119,8 @@ export function createFrostYeti(): THREE.Group {
   const furBlue = uniq(0xc4d8e8, { roughness: 0.9 }); // cool blue tint
   const furShade = uniq(0xd0dde8, { roughness: 0.96 });
   const stripe = uniq(0x2a2a30, { roughness: 0.88 });
-  const claw = uniq(0x08080a, { roughness: 0.22, metalness: 0.45 }); // polished obsidian
-  const clawEdge = uniq(0x2a2a30, { roughness: 0.18, metalness: 0.55 });
+  const claw = uniq(0x08080a, { roughness: 0.16, metalness: 0.62 }); // polished obsidian
+  const clawEdge = uniq(0x3a3a42, { roughness: 0.12, metalness: 0.7, emissive: 0x121218, emissiveIntensity: 0.25 });
   const noseMat = uniq(0x0a0a0a, { roughness: 0.35 });
   const mouthMat = uniq(0x8a3040, { roughness: 0.7 });
   const fangMat = uniq(0xf2ebd4, { roughness: 0.4 });
@@ -1100,12 +1170,19 @@ export function createFrostYeti(): THREE.Group {
     foot.position.set(0, 0.07, 0.18);
     foot.castShadow = true;
     leg.add(foot);
-    // Toes / claws — longer, clearer black claws (Drive ref)
+    // Toes / claws — longer knife-clear polished claws (Drive ref, pass2)
     for (let i = 0; i < 5; i++) {
-      const c = new THREE.Mesh(new THREE.ConeGeometry(0.042, 0.22, 5), i % 2 ? clawEdge : claw);
-      c.rotation.x = Math.PI / 2 + 0.15;
-      c.position.set(-0.12 + i * 0.06, 0.055, 0.44);
+      const c = new THREE.Mesh(new THREE.ConeGeometry(0.036, 0.34, 5), i % 2 ? clawEdge : claw);
+      c.rotation.x = Math.PI / 2 + 0.22;
+      c.position.set(-0.13 + i * 0.065, 0.05, 0.52);
       leg.add(c);
+      // Subtle highlight edge for polished read
+      if (i % 2 === 0) {
+        const edge = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.22, 4), clawEdge);
+        edge.rotation.x = Math.PI / 2 + 0.22;
+        edge.position.set(-0.13 + i * 0.065, 0.06, 0.58);
+        leg.add(edge);
+      }
     }
     leg.position.x = side * 0.32;
     return leg;
@@ -1145,39 +1222,60 @@ export function createFrostYeti(): THREE.Group {
   belly.scale.set(1.1, 1.0, 0.55);
   g.add(belly);
 
-  // Shoulder mane / shaggy fur clumps — denser Drive-ref silhouette
+  // Shoulder mane — layered strand clumps (less chunky than pass1 fat cones)
   const makeManeClump = (x: number, y: number, z: number, s: number, matUse = fur) => {
-    const clump = new THREE.Mesh(new THREE.ConeGeometry(0.17 * s, 0.42 * s, 5), matUse);
-    clump.position.set(x, y, z);
-    clump.rotation.x = -0.55 - s * 0.08;
-    clump.rotation.z = (x > 0 ? 1 : -1) * 0.08 * s;
-    clump.castShadow = true;
-    g.add(clump);
+    const base = new THREE.Mesh(new THREE.ConeGeometry(0.11 * s, 0.36 * s, 5), matUse);
+    base.position.set(x, y, z);
+    base.rotation.x = -0.55 - s * 0.08;
+    base.rotation.z = (x > 0 ? 1 : -1) * 0.08 * s;
+    base.castShadow = true;
+    g.add(base);
+    // 3–4 thinner strand spikes around the base clump
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + s;
+      const strand = new THREE.Mesh(
+        new THREE.ConeGeometry(0.035 * s, 0.26 * s, 4),
+        i % 2 === 0 ? furShade : matUse,
+      );
+      strand.position.set(
+        x + Math.cos(a) * 0.06 * s,
+        y + 0.04 * s,
+        z + Math.sin(a) * 0.05 * s,
+      );
+      strand.rotation.x = -0.65 - (i % 3) * 0.08;
+      strand.rotation.z = (x > 0 ? 1 : -1) * (0.12 + i * 0.04);
+      strand.rotation.y = a * 0.3;
+      strand.castShadow = true;
+      g.add(strand);
+    }
   };
-  makeManeClump(-0.55, 1.85, -0.15, 1.3);
-  makeManeClump(0.55, 1.85, -0.15, 1.3);
-  makeManeClump(-0.35, 2.0, -0.35, 1.15, furShade);
-  makeManeClump(0.35, 2.0, -0.35, 1.15, furShade);
-  makeManeClump(0, 2.08, -0.42, 1.3);
-  makeManeClump(-0.7, 1.65, 0.05, 1.05);
-  makeManeClump(0.7, 1.65, 0.05, 1.05);
-  makeManeClump(-0.45, 1.95, 0.1, 0.9, furBlue);
-  makeManeClump(0.45, 1.95, 0.1, 0.9, furBlue);
-  makeManeClump(-0.2, 2.12, -0.25, 1.0);
-  makeManeClump(0.2, 2.12, -0.25, 1.0);
-  makeManeClump(0, 1.75, -0.55, 1.1, furShade);
+  makeManeClump(-0.55, 1.85, -0.15, 1.25);
+  makeManeClump(0.55, 1.85, -0.15, 1.25);
+  makeManeClump(-0.35, 2.0, -0.35, 1.1, furShade);
+  makeManeClump(0.35, 2.0, -0.35, 1.1, furShade);
+  makeManeClump(0, 2.08, -0.42, 1.2);
+  makeManeClump(-0.7, 1.65, 0.05, 1.0);
+  makeManeClump(0.7, 1.65, 0.05, 1.0);
+  makeManeClump(-0.45, 1.95, 0.1, 0.85, furBlue);
+  makeManeClump(0.45, 1.95, 0.1, 0.85, furBlue);
+  makeManeClump(-0.2, 2.12, -0.25, 0.95);
+  makeManeClump(0.2, 2.12, -0.25, 0.95);
+  makeManeClump(0, 1.75, -0.55, 1.05, furShade);
   // Extra layered shag around chest / back
-  makeManeClump(-0.6, 1.5, -0.25, 0.85, furShade);
-  makeManeClump(0.6, 1.5, -0.25, 0.85, furShade);
-  makeManeClump(-0.25, 1.9, 0.25, 0.75, fur);
-  makeManeClump(0.25, 1.9, 0.25, 0.75, fur);
-  makeManeClump(0, 2.2, -0.15, 0.9, furShade);
-  makeManeClump(-0.5, 1.75, -0.45, 0.95);
-  makeManeClump(0.5, 1.75, -0.45, 0.95);
+  makeManeClump(-0.6, 1.5, -0.25, 0.8, furShade);
+  makeManeClump(0.6, 1.5, -0.25, 0.8, furShade);
+  makeManeClump(-0.25, 1.9, 0.25, 0.7, fur);
+  makeManeClump(0.25, 1.9, 0.25, 0.7, fur);
+  makeManeClump(0, 2.2, -0.15, 0.85, furShade);
+  makeManeClump(-0.5, 1.75, -0.45, 0.9);
+  makeManeClump(0.5, 1.75, -0.45, 0.9);
+  makeManeClump(-0.15, 2.05, -0.5, 0.75, furBlue);
+  makeManeClump(0.15, 2.05, -0.5, 0.75, furBlue);
   // Limb shag tufts
   for (const sx of [-1, 1]) {
-    makeManeClump(sx * 0.38, 0.75, 0.15, 0.55, furShade);
-    makeManeClump(sx * 0.35, 0.4, 0.2, 0.45, furBlue);
+    makeManeClump(sx * 0.38, 0.75, 0.15, 0.5, furShade);
+    makeManeClump(sx * 0.35, 0.4, 0.2, 0.42, furBlue);
+    makeManeClump(sx * 0.55, 1.4, 0.1, 0.55, fur);
   }
   // Extra stripe fur strips for shaggy read
   for (let i = 0; i < 8; i++) {
@@ -1217,18 +1315,23 @@ export function createFrostYeti(): THREE.Group {
     hand.position.set(side * 0.42, -0.72, 0.45);
     hand.castShadow = true;
     arm.add(hand);
-    // Claws — longer, sharper, polished black (thumb + 4 fingers)
+    // Claws — longer knife-clear polished black (thumb + 4 fingers) pass2
     for (let i = 0; i < 4; i++) {
-      const c = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.32, 5), i % 2 ? clawEdge : claw);
-      c.rotation.x = Math.PI / 2 + 0.4;
-      c.position.set(side * 0.42 + (i - 1.5) * 0.07, -0.82, 0.7);
+      const c = new THREE.Mesh(new THREE.ConeGeometry(0.038, 0.5, 5), i % 2 ? clawEdge : claw);
+      c.rotation.x = Math.PI / 2 + 0.48;
+      c.position.set(side * 0.42 + (i - 1.5) * 0.075, -0.88, 0.82);
       arm.add(c);
+      // Polished edge facet
+      const edge = new THREE.Mesh(new THREE.ConeGeometry(0.016, 0.32, 4), clawEdge);
+      edge.rotation.x = Math.PI / 2 + 0.48;
+      edge.position.set(side * 0.42 + (i - 1.5) * 0.075, -0.9, 0.92);
+      arm.add(edge);
     }
     // Opposable thumb claw
-    const thumb = new THREE.Mesh(new THREE.ConeGeometry(0.036, 0.26, 5), claw);
-    thumb.rotation.x = Math.PI / 2 + 0.15;
-    thumb.rotation.z = side * 0.7;
-    thumb.position.set(side * 0.3, -0.7, 0.58);
+    const thumb = new THREE.Mesh(new THREE.ConeGeometry(0.034, 0.4, 5), claw);
+    thumb.rotation.x = Math.PI / 2 + 0.2;
+    thumb.rotation.z = side * 0.75;
+    thumb.position.set(side * 0.28, -0.72, 0.68);
     arm.add(thumb);
     arm.position.set(side * 0.72, 1.7, 0.05);
     return arm;
