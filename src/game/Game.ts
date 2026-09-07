@@ -203,6 +203,7 @@ export class Game {
     this.camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 140);
 
     this.setupLights();
+    this.setupReflectionEnv();
     this.scene.add(createSkyDome(70));
     this.ground = createGround(48);
     this.scene.add(this.ground);
@@ -276,6 +277,28 @@ export class Game {
     this.scene.add(fill);
 
     this.scene.add(new THREE.AmbientLight(0x6a7c88, 0.44));
+  }
+
+  /** Soft studio IBL so leather, metal, and skin read like an RS3 character. */
+  private setupReflectionEnv(): void {
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    const envScene = new THREE.Scene();
+    envScene.add(new THREE.HemisphereLight(0xf2f7ff, 0x3d5a22, 1.15));
+    const sky = new THREE.Mesh(
+      new THREE.SphereGeometry(10, 16, 12),
+      new THREE.MeshBasicMaterial({ color: 0xb4cce4, side: THREE.BackSide }),
+    );
+    envScene.add(sky);
+    const sunBall = new THREE.Mesh(new THREE.SphereGeometry(2.2, 12, 10), new THREE.MeshBasicMaterial({ color: 0xfff1c8 }));
+    sunBall.position.set(7, 9, 5);
+    envScene.add(sunBall);
+    const ground = new THREE.Mesh(new THREE.CircleGeometry(10, 16), new THREE.MeshBasicMaterial({ color: 0x4a7a38 }));
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -1.6;
+    envScene.add(ground);
+    this.scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+    this.scene.environmentIntensity = 0.62;
+    pmrem.dispose();
   }
 
   private buildWorld(): void {
