@@ -136,10 +136,10 @@ export function animatePlayerIdle(player: THREE.Group, t: number): void {
     torso.scale.set(1 + breath * 0.01, 1 + breath * 0.016, 1 + breath * 0.008);
   }
   rot(get(player, 'playerHead'), -0.05 + breath * 0.32, look, -shift * 0.08);
-  rot(get(player, 'clavL'), 0.02, 0, -0.04 + shift * 0.02);
-  rot(get(player, 'clavR'), 0.02, 0, 0.04 - shift * 0.02);
-  rot(get(player, 'armL'), 0.1 + breath * 0.08, 0.03, -0.06);
-  rot(get(player, 'armR'), 0.08 - breath * 0.08, -0.03, 0.06);
+  rot(get(player, 'clavL'), 0.02, 0, -0.02 + shift * 0.015);
+  rot(get(player, 'clavR'), 0.02, 0, 0.02 - shift * 0.015);
+  rot(get(player, 'armL'), 0.1 + breath * 0.08, 0.02, -0.03);
+  rot(get(player, 'armR'), 0.08 - breath * 0.08, -0.02, 0.03);
   rot(get(player, 'forearmL'), -0.2, 0.02, 0);
   rot(get(player, 'forearmR'), -0.16, -0.02, 0);
   rot(get(player, 'handL'), 0.08, 0.03, 0.04);

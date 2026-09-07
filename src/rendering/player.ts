@@ -427,6 +427,15 @@ export function createPlayerMesh(): THREE.Group {
     addPart(boot, shin);
     addCrissCross(shin, -0.15, -0.25, 0.094, leatherDark, 0.02);
 
+    const bootFurTop = new THREE.Mesh(new THREE.TorusGeometry(0.092, 0.022, 6, 10), fur);
+    bootFurTop.rotation.x = Math.PI / 2;
+    bootFurTop.position.set(0, -0.14, 0.02);
+    shin.add(bootFurTop);
+    const bootFurLow = new THREE.Mesh(new THREE.TorusGeometry(0.082, 0.018, 6, 10), furDark);
+    bootFurLow.rotation.x = Math.PI / 2;
+    bootFurLow.position.set(0, -0.24, 0);
+    shin.add(bootFurLow);
+
     // Long, skinny ankle so the joint reads between shaft and foot.
     const ankleCol = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.058, 0.14, 12), leatherDark);
     ankleCol.position.set(0, -0.36, -0.006);
@@ -453,9 +462,6 @@ export function createPlayerMesh(): THREE.Group {
     foot.add(sole);
     shin.add(foot);
 
-    // Fur cuffs on the shaft: mid-calf and above the ankle pinch.
-    addFurCuff(shin, 0, -0.14, 0.02, 0.09, 6, 0.032, fur, furDark);
-    addFurCuff(shin, 0, -0.24, 0.0, 0.08, 5, 0.028, fur, furDark);
 
     hip.add(shin);
     return hip;
@@ -538,20 +544,23 @@ export function createPlayerMesh(): THREE.Group {
   torso.add(chestBuckle);
 
   for (const sx of [-1, 1]) {
-    const pad = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), leatherMid);
-    pad.scale.set(1.25, 0.62, 1.1);
-    pad.position.set(sx * 0.25, 0.22, 0.02);
-    pad.rotation.z = sx * -0.35;
+    const pad = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), leatherMid);
+    pad.scale.set(1.35, 0.7, 1.15);
+    pad.position.set(sx * 0.22, 0.2, 0.01);
+    pad.rotation.z = sx * -0.4;
     addPart(pad, torso);
+    const bridge = new THREE.Mesh(new THREE.CapsuleGeometry(0.085, 0.1, 4, 8), skin);
+    bridge.rotation.z = sx * (Math.PI / 2);
+    bridge.position.set(sx * 0.2, 0.18, 0);
+    addPart(bridge, torso);
   }
 
-  const collarBase = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.07, 8, 14), furMid);
+  const collarBase = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.055, 8, 12), furMid);
   collarBase.rotation.x = Math.PI / 2;
-  collarBase.position.set(0, 0.26, 0.01);
-  collarBase.scale.set(1.2, 1.05, 0.95);
+  collarBase.position.set(0, 0.28, 0.01);
+  collarBase.scale.set(1.08, 1.0, 0.92);
   addPart(collarBase, torso);
-  addFurCuff(torso, 0, 0.28, 0.01, 0.21, 8, 0.05, fur, furDark);
-  addFurCuff(torso, 0, 0.32, -0.02, 0.16, 6, 0.042, fur, furDark);
+  addFurCuff(torso, 0, 0.29, 0.01, 0.18, 8, 0.042, fur, furDark);
 
   const neck = new THREE.Mesh(new THREE.CapsuleGeometry(0.068, 0.08, 6, 14), skin);
   neck.position.set(0, 0.34, 0.01);
@@ -560,14 +569,15 @@ export function createPlayerMesh(): THREE.Group {
   const makeArm = (side: number) => {
     const clav = new THREE.Group();
     clav.name = side < 0 ? 'clavL' : 'clavR';
-    clav.position.set(side * 0.2, 0.22, 0);
+    clav.position.set(side * 0.16, 0.2, 0);
 
     const arm = new THREE.Group();
     arm.name = side < 0 ? 'armL' : 'armR';
-    arm.position.set(side * 0.08, -0.02, 0);
+    arm.position.set(side * 0.06, 0, 0);
 
-    const deltoid = new THREE.Mesh(new THREE.IcosahedronGeometry(0.105, 0), skin);
-    deltoid.scale.set(1.15, 0.88, 1.05);
+    const deltoid = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), skin);
+    deltoid.scale.set(1.2, 0.9, 1.05);
+    deltoid.position.set(-side * 0.05, 0.02, 0);
     addPart(deltoid, arm);
 
     const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.2, 4, 10), skin);
@@ -585,8 +595,14 @@ export function createPlayerMesh(): THREE.Group {
     gauntlet.position.set(0, -0.14, 0.01);
     addPart(gauntlet, forearm);
     addCrissCross(forearm, -0.06, -0.2, 0.074, leatherDark, 0.01);
-    addFurCuff(forearm, 0, -0.02, 0.01, 0.072, 5, 0.028, fur, furDark);
-    addFurCuff(forearm, 0, -0.22, 0.01, 0.068, 5, 0.024, fur, furDark);
+    const elbowFur = new THREE.Mesh(new THREE.TorusGeometry(0.072, 0.02, 6, 10), fur);
+    elbowFur.rotation.x = Math.PI / 2;
+    elbowFur.position.set(0, -0.02, 0.01);
+    forearm.add(elbowFur);
+    const wristFur = new THREE.Mesh(new THREE.TorusGeometry(0.068, 0.018, 6, 10), furDark);
+    wristFur.rotation.x = Math.PI / 2;
+    wristFur.position.set(0, -0.22, 0.01);
+    forearm.add(wristFur);
 
     const hand = makeHand(skin, leather, side < 0 ? 'spear' : 'fist');
     hand.name = side < 0 ? 'handL' : 'handR';
