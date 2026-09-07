@@ -186,10 +186,10 @@ function makeBladeTexture(): THREE.CanvasTexture {
   c.height = 64;
   const g = c.getContext('2d')!;
   const grd = g.createLinearGradient(16, 64, 16, 0);
-  grd.addColorStop(0, 'rgba(48, 96, 24, 0)');
-  grd.addColorStop(0.1, 'rgba(70, 132, 32, 255)');
-  grd.addColorStop(0.55, 'rgba(130, 188, 52, 255)');
-  grd.addColorStop(1, 'rgba(214, 232, 96, 230)');
+  grd.addColorStop(0, 'rgba(70, 130, 28, 0)');
+  grd.addColorStop(0.1, 'rgba(96, 168, 40, 255)');
+  grd.addColorStop(0.5, 'rgba(168, 220, 64, 255)');
+  grd.addColorStop(1, 'rgba(232, 255, 120, 240)');
   g.fillStyle = grd;
   g.beginPath();
   g.moveTo(16, 2);
@@ -211,8 +211,8 @@ function grassTuftGeometry(): THREE.BufferGeometry {
     const a = (i / blades) * Math.PI;
     const ca = Math.cos(a);
     const sa = Math.sin(a);
-    const w = 0.05 + (i % 3) * 0.012;
-    const h = 0.2 + (i % 4) * 0.055;
+    const w = 0.085 + (i % 3) * 0.02;
+    const h = 0.26 + (i % 4) * 0.07;
     const corners: [number, number, number][] = [
       [-w, 0, 0],
       [w, 0, 0],
@@ -251,7 +251,7 @@ function flowerGeometry(): THREE.BufferGeometry {
     uvs.push(k === 0 || k === 3 ? 0.45 : 0.55, y / sh);
   }
   // Petals as a small cross
-  const pr = 0.055;
+  const pr = 0.09;
   for (const a of [0, Math.PI / 2]) {
     const ca = Math.cos(a);
     const sa = Math.sin(a);
@@ -274,7 +274,7 @@ function flowerGeometry(): THREE.BufferGeometry {
   return geo;
 }
 
-function addWind(mat: THREE.MeshStandardMaterial, amount: number): void {
+function addWind(mat: THREE.MeshLambertMaterial, amount: number): void {
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uTime = { value: 0 };
     shader.vertexShader = `uniform float uTime;\n${shader.vertexShader}`;
@@ -304,14 +304,12 @@ export function createTerrainFoliage(): THREE.Group {
   root.name = 'terrainFoliage';
 
   const dummy = new THREE.Object3D();
-  const grassMat = new THREE.MeshStandardMaterial({
+  // Do not set vertexColors — with no geometry color attr it multiplies instanceColor by 0 (black blades).
+  const grassMat = new THREE.MeshLambertMaterial({
     map: makeBladeTexture(),
-    color: 0xd8f080,
-    roughness: 0.82,
-    metalness: 0,
+    color: 0xeaff98,
     side: THREE.DoubleSide,
-    alphaTest: 0.28,
-    vertexColors: true,
+    alphaTest: 0.18,
   });
   addWind(grassMat, 0.55);
 
@@ -363,16 +361,13 @@ export function createTerrainFoliage(): THREE.Group {
   grass.raycast = () => {};
   root.add(grass);
 
-  const flowerMat = new THREE.MeshStandardMaterial({
+  const flowerMat = new THREE.MeshLambertMaterial({
     color: 0xffffff,
-    roughness: 0.55,
-    metalness: 0.02,
     side: THREE.DoubleSide,
-    vertexColors: true,
   });
   addWind(flowerMat, 0.35);
 
-  const flowerCols = [0xf4f0e4, 0xf2d24a, 0xe878b0, 0xc8a0e8, 0xf28a3c];
+  const flowerCols = [0xfff6dc, 0xffdc3c, 0xff6aa8, 0xc888ff, 0xff8a32];
   const flowerPts: { x: number; z: number; h: number; s: number; r: number; c: THREE.Color }[] = [];
   const fStep = 1.28;
   for (let fx = -19; fx <= 19; fx += fStep) {
@@ -382,7 +377,7 @@ export function createTerrainFoliage(): THREE.Group {
       const x = fx + jx;
       const z = fz + jz;
       const keep = hash2(Math.floor(x * 29 + 1), Math.floor(z * 31 + 6));
-      if (keep < 0.42) continue;
+      if (keep < 0.28) continue;
       if (!canScatter(x, z, 0.26, 0.18)) continue;
       const col = new THREE.Color(flowerCols[Math.floor(keep * flowerCols.length) % flowerCols.length]);
       flowerPts.push({
@@ -415,12 +410,9 @@ export function createTerrainFoliage(): THREE.Group {
   flowers.raycast = () => {};
   root.add(flowers);
 
-  const stoneMat = new THREE.MeshStandardMaterial({
+  const stoneMat = new THREE.MeshLambertMaterial({
     color: 0xffffff,
-    roughness: 0.92,
-    metalness: 0.04,
     flatShading: true,
-    vertexColors: true,
   });
   const stoneCols = [0x8a8c86, 0x6e6a62, 0x9a9488, 0x5c6454];
   const stonePts: { x: number; z: number; h: number; s: number; rx: number; ry: number; c: THREE.Color }[] = [];
@@ -438,7 +430,7 @@ export function createTerrainFoliage(): THREE.Group {
         x,
         z,
         h: groundHeight(x, z),
-        s: 0.45 + keep * 0.85,
+        s: 0.7 + keep * 1.1,
         rx: keep * 2.2,
         ry: keep * 5.1,
         c: new THREE.Color(stoneCols[Math.floor(keep * stoneCols.length) % stoneCols.length]),
