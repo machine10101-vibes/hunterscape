@@ -1818,7 +1818,7 @@ export class Game {
 
   private snapMoversToGround(): void {
     const dying = new Set(this.deathAnims.map((d) => d.mesh));
-    this.sitOnGround(this.player);
+    this.sitOnGround(this.player, Number(this.player.userData.locomotionY) || 0);
     if (this.yetiTarget && !dying.has(this.yetiTarget.mesh)) this.sitOnGround(this.yetiTarget.mesh);
     if (this.orcTarget && !dying.has(this.orcTarget.mesh)) this.sitOnGround(this.orcTarget.mesh);
     if (this.dummyTarget && !dying.has(this.dummyTarget.mesh)) this.sitOnGround(this.dummyTarget.mesh);
