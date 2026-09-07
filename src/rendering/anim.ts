@@ -42,6 +42,14 @@ function rot(obj: THREE.Object3D | undefined, x: number, y: number, z: number): 
   if (obj) obj.rotation.set(x, y, z);
 }
 
+/**
+ * Anatomical knee flex. Hip/shin hang down -Y; +rotation.x sends the foot
+ * toward -Z (back). Negative x hyperextends the knee the wrong way.
+ */
+function knee(flex: number): number {
+  return Math.max(0, flex);
+}
+
 function isToolVisible(player: THREE.Group, name: string): boolean {
   const obj = get(player, name);
   return !!obj?.visible;
@@ -121,8 +129,8 @@ export function animatePlayerIdle(player: THREE.Group, t: number): void {
   rot(get(player, 'handR'), 0.04, 0, -0.04);
   rot(get(player, 'legL'), 0.06 + shift * 0.1, 0, 0.035);
   rot(get(player, 'legR'), -0.04 - shift * 0.08, 0, -0.035);
-  rot(get(player, 'shinL'), -0.14 - Math.max(0, shift) * 0.12, 0, 0);
-  rot(get(player, 'shinR'), -0.18 - Math.max(0, -shift) * 0.1, 0, 0);
+  rot(get(player, 'shinL'), knee(0.16 + Math.max(0, shift) * 0.12), 0, 0);
+  rot(get(player, 'shinR'), knee(0.2 + Math.max(0, -shift) * 0.1), 0, 0);
   rot(get(player, 'footL'), 0.04, 0, 0);
   rot(get(player, 'footR'), 0.06, 0, 0);
   if (spear && spear.visible) {
@@ -155,10 +163,10 @@ function animateSwordGuard(player: THREE.Group, t: number): void {
   rot(get(player, 'armR'), 0.55 + breath * 0.05, -0.28, -0.22);
   rot(get(player, 'forearmR'), -1.35, 0.22, 0.12);
   rot(get(player, 'handR'), 0.22, 0.14, 0.32);
-  rot(get(player, 'legL'), 0.22, 0.04, 0.05);
-  rot(get(player, 'legR'), -0.06, -0.02, -0.04);
-  rot(get(player, 'shinL'), -0.28, 0, 0);
-  rot(get(player, 'shinR'), -0.2, 0, 0);
+  rot(get(player, 'legL'), -0.2, 0.04, 0.05);
+  rot(get(player, 'legR'), 0.08, -0.02, -0.04);
+  rot(get(player, 'shinL'), knee(0.28), 0, 0);
+  rot(get(player, 'shinR'), knee(0.18), 0, 0);
   rot(get(player, 'footL'), 0.06, 0, 0);
   rot(get(player, 'footR'), 0.04, 0, 0);
   poseEquippedTool(player);
@@ -189,10 +197,11 @@ export function animatePlayerWalk(
 
   const hipL = Math.sin(phase);
   const hipR = Math.sin(phase + Math.PI);
-  const swingL = Math.max(0, Math.cos(phase));
-  const swingR = Math.max(0, Math.cos(phase + Math.PI));
-  const stanceL = Math.max(0, -Math.cos(phase));
-  const stanceR = Math.max(0, -Math.cos(phase + Math.PI));
+  // +hip X = thigh back. Passing/swing is back → front (cos < 0).
+  const passingL = Math.max(0, -Math.cos(phase));
+  const passingR = Math.max(0, -Math.cos(phase + Math.PI));
+  const plantedL = Math.max(0, Math.cos(phase));
+  const plantedR = Math.max(0, Math.cos(phase + Math.PI));
   const plant = Math.max(0, -Math.cos(phase * 2)) * 0.018 * blend * sn;
 
   const hips = get(player, 'playerHips');
@@ -204,10 +213,10 @@ export function animatePlayerWalk(
   }
   rot(get(player, 'legL'), hipL * amp, -hipL * 0.05 * blend, 0.04);
   rot(get(player, 'legR'), hipR * amp, -hipR * 0.05 * blend, -0.04);
-  rot(get(player, 'shinL'), -0.06 - swingL * (1.15 + amp * 0.55) - stanceL * 0.08, 0, 0);
-  rot(get(player, 'shinR'), -0.06 - swingR * (1.15 + amp * 0.55) - stanceR * 0.08, 0, 0);
-  rot(get(player, 'footL'), -swingL * 0.38 + stanceL * Math.max(0, -hipL) * 0.32, 0, 0);
-  rot(get(player, 'footR'), -swingR * 0.38 + stanceR * Math.max(0, -hipR) * 0.32, 0, 0);
+  rot(get(player, 'shinL'), knee(0.1 + passingL * (1.05 + amp * 0.45) + plantedL * 0.08), 0, 0);
+  rot(get(player, 'shinR'), knee(0.1 + passingR * (1.05 + amp * 0.45) + plantedR * 0.08), 0, 0);
+  rot(get(player, 'footL'), -passingL * 0.35 + plantedL * Math.max(0, hipL) * 0.28, 0, 0);
+  rot(get(player, 'footR'), -passingR * 0.35 + plantedR * Math.max(0, hipR) * 0.28, 0, 0);
 
   rot(get(player, 'clavL'), -hipL * 0.04 * blend, 0, 0.05);
   rot(get(player, 'clavR'), -hipR * 0.04 * blend, 0, -0.05);
@@ -276,10 +285,10 @@ export function animatePlayerAttack(player: THREE.Group, progress: number): void
     head: { x: -0.04, y: 0.12, z: -0.04 },
     clavR: { x: 0.08, y: -0.1, z: -0.12 },
     clavL: { x: 0.04, y: 0.06, z: 0.08 },
-    legL: { x: 0.22, y: 0.04, z: 0.05 },
-    legR: { x: -0.06, y: -0.02, z: -0.04 },
-    shinL: { x: -0.28, y: 0, z: 0 },
-    shinR: { x: -0.2, y: 0, z: 0 },
+    legL: { x: -0.2, y: 0.04, z: 0.05 },
+    legR: { x: 0.08, y: -0.02, z: -0.04 },
+    shinL: { x: 0.28, y: 0, z: 0 },
+    shinR: { x: 0.18, y: 0, z: 0 },
   };
   const windup = {
     armR: { x: -1.05, y: -0.72, z: -0.58 },
@@ -293,10 +302,10 @@ export function animatePlayerAttack(player: THREE.Group, progress: number): void
     head: { x: -0.1, y: -0.28, z: 0.04 },
     clavR: { x: -0.12, y: -0.22, z: -0.28 },
     clavL: { x: 0.1, y: 0.12, z: 0.14 },
-    legL: { x: 0.32, y: 0.06, z: 0.06 },
-    legR: { x: 0.14, y: -0.04, z: -0.05 },
-    shinL: { x: -0.32, y: 0, z: 0 },
-    shinR: { x: -0.24, y: 0, z: 0 },
+    legL: { x: -0.28, y: 0.06, z: 0.06 },
+    legR: { x: 0.12, y: -0.04, z: -0.05 },
+    shinL: { x: 0.32, y: 0, z: 0 },
+    shinR: { x: 0.22, y: 0, z: 0 },
   };
   const strike = {
     armR: { x: 0.98, y: 0.58, z: 0.62 },
@@ -310,10 +319,10 @@ export function animatePlayerAttack(player: THREE.Group, progress: number): void
     head: { x: 0.1, y: 0.32, z: -0.06 },
     clavR: { x: 0.18, y: 0.16, z: 0.12 },
     clavL: { x: 0.02, y: 0.04, z: 0.08 },
-    legL: { x: 0.46, y: 0.05, z: -0.05 },
-    legR: { x: -0.24, y: -0.04, z: 0.04 },
-    shinL: { x: -0.16, y: 0, z: 0 },
-    shinR: { x: -0.4, y: 0, z: 0 },
+    legL: { x: -0.42, y: 0.05, z: -0.05 },
+    legR: { x: 0.22, y: -0.04, z: 0.04 },
+    shinL: { x: 0.18, y: 0, z: 0 },
+    shinR: { x: 0.38, y: 0, z: 0 },
   };
 
   let from = guard;
@@ -389,10 +398,10 @@ export function animatePlayerGather(player: THREE.Group, progress: number, kind:
     torso.position.x = 0;
     torso.scale.set(1, 1, 1);
   }
-  rot(get(player, 'legL'), strike * 0.14, 0, 0.03);
-  rot(get(player, 'legR'), -strike * 0.2, 0, -0.03);
-  rot(get(player, 'shinL'), -0.14 - strike * 0.1, 0, 0);
-  rot(get(player, 'shinR'), -0.18 - strike * 0.18, 0, 0);
+  rot(get(player, 'legL'), -strike * 0.14, 0, 0.03);
+  rot(get(player, 'legR'), strike * 0.18, 0, -0.03);
+  rot(get(player, 'shinL'), knee(0.16 + strike * 0.1), 0, 0);
+  rot(get(player, 'shinR'), knee(0.2 + strike * 0.18), 0, 0);
   setLocomotionY(player, strike * 0.025);
 }
 
