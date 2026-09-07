@@ -269,34 +269,26 @@ function squareBuckle(size: number, thick: number, _hole: number, metal: THREE.M
   return mesh;
 }
 
-/** Soft fur tufts — rounded capsules, not razor cones. */
-function addFurFringe(
+/** Drive-style faceted fur: overlapping tetra clumps forming a cuff, not capsule blobs. */
+function addFurCuff(
   parent: THREE.Object3D,
   cx: number,
   cy: number,
   cz: number,
   radius: number,
   count: number,
-  length: number,
+  size: number,
   fur: THREE.Material,
   furDark: THREE.Material,
-  furMid: THREE.Material,
-  upBias = 0.45,
 ): void {
   for (let i = 0; i < count; i++) {
-    const a = (i / count) * Math.PI * 2 + (i % 5) * 0.03;
-    const ring = radius * (0.88 + (i % 4) * 0.035);
-    const len = length * (0.78 + (i % 5) * 0.05);
-    const rad = 0.016 + (i % 3) * 0.005;
-    const tuft = new THREE.Mesh(
-      new THREE.CapsuleGeometry(rad, len * 0.85, 5, 10),
-      i % 4 === 0 ? furDark : i % 3 === 0 ? furMid : fur,
-    );
-    tuft.position.set(cx + Math.cos(a) * ring, cy + len * 0.18, cz + Math.sin(a) * ring);
-    tuft.rotation.z = -Math.cos(a) * upBias;
-    tuft.rotation.x = Math.sin(a) * upBias;
-    tuft.castShadow = true;
-    parent.add(tuft);
+    const a = (i / count) * Math.PI * 2;
+    const clump = new THREE.Mesh(new THREE.TetrahedronGeometry(size, 0), i % 2 ? furDark : fur);
+    clump.position.set(cx + Math.cos(a) * radius, cy + (i % 3) * 0.008, cz + Math.sin(a) * radius);
+    clump.rotation.set(0.4, a * 1.1, 0.35 + (i % 2) * 0.55);
+    clump.scale.set(1.1, 1.25, 0.92);
+    clump.castShadow = true;
+    parent.add(clump);
   }
 }
 
@@ -342,7 +334,12 @@ export function createPlayerMesh(): THREE.Group {
 
   const skin = skinMat(0xd4a07a);
   const skinDark = skinMat(0xb8845e, { roughness: 0.56 });
-  const hairCol = mat(0x1a120c, { roughness: 0.94, sheen: 0.22, sheenColor: new THREE.Color(0x3a2818) });
+  const hairCol = mat(0x1a120c, {
+    roughness: 0.94,
+    sheen: 0.22,
+    sheenColor: new THREE.Color(0x3a2818),
+    flatShading: true,
+  });
   const leather = leatherMat(0x5a3a22);
   const leatherDark = leatherMat(0x2e1c10, { roughness: 0.78, clearcoat: 0.04 });
   const leatherMid = leatherMat(0x7a4e2c, { roughness: 0.58, clearcoat: 0.12 });
@@ -353,9 +350,20 @@ export function createPlayerMesh(): THREE.Group {
     sheenColor: new THREE.Color(0xc8a070),
     sheenRoughness: 0.7,
     envMapIntensity: 0.12,
+    flatShading: true,
   });
-  const furDark = mat(0x6a4a28, { roughness: 0.95, sheen: 0.16, sheenColor: new THREE.Color(0x8a6038) });
-  const furMid = mat(0x8e6840, { roughness: 0.93, sheen: 0.18, sheenColor: new THREE.Color(0xaa8048) });
+  const furDark = mat(0x6a4a28, {
+    roughness: 0.95,
+    sheen: 0.16,
+    sheenColor: new THREE.Color(0x8a6038),
+    flatShading: true,
+  });
+  const furMid = mat(0x8e6840, {
+    roughness: 0.93,
+    sheen: 0.18,
+    sheenColor: new THREE.Color(0xaa8048),
+    flatShading: true,
+  });
   const cloth = clothMat(0x3a403c);
   const clothDark = clothMat(0x2a302c);
   const metal = mat(0xe8eef4, {
@@ -445,9 +453,9 @@ export function createPlayerMesh(): THREE.Group {
     foot.add(sole);
     shin.add(foot);
 
-    // Fur on the shaft only: calf cuff, then a second ring above the skin ankle.
-    addFurFringe(shin, 0, -0.14, 0.02, 0.1, 10, 0.05, fur, furDark, furMid, 0.48);
-    addFurFringe(shin, 0, -0.24, 0.0, 0.086, 8, 0.04, fur, furDark, furMid, 0.38);
+    // Fur cuffs on the shaft: mid-calf and above the ankle pinch.
+    addFurCuff(shin, 0, -0.14, 0.02, 0.095, 7, 0.038, fur, furDark);
+    addFurCuff(shin, 0, -0.24, 0.0, 0.082, 6, 0.032, fur, furDark);
 
     hip.add(shin);
     return hip;
@@ -483,14 +491,14 @@ export function createPlayerMesh(): THREE.Group {
   const vest = new THREE.Mesh(
     latheBody(
       [
-        [0.18, -0.3],
-        [0.22, -0.18],
-        [0.245, -0.02],
-        [0.255, 0.12],
-        [0.22, 0.24],
-        [0.15, 0.32],
+        [0.2, -0.3],
+        [0.24, -0.18],
+        [0.27, -0.02],
+        [0.28, 0.12],
+        [0.25, 0.24],
+        [0.16, 0.32],
       ],
-      16,
+      12,
     ),
     leather,
   );
@@ -530,23 +538,20 @@ export function createPlayerMesh(): THREE.Group {
   torso.add(chestBuckle);
 
   for (const sx of [-1, 1]) {
-    const pad = new THREE.Mesh(new THREE.SphereGeometry(0.088, 12, 10), leatherMid);
-    pad.scale.set(1.08, 0.52, 1.0);
-    pad.position.set(sx * 0.2, 0.24, 0.02);
-    pad.rotation.z = sx * -0.22;
+    const pad = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), leatherMid);
+    pad.scale.set(1.2, 0.55, 1.05);
+    pad.position.set(sx * 0.24, 0.24, 0.02);
+    pad.rotation.z = sx * -0.28;
     addPart(pad, torso);
   }
 
-  const collarBase = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.065, 10, 18), furMid);
+  const collarBase = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.07, 8, 14), furMid);
   collarBase.rotation.x = Math.PI / 2;
   collarBase.position.set(0, 0.26, 0.01);
-  collarBase.scale.set(1.22, 1.05, 0.95);
+  collarBase.scale.set(1.2, 1.05, 0.95);
   addPart(collarBase, torso);
-  addFurFringe(torso, 0, 0.28, 0.01, 0.22, 14, 0.1, fur, furDark, furMid, 0.42);
-  addFurFringe(torso, 0, 0.34, -0.03, 0.17, 10, 0.085, fur, furDark, furMid, 0.36);
-  for (const sx of [-1, 1]) {
-    addFurFringe(torso, sx * 0.2, 0.2, 0.03, 0.07, 6, 0.07, fur, furDark, furMid, 0.4);
-  }
+  addFurCuff(torso, 0, 0.28, 0.01, 0.22, 10, 0.055, fur, furDark);
+  addFurCuff(torso, 0, 0.33, -0.02, 0.17, 8, 0.048, fur, furDark);
 
   const neck = new THREE.Mesh(new THREE.CapsuleGeometry(0.068, 0.08, 6, 14), skin);
   neck.position.set(0, 0.34, 0.01);
@@ -555,34 +560,34 @@ export function createPlayerMesh(): THREE.Group {
   const makeArm = (side: number) => {
     const clav = new THREE.Group();
     clav.name = side < 0 ? 'clavL' : 'clavR';
-    // Shoulders sit outside the vest so hanging arms leave a visible armpit gap.
-    clav.position.set(side * 0.22, 0.22, 0);
+    // Deltoid sits on the vest shoulder so the arm is attached, not floating.
+    clav.position.set(side * 0.24, 0.24, 0);
 
     const arm = new THREE.Group();
     arm.name = side < 0 ? 'armL' : 'armR';
-    arm.position.set(side * 0.32, 0, 0);
+    arm.position.set(side * 0.1, -0.02, 0);
 
-    const deltoid = new THREE.Mesh(new THREE.SphereGeometry(0.088, 14, 12), skin);
-    deltoid.scale.set(1.08, 0.88, 1.02);
+    const deltoid = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), skin);
+    deltoid.scale.set(1.18, 0.92, 1.08);
     addPart(deltoid, arm);
 
-    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.068, 0.2, 6, 14), skin);
-    upper.position.set(side * 0.02, -0.15, 0);
+    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.2, 4, 10), skin);
+    upper.position.set(0, -0.15, 0);
     addPart(upper, arm);
 
     const forearm = new THREE.Group();
     forearm.name = side < 0 ? 'forearmL' : 'forearmR';
-    forearm.position.set(side * 0.02, -0.34, 0);
+    forearm.position.set(0, -0.34, 0);
 
-    const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.066, 12, 10), skin);
+    const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.068, 8, 6), skin);
     addPart(elbow, forearm);
 
-    const gauntlet = new THREE.Mesh(new THREE.CapsuleGeometry(0.068, 0.16, 6, 14), leather);
-    gauntlet.position.set(side * 0.012, -0.14, 0.01);
+    const gauntlet = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.16, 4, 10), leather);
+    gauntlet.position.set(0, -0.14, 0.01);
     addPart(gauntlet, forearm);
     addCrissCross(forearm, -0.06, -0.2, 0.074, leatherDark, 0.01);
-    addFurFringe(forearm, 0, 0.0, 0.012, 0.076, 8, 0.05, fur, furDark, furMid, 0.42);
-    addFurFringe(forearm, 0, -0.22, 0.012, 0.07, 6, 0.042, fur, furDark, furMid, 0.36);
+    addFurCuff(forearm, 0, -0.02, 0.01, 0.075, 6, 0.032, fur, furDark);
+    addFurCuff(forearm, 0, -0.22, 0.01, 0.07, 6, 0.028, fur, furDark);
 
     const hand = makeHand(skin, leather, side < 0 ? 'spear' : 'fist');
     hand.name = side < 0 ? 'handL' : 'handR';
@@ -677,36 +682,26 @@ export function createPlayerMesh(): THREE.Group {
   mouth.position.set(0, -0.11, 0.155);
   head.add(mouth);
 
-  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.58), hairCol);
+  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.172, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.58), hairCol);
   hairCap.position.set(0, 0.04, -0.02);
-  hairCap.scale.set(1.05, 0.85, 1.08);
+  hairCap.scale.set(1.06, 0.88, 1.08);
   addPart(hairCap, head);
-  const spikePts: [number, number, number, number][] = [
-    [0, 0.2, 0.02, 1.15],
-    [-0.07, 0.19, 0.05, 1.0],
-    [0.07, 0.19, 0.05, 1.0],
-    [-0.12, 0.15, -0.02, 0.95],
-    [0.12, 0.15, -0.02, 0.95],
-    [0, 0.18, -0.12, 1.05],
-    [-0.1, 0.14, -0.1, 0.9],
-    [0.1, 0.14, -0.1, 0.9],
-    [-0.05, 0.21, -0.04, 1.1],
-    [0.05, 0.21, -0.04, 1.1],
-    [0, 0.22, 0.06, 0.85],
-    [-0.14, 0.1, 0.02, 0.8],
-    [0.14, 0.1, 0.02, 0.8],
-    [-0.04, 0.24, 0.0, 1.05],
-    [0.04, 0.24, 0.0, 1.05],
-    [0, 0.16, 0.1, 0.75],
-    [-0.08, 0.17, -0.08, 0.88],
-    [0.08, 0.17, -0.08, 0.88],
+  const hairClumps: [number, number, number, number][] = [
+    [0, 0.16, 0.04, 0.07],
+    [-0.08, 0.14, 0.05, 0.06],
+    [0.08, 0.14, 0.05, 0.06],
+    [-0.1, 0.12, -0.04, 0.055],
+    [0.1, 0.12, -0.04, 0.055],
+    [0, 0.14, -0.1, 0.065],
+    [-0.05, 0.17, -0.02, 0.05],
+    [0.05, 0.17, -0.02, 0.05],
   ];
-  for (const [x, y, z, s] of spikePts) {
-    const spike = new THREE.Mesh(new THREE.CapsuleGeometry(0.026 * s, 0.055 * s, 4, 8), hairCol);
-    spike.position.set(x, y, z);
-    spike.rotation.x = z * 0.7 - 0.12;
-    spike.rotation.z = -x * 1.15;
-    head.add(spike);
+  for (const [x, y, z, s] of hairClumps) {
+    const clump = new THREE.Mesh(new THREE.OctahedronGeometry(s, 0), hairCol);
+    clump.position.set(x, y, z);
+    clump.rotation.set(z * 0.8, x * 2, -x * 0.6);
+    clump.scale.set(1.05, 1.2, 0.9);
+    head.add(clump);
   }
   torso.add(head);
 
