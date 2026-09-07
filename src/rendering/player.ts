@@ -549,10 +549,10 @@ export function createPlayerMesh(): THREE.Group {
     pad.position.set(sx * 0.22, 0.2, 0.01);
     pad.rotation.z = sx * -0.4;
     addPart(pad, torso);
-    const bridge = new THREE.Mesh(new THREE.CapsuleGeometry(0.085, 0.1, 4, 8), skin);
-    bridge.rotation.z = sx * (Math.PI / 2);
-    bridge.position.set(sx * 0.2, 0.18, 0);
-    addPart(bridge, torso);
+    const deltoid = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), skin);
+    deltoid.scale.set(1.15, 0.9, 1.05);
+    deltoid.position.set(sx * 0.26, 0.16, 0);
+    addPart(deltoid, torso);
   }
 
   const collarBase = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.055, 8, 12), furMid);
@@ -569,19 +569,14 @@ export function createPlayerMesh(): THREE.Group {
   const makeArm = (side: number) => {
     const clav = new THREE.Group();
     clav.name = side < 0 ? 'clavL' : 'clavR';
-    clav.position.set(side * 0.16, 0.2, 0);
+    clav.position.set(side * 0.18, 0.18, 0);
 
     const arm = new THREE.Group();
     arm.name = side < 0 ? 'armL' : 'armR';
-    arm.position.set(side * 0.06, 0, 0);
+    arm.position.set(side * 0.08, -0.02, 0);
 
-    const deltoid = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), skin);
-    deltoid.scale.set(1.2, 0.9, 1.05);
-    deltoid.position.set(-side * 0.05, 0.02, 0);
-    addPart(deltoid, arm);
-
-    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.2, 4, 10), skin);
-    upper.position.set(0, -0.16, 0);
+    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.072, 0.18, 4, 10), skin);
+    upper.position.set(0, -0.12, 0);
     addPart(upper, arm);
 
     const forearm = new THREE.Group();
