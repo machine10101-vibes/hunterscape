@@ -43,11 +43,11 @@ function rot(obj: THREE.Object3D | undefined, x: number, y: number, z: number): 
 }
 
 /**
- * Anatomical knee flex. Hip/shin hang down -Y; +rotation.x sends the foot
- * toward -Z (back). Negative x hyperextends the knee the wrong way.
+ * Anatomical knee flex on this rig. Hip/shin hang down -Y; negative
+ * rotation.x folds the calf back toward the butt. Positive X bird-legs.
  */
 function knee(flex: number): number {
-  return Math.max(0, flex);
+  return -Math.max(0, flex);
 }
 
 function isToolVisible(player: THREE.Group, name: string): boolean {
@@ -213,8 +213,8 @@ export function animatePlayerWalk(
   }
   rot(get(player, 'legL'), hipL * amp, -hipL * 0.05 * blend, 0.04);
   rot(get(player, 'legR'), hipR * amp, -hipR * 0.05 * blend, -0.04);
-  rot(get(player, 'shinL'), knee(0.1 + passingL * (1.05 + amp * 0.45) + plantedL * 0.08), 0, 0);
-  rot(get(player, 'shinR'), knee(0.1 + passingR * (1.05 + amp * 0.45) + plantedR * 0.08), 0, 0);
+  rot(get(player, 'shinL'), knee(0.1 + passingL * (0.85 + amp * 0.35) + plantedL * 0.06), 0, 0);
+  rot(get(player, 'shinR'), knee(0.1 + passingR * (0.85 + amp * 0.35) + plantedR * 0.06), 0, 0);
   rot(get(player, 'footL'), -passingL * 0.35 + plantedL * Math.max(0, hipL) * 0.28, 0, 0);
   rot(get(player, 'footR'), -passingR * 0.35 + plantedR * Math.max(0, hipR) * 0.28, 0, 0);
 
@@ -287,8 +287,8 @@ export function animatePlayerAttack(player: THREE.Group, progress: number): void
     clavL: { x: 0.04, y: 0.06, z: 0.08 },
     legL: { x: -0.2, y: 0.04, z: 0.05 },
     legR: { x: 0.08, y: -0.02, z: -0.04 },
-    shinL: { x: 0.28, y: 0, z: 0 },
-    shinR: { x: 0.18, y: 0, z: 0 },
+    shinL: { x: -0.28, y: 0, z: 0 },
+    shinR: { x: -0.18, y: 0, z: 0 },
   };
   const windup = {
     armR: { x: -1.05, y: -0.72, z: -0.58 },
@@ -304,8 +304,8 @@ export function animatePlayerAttack(player: THREE.Group, progress: number): void
     clavL: { x: 0.1, y: 0.12, z: 0.14 },
     legL: { x: -0.28, y: 0.06, z: 0.06 },
     legR: { x: 0.12, y: -0.04, z: -0.05 },
-    shinL: { x: 0.32, y: 0, z: 0 },
-    shinR: { x: 0.22, y: 0, z: 0 },
+    shinL: { x: -0.32, y: 0, z: 0 },
+    shinR: { x: -0.22, y: 0, z: 0 },
   };
   const strike = {
     armR: { x: 0.98, y: 0.58, z: 0.62 },
@@ -321,8 +321,8 @@ export function animatePlayerAttack(player: THREE.Group, progress: number): void
     clavL: { x: 0.02, y: 0.04, z: 0.08 },
     legL: { x: -0.42, y: 0.05, z: -0.05 },
     legR: { x: 0.22, y: -0.04, z: 0.04 },
-    shinL: { x: 0.18, y: 0, z: 0 },
-    shinR: { x: 0.38, y: 0, z: 0 },
+    shinL: { x: -0.18, y: 0, z: 0 },
+    shinR: { x: -0.38, y: 0, z: 0 },
   };
 
   let from = guard;
