@@ -292,35 +292,121 @@ function addFurCuff(
   }
 }
 
+/**
+ * Grip geometry contract for the hunter's hands.
+ *
+ * Fingers hang on -Y from the knuckle row and curl toward +Z (negative
+ * rotation.x), so the cylinder they enclose runs along the grip group's local
+ * X. Every handle — sword, hatchet, pickaxe, spear — is therefore mounted at
+ * GRIP_POINT with its shaft along +X, and the tool exits on the thumb side.
+ */
+const GRIP_POINT = new THREE.Vector3(0, -0.021, 0.036);
+
+type FingerChain = { root: THREE.Group; mid: THREE.Group; tip: THREE.Group };
+
+function makeFinger(
+  skin: THREE.Material,
+  leather: THREE.Material,
+  len: number,
+  rad: number,
+): FingerChain {
+  const root = new THREE.Group();
+  const prox = new THREE.Mesh(new THREE.CapsuleGeometry(rad, len * 0.34, 3, 8), leather);
+  prox.position.y = -len * 0.25;
+  addPart(prox, root);
+
+  const mid = new THREE.Group();
+  mid.position.y = -len * 0.48;
+  const midMesh = new THREE.Mesh(new THREE.CapsuleGeometry(rad * 0.88, len * 0.24, 3, 8), skin);
+  midMesh.position.y = -len * 0.16;
+  addPart(midMesh, mid);
+  root.add(mid);
+
+  const tip = new THREE.Group();
+  tip.position.y = -len * 0.32;
+  const tipMesh = new THREE.Mesh(new THREE.CapsuleGeometry(rad * 0.74, len * 0.16, 3, 8), skin);
+  tipMesh.position.y = -len * 0.12;
+  addPart(tipMesh, tip);
+  const nail = new THREE.Mesh(new THREE.SphereGeometry(rad * 0.6, 6, 5), skin);
+  nail.scale.set(0.9, 0.5, 0.45);
+  nail.position.set(0, -len * 0.19, -rad * 0.55);
+  tip.add(nail);
+  mid.add(tip);
+
+  return { root, mid, tip };
+}
+
+/** Close a hand built by makeHand. 0 = flat, 1 = clenched around the handle. */
+export function setHandGrip(hand: THREE.Object3D | undefined, amount: number): void {
+  if (!hand) return;
+  const chains = hand.userData.fingers as FingerChain[] | undefined;
+  const thumb = hand.userData.thumb as FingerChain | undefined;
+  if (!chains) return;
+  const c = Math.max(0, Math.min(1.15, amount));
+  for (let i = 0; i < chains.length; i++) {
+    // Pinky leads and index trails, so a closing fist rolls instead of snapping shut.
+    const lag = 1 + (i - 1.5) * -0.07;
+    const f = chains[i];
+    f.root.rotation.x = -c * 0.98 * lag;
+    f.mid.rotation.x = -c * 1.22 * lag;
+    f.tip.rotation.x = -c * 0.82 * lag;
+  }
+  if (thumb) {
+    thumb.root.rotation.x = -0.55 - c * 0.35;
+    thumb.mid.rotation.x = -c * 0.55;
+    thumb.tip.rotation.x = -c * 0.45;
+  }
+}
+
 function makeHand(
   skin: THREE.Material,
   leather: THREE.Material,
-  grip: 'open' | 'spear' | 'fist',
+  leatherDark: THREE.Material,
+  grip: 'open' | 'pole' | 'fist',
 ): THREE.Group {
   const hand = new THREE.Group();
-  const palm = new THREE.Mesh(new THREE.CapsuleGeometry(0.038, 0.04, 4, 8), leather);
-  palm.rotation.x = Math.PI / 2;
-  palm.scale.set(1.15, 0.85, 1.25);
-  palm.castShadow = true;
-  hand.add(palm);
-  const curl = grip === 'fist' ? 1.05 : grip === 'spear' ? 0.72 : 0.22;
+
+  const back = new THREE.Mesh(new THREE.SphereGeometry(0.047, 12, 10), leather);
+  back.scale.set(1.02, 0.98, 0.66);
+  back.position.set(0, -0.016, 0.01);
+  addPart(back, hand);
+
+  const wrist = new THREE.Mesh(new THREE.CapsuleGeometry(0.037, 0.022, 4, 10), leatherDark);
+  wrist.position.set(0, 0.018, 0.006);
+  addPart(wrist, hand);
+
+  const gripGroup = new THREE.Group();
+  gripGroup.name = 'grip';
+  gripGroup.position.set(0, -0.036, 0.012);
+  // Rotating the grip aims the handle: level-ish for a fist, and just past
+  // vertical for a pole so a carried spear leans away from the head.
+  gripGroup.rotation.z = grip === 'pole' ? 1.79 : grip === 'fist' ? 0.22 : 0;
+  hand.add(gripGroup);
+
+  const knuckleRidge = new THREE.Mesh(new THREE.CapsuleGeometry(0.014, 0.058, 4, 8), leather);
+  knuckleRidge.rotation.z = Math.PI / 2;
+  knuckleRidge.position.set(0, 0.004, 0.014);
+  addPart(knuckleRidge, gripGroup);
+
+  const fingers: FingerChain[] = [];
   for (let i = 0; i < 4; i++) {
-    const knuckle = new THREE.Mesh(new THREE.CapsuleGeometry(0.01, 0.022, 3, 6), leather);
-    knuckle.position.set(-0.034 + i * 0.022, -0.048, 0.028);
-    knuckle.rotation.x = curl * 0.35;
-    knuckle.castShadow = true;
-    hand.add(knuckle);
-    const tip = new THREE.Mesh(new THREE.CapsuleGeometry(0.009, 0.028, 3, 6), skin);
-    tip.position.set(-0.034 + i * 0.022, -0.078, 0.04);
-    tip.rotation.x = curl;
-    tip.castShadow = true;
-    hand.add(tip);
+    const len = 0.074 - Math.abs(i - 1.1) * 0.007;
+    const f = makeFinger(skin, leather, len, 0.0118 - i * 0.0009);
+    f.root.position.set(-0.031 + i * 0.0207, 0, 0.012 - Math.abs(i - 1.5) * 0.005);
+    gripGroup.add(f.root);
+    fingers.push(f);
   }
-  const thumb = new THREE.Mesh(new THREE.CapsuleGeometry(0.011, 0.032, 3, 6), skin);
-  thumb.position.set(-0.052, -0.01, 0.02);
-  thumb.rotation.z = 0.85;
-  thumb.rotation.x = 0.4;
-  hand.add(thumb);
+
+  // Thumb sits on +X and lies back along the handle, pinning it against the fingers.
+  const thumb = makeFinger(skin, leather, 0.064, 0.0136);
+  thumb.root.position.set(0.04, 0.014, 0.03);
+  thumb.root.rotation.z = -1.18;
+  gripGroup.add(thumb.root);
+
+  hand.userData.fingers = fingers;
+  hand.userData.thumb = thumb;
+  hand.userData.gripPoint = GRIP_POINT.clone();
+  setHandGrip(hand, grip === 'fist' ? 0.98 : grip === 'pole' ? 0.88 : 0.22);
   return hand;
 }
 
@@ -599,7 +685,7 @@ export function createPlayerMesh(): THREE.Group {
     wristFur.position.set(0, -0.22, 0.01);
     forearm.add(wristFur);
 
-    const hand = makeHand(skin, leather, side < 0 ? 'spear' : 'fist');
+    const hand = makeHand(skin, leather, leatherDark, side < 0 ? 'pole' : 'fist');
     hand.name = side < 0 ? 'handL' : 'handR';
     hand.position.set(0, -0.28, 0.02);
     forearm.add(hand);
@@ -719,16 +805,19 @@ export function createPlayerMesh(): THREE.Group {
   idleSpear.name = 'idleSpear';
   const armL = torso.getObjectByName('armL') as THREE.Group;
   const handL = armL.getObjectByName('handL') as THREE.Group;
-  idleSpear.position.set(0.02, -0.5, 0.02);
-  idleSpear.rotation.set(0.04, 0.02, 0.03);
-  handL.add(idleSpear);
+  const gripL = handL.getObjectByName('grip') as THREE.Group;
+  // Shaft runs along the grip's +X, offset so the leather wrap sits in the fist.
+  idleSpear.position.set(GRIP_POINT.x - 0.16, GRIP_POINT.y, GRIP_POINT.z);
+  idleSpear.rotation.set(0, 0, -Math.PI / 2);
+  gripL.add(idleSpear);
 
   const toolRoot = new THREE.Group();
   toolRoot.name = 'toolRoot';
   toolRoot.visible = false;
   const armR = torso.getObjectByName('armR') as THREE.Group;
   const handR = armR.getObjectByName('handR') as THREE.Group;
-  handR.add(toolRoot);
+  const gripR = handR.getObjectByName('grip') as THREE.Group;
+  gripR.add(toolRoot);
   poseToolRoot(toolRoot, null);
 
   const hatchet = createHatchetTool();
@@ -787,6 +876,7 @@ function createIdleSpear(
     new THREE.ConeGeometry(0.048, 0.18, 4),
     mat(0xf4f8fc, { metalness: 0.9, roughness: 0.12, clearcoat: 0.5 }),
   );
+  tipEdge.name = 'spearTip';
   tipEdge.position.y = 1.86;
   idleSpear.add(tipEdge);
   const butt = new THREE.Mesh(new THREE.ConeGeometry(0.026, 0.1, 4), metal);
@@ -796,83 +886,227 @@ function createIdleSpear(
   return idleSpear;
 }
 
+/** Steel that reads as a forged edge rather than a flat grey slab. */
+function steel(tint = 0xc2cedc, extra: PhysOpts = {}): THREE.MeshPhysicalMaterial {
+  return mat(tint, {
+    metalness: 0.88,
+    roughness: 0.22,
+    clearcoat: 0.45,
+    clearcoatRoughness: 0.18,
+    envMapIntensity: 1.25,
+    ...extra,
+  });
+}
+
+/** Wrapped wooden haft with a swell at the butt so the fist has something to hold. */
+function makeHaft(len: number, topR: number, buttR: number): THREE.Group {
+  const g = new THREE.Group();
+  const grain = mat(0x6a4420, { roughness: 0.78, clearcoat: 0.1, clearcoatRoughness: 0.7 });
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(topR, topR * 1.06, len, 12), grain);
+  shaft.position.y = len * 0.5;
+  addPart(shaft, g);
+  const swell = new THREE.Mesh(new THREE.SphereGeometry(buttR, 10, 8), grain);
+  swell.scale.set(1, 1.35, 1);
+  addPart(swell, g);
+  const wrapMat = mat(0x3a2414, { roughness: 0.88 });
+  for (let i = 0; i < 5; i++) {
+    const band = new THREE.Mesh(new THREE.TorusGeometry(topR * 1.12, 0.007, 5, 10), wrapMat);
+    band.rotation.x = Math.PI / 2;
+    band.rotation.z = i * 0.4;
+    band.position.y = 0.03 + i * 0.032;
+    g.add(band);
+  }
+  return g;
+}
+
 function createHatchetTool(): THREE.Group {
   const g = new THREE.Group();
-  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.028, 0.55, 10), mat(0x6a4420, { roughness: 0.75 }));
-  handle.rotation.z = 0.35;
-  g.add(handle);
-  const blade = new THREE.Mesh(
-    new THREE.BoxGeometry(0.22, 0.12, 0.035),
-    mat(0xb0c0d0, { metalness: 0.72, roughness: 0.28, clearcoat: 0.35 }),
+  // Origin sits a thumb's width up the haft, where the fist actually closes.
+  const haft = makeHaft(0.46, 0.021, 0.03);
+  haft.position.y = -0.06;
+  g.add(haft);
+
+  const head = new THREE.Group();
+  head.position.y = 0.36;
+
+  const eye = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.034, 0.11, 10), steel(0x8f9ba8));
+  eye.scale.set(0.68, 1, 1);
+  addPart(eye, head);
+
+  // Bit profile drawn in the swing plane: x runs out to the edge, y is the
+  // beard/toe flare. The extrude depth is the blade's thin side-to-side axis.
+  const bitShape = new THREE.Shape();
+  bitShape.moveTo(0.0, -0.052);
+  bitShape.lineTo(0.07, -0.062);
+  bitShape.lineTo(0.15, -0.105);
+  bitShape.lineTo(0.178, -0.088);
+  bitShape.lineTo(0.185, 0.075);
+  bitShape.lineTo(0.14, 0.088);
+  bitShape.lineTo(0.06, 0.058);
+  bitShape.lineTo(0.0, 0.052);
+  bitShape.closePath();
+  const bit = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(bitShape, {
+      depth: 0.03,
+      bevelEnabled: true,
+      bevelSize: 0.009,
+      bevelThickness: 0.005,
+      bevelSegments: 1,
+    }),
+    steel(0xb2c0d0),
   );
-  blade.position.set(0.12, 0.22, 0);
-  blade.rotation.z = 0.35;
-  g.add(blade);
+  bit.rotation.y = -Math.PI / 2;
+  bit.position.set(0.015, 0, 0);
+  addPart(bit, head);
+
+  // Bright honed edge along the bit's leading face.
+  const edge = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.17, 0.016), steel(0xeef4fa, { roughness: 0.08, clearcoat: 0.75 }));
+  edge.name = 'toolEdge';
+  edge.position.set(0, -0.006, 0.192);
+  edge.rotation.x = 0.06;
+  head.add(edge);
+
+  const poll = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.075, 0.072), steel(0x7e8a97, { roughness: 0.34 }));
+  poll.name = 'toolHeel';
+  poll.position.set(0, 0.006, -0.055);
+  addPart(poll, head);
+  const wedge = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.012, 0.016), steel(0x5e6a76, { roughness: 0.5 }));
+  wedge.position.set(0, 0.056, 0.005);
+  head.add(wedge);
+
+  g.add(head);
   return g;
 }
 
 function createPickaxeTool(): THREE.Group {
   const g = new THREE.Group();
-  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.028, 0.6, 10), mat(0x6a4420, { roughness: 0.75 }));
-  handle.rotation.z = -0.2;
-  g.add(handle);
-  const head = new THREE.Mesh(
-    new THREE.BoxGeometry(0.28, 0.07, 0.05),
-    mat(0x9aa8b8, { metalness: 0.65, roughness: 0.32, clearcoat: 0.25 }),
-  );
-  head.position.set(0.05, 0.28, 0);
+  const haft = makeHaft(0.52, 0.021, 0.03);
+  haft.position.y = -0.07;
+  g.add(haft);
+
+  const head = new THREE.Group();
+  head.position.y = 0.43;
+
+  const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.038, 0.09, 10), steel(0x8a95a2));
+  addPart(collar, head);
+
+  // Curved pick arm plus a stubby chisel on the opposite side.
+  for (let i = 0; i < 5; i++) {
+    const t = i / 4;
+    const seg = new THREE.Mesh(
+      new THREE.BoxGeometry(0.052 - t * 0.03, 0.05 - t * 0.026, 0.05 - t * 0.028),
+      steel(0x9aa8b8 - i * 0x040404),
+    );
+    seg.position.set(0, 0.016 - t * t * 0.085, 0.05 + t * 0.15);
+    seg.rotation.x = t * 0.6;
+    addPart(seg, head);
+  }
+  const spike = new THREE.Mesh(new THREE.ConeGeometry(0.016, 0.07, 6), steel(0xe4ecf4, { roughness: 0.12 }));
+  spike.name = 'toolEdge';
+  spike.rotation.x = Math.PI * 0.62;
+  spike.position.set(0, -0.082, 0.225);
+  addPart(spike, head);
+
+  const chisel = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.045, 0.13), steel(0x8a95a2));
+  chisel.name = 'toolHeel';
+  chisel.position.set(0, 0.012, -0.07);
+  chisel.rotation.x = -0.22;
+  addPart(chisel, head);
+  const chiselEdge = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.012, 0.02), steel(0xdfe8f2, { roughness: 0.12 }));
+  chiselEdge.position.set(0, 0.038, -0.135);
+  head.add(chiselEdge);
+
   g.add(head);
   return g;
 }
 
 function createSwordTool(): THREE.Group {
   const g = new THREE.Group();
-  const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.024, 0.16, 10), mat(0x5a3214, { roughness: 0.75 }));
-  g.add(hilt);
-  const wrap = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.05, 10), mat(0x3a2414, { roughness: 0.85 }));
-  wrap.position.y = 0.02;
-  g.add(wrap);
-  const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.032, 10, 8), mat(0xd4b050, { metalness: 0.68, roughness: 0.3 }));
-  pommel.position.y = -0.1;
-  g.add(pommel);
-  const guard = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.032, 0.04), mat(0xd4b050, { metalness: 0.7, roughness: 0.28 }));
-  guard.position.y = 0.09;
-  g.add(guard);
-  const blade = new THREE.Mesh(
-    new THREE.BoxGeometry(0.038, 0.58, 0.012),
-    mat(0xd0dce8, { metalness: 0.88, roughness: 0.16, clearcoat: 0.55, emissive: 0x223344, emissiveIntensity: 0.08 }),
+  const gold = mat(0xd8b458, { metalness: 0.78, roughness: 0.26, clearcoat: 0.4, envMapIntensity: 1.2 });
+
+  const core = new THREE.Mesh(new THREE.CylinderGeometry(0.019, 0.023, 0.17, 10), mat(0x4a2a12, { roughness: 0.8 }));
+  addPart(core, g);
+  const cordMat = mat(0x2e1c10, { roughness: 0.9 });
+  for (let i = 0; i < 7; i++) {
+    const cord = new THREE.Mesh(new THREE.TorusGeometry(0.024, 0.006, 5, 10), cordMat);
+    cord.rotation.x = Math.PI / 2;
+    cord.rotation.y = i * 0.3;
+    cord.position.y = -0.062 + i * 0.021;
+    g.add(cord);
+  }
+
+  const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.031, 12, 10), gold);
+  pommel.name = 'toolHeel';
+  pommel.scale.set(1, 0.85, 1);
+  pommel.position.y = -0.098;
+  addPart(pommel, g);
+  const pommelCap = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.026, 0.016, 10), gold);
+  pommelCap.position.y = -0.076;
+  g.add(pommelCap);
+
+  // Cross-guard sweeps toward the blade instead of sitting as a plain bar.
+  const guardShape = new THREE.Shape();
+  guardShape.moveTo(-0.1, 0);
+  guardShape.quadraticCurveTo(-0.05, 0.034, 0, 0.018);
+  guardShape.quadraticCurveTo(0.05, 0.034, 0.1, 0);
+  guardShape.quadraticCurveTo(0.05, -0.02, 0, -0.016);
+  guardShape.quadraticCurveTo(-0.05, -0.02, -0.1, 0);
+  const guard = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(guardShape, { depth: 0.036, bevelEnabled: true, bevelSize: 0.005, bevelThickness: 0.004, bevelSegments: 1 }),
+    gold,
   );
-  blade.position.y = 0.4;
-  g.add(blade);
+  guard.position.set(0, 0.092, -0.018);
+  addPart(guard, g);
+  const ricasso = new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.05, 0.026), steel(0xaab6c4));
+  ricasso.position.y = 0.128;
+  addPart(ricasso, g);
+
+  // Tapered blade built from stacked slices so it narrows toward the point.
+  const bladeMat = steel(0xd4e0ec, { roughness: 0.14, clearcoat: 0.6, emissive: 0x1d2c3c, emissiveIntensity: 0.1 });
+  const slices = 6;
+  for (let i = 0; i < slices; i++) {
+    const t = i / slices;
+    const w = 0.044 - t * 0.016;
+    const slice = new THREE.Mesh(new THREE.BoxGeometry(w, 0.58 / slices + 0.004, 0.013 - t * 0.004), bladeMat);
+    slice.position.y = 0.17 + (0.58 / slices) * (i + 0.5);
+    addPart(slice, g);
+  }
   const fuller = new THREE.Mesh(
-    new THREE.BoxGeometry(0.01, 0.46, 0.014),
-    mat(0xe8eef4, { metalness: 0.9, roughness: 0.12, clearcoat: 0.5 }),
+    new THREE.BoxGeometry(0.011, 0.44, 0.017),
+    steel(0x9fb0c2, { roughness: 0.3, clearcoat: 0.3 }),
   );
-  fuller.position.y = 0.38;
+  fuller.position.y = 0.4;
   g.add(fuller);
-  const tip = new THREE.Mesh(
-    new THREE.ConeGeometry(0.028, 0.1, 8),
-    mat(0xe4eef6, { metalness: 0.92, roughness: 0.12, clearcoat: 0.6 }),
-  );
-  tip.position.y = 0.73;
-  g.add(tip);
+  for (const sx of [-1, 1]) {
+    const bevel = new THREE.Mesh(
+      new THREE.BoxGeometry(0.006, 0.58, 0.009),
+      steel(0xf4f9ff, { roughness: 0.08, clearcoat: 0.75 }),
+    );
+    bevel.position.set(sx * 0.019, 0.46, 0);
+    g.add(bevel);
+  }
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.12, 4), bladeMat);
+  tip.name = 'toolEdge';
+  tip.rotation.y = Math.PI / 4;
+  tip.scale.set(1, 1, 0.42);
+  tip.position.y = 0.81;
+  addPart(tip, g);
   return g;
 }
 
+/**
+ * Seat a tool in the fist. The handle always runs along the grip group's +X so
+ * the fingers close around it; aiming the weapon is the wrist's job, not this
+ * transform's. rotation.y cants the handle forward, rotation.x rolls the head.
+ */
 function poseToolRoot(root: THREE.Object3D, tool: 'hatchet' | 'pickaxe' | 'sword' | null): void {
-  if (tool === 'sword') {
-    // Hammer grip: blade leaves the fist forward, then reads upright once the elbow bends.
-    root.position.set(0.012, -0.018, 0.038);
-    root.rotation.set(Math.PI / 2, 0.16, 0.22);
-  } else if (tool === 'hatchet') {
-    root.position.set(0.02, -0.02, 0.03);
-    root.rotation.set(1.25, 0.2, 0.45);
+  root.position.copy(GRIP_POINT);
+  if (tool === 'hatchet') {
+    root.rotation.set(0.12, -0.14, -Math.PI / 2);
   } else if (tool === 'pickaxe') {
-    root.position.set(0.02, -0.02, 0.03);
-    root.rotation.set(1.2, -0.15, 0.2);
+    root.rotation.set(0.08, -0.1, -Math.PI / 2);
   } else {
-    root.position.set(0.012, -0.018, 0.038);
-    root.rotation.set(Math.PI / 2, 0.16, 0.22);
+    root.rotation.set(0, -0.1, -Math.PI / 2);
   }
 }
 
