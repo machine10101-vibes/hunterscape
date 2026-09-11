@@ -330,20 +330,41 @@ export function createCampfire(): THREE.Group {
 
 export function createTent(): THREE.Group {
   const g = new THREE.Group();
-  const canvas = new THREE.Mesh(new THREE.ConeGeometry(1.15, 1.45, 4), mat(0x6a5030));
-  canvas.position.y = 0.72;
-  canvas.rotation.y = Math.PI / 4;
-  canvas.castShadow = true;
-  canvas.receiveShadow = true;
-  g.add(canvas);
+  const canvasMat = mat(0x6a5030, { roughness: 0.92, side: THREE.DoubleSide });
+  const shadeMat = mat(0x4a3818, { roughness: 0.94, side: THREE.DoubleSide });
 
-  // Entrance flap darker
-  const flap = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.7), mat(0x4a3818));
-  flap.position.set(0.55, 0.4, 0.55);
-  flap.rotation.y = Math.PI / 4;
-  g.add(flap);
+  const ridge = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.55, 6), mat(0x3a2a10, { roughness: 1 }));
+  ridge.rotation.z = Math.PI / 2;
+  ridge.position.y = 1.18;
+  g.add(ridge);
 
-  // Pegs
+  for (const side of [-1, 1]) {
+    const wall = new THREE.Mesh(new THREE.PlaneGeometry(1.55, 1.42), canvasMat);
+    wall.position.set(side * 0.52, 0.62, 0);
+    wall.rotation.y = side * -0.72;
+    wall.castShadow = true;
+    wall.receiveShadow = true;
+    g.add(wall);
+    const inner = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.36), shadeMat);
+    inner.position.set(side * 0.5, 0.62, 0);
+    inner.rotation.y = side * -0.72 + Math.PI;
+    g.add(inner);
+  }
+
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(1.05, 1.05), shadeMat);
+  back.position.set(0, 0.52, -0.72);
+  back.castShadow = true;
+  g.add(back);
+
+  const flapL = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.85), shadeMat);
+  flapL.position.set(-0.18, 0.42, 0.7);
+  flapL.rotation.y = 0.35;
+  g.add(flapL);
+  const flapR = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.85), canvasMat);
+  flapR.position.set(0.22, 0.42, 0.68);
+  flapR.rotation.y = -0.55;
+  g.add(flapR);
+
   for (const [x, z] of [
     [-0.9, -0.9],
     [0.9, -0.9],
@@ -438,25 +459,61 @@ export function createFrostYeti(): THREE.Group {
       color,
       roughness: opts.roughness ?? 0.92,
       metalness: opts.metalness ?? 0.02,
-      flatShading: true,
+      flatShading: false,
       ...opts,
     });
 
-  const fur = uniq(0xeef4fa, { roughness: 0.94 }); // bright white shag
-  const furBlue = uniq(0xc4d8e8, { roughness: 0.9 }); // cool blue tint
-  const furShade = uniq(0xd0dde8, { roughness: 0.96 });
-  const stripe = uniq(0x2a2a30, { roughness: 0.88 });
-  const claw = uniq(0x08080a, { roughness: 0.16, metalness: 0.62 }); // polished obsidian
-  const clawEdge = uniq(0x3a3a42, { roughness: 0.12, metalness: 0.7, emissive: 0x121218, emissiveIntensity: 0.25 });
-  const noseMat = uniq(0x0a0a0a, { roughness: 0.35 });
-  const mouthMat = uniq(0x8a3040, { roughness: 0.7 });
+  const fur = uniq(0xe4edf6, { roughness: 0.94 }); // bright white shag
+  const furBlue = uniq(0xbacfe2, { roughness: 0.9 }); // cool blue tint
+  const furShade = uniq(0xcbdae8, { roughness: 0.96 });
+  const furDeep = uniq(0x93aabf, { roughness: 0.97 }); // shadowed undercoat
+  const hide = uniq(0x4a5666, { roughness: 0.88 }); // bare face/palm leather
+  const hideDark = uniq(0x323c4a, { roughness: 0.9 });
+  const claw = uniq(0x1d222b, { roughness: 0.3, metalness: 0.4 }); // dark horn
+  const noseMat = uniq(0x22202a, { roughness: 0.5 });
+  const mouthMat = uniq(0x5c2430, { roughness: 0.85 });
   const fangMat = uniq(0xf2ebd4, { roughness: 0.4 });
-  const eyeMat = uniq(0xffe070, {
-    emissive: 0xff8800,
-    emissiveIntensity: 6.2,
-    roughness: 0.08,
-    metalness: 0.15,
-  });
+
+  /**
+   * Ring of overlapping fur tufts used for every silhouette break on the body.
+   * Each tuft is a flattened wedge sunk most of the way into the surface so only
+   * a ruffled edge shows: cones long enough to read on their own just look like
+   * icicles glued to the fur.
+   */
+  const addShag = (
+    parent: THREE.Object3D,
+    cx: number,
+    cy: number,
+    cz: number,
+    radius: number,
+    count: number,
+    size: number,
+    droop = 0.5,
+    matA: THREE.Material = fur,
+    matB: THREE.Material = furShade,
+  ) => {
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2 + radius * 9;
+      const s = size * (0.82 + (i % 3) * 0.12);
+      const tuft = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 0), i % 2 ? matB : matA);
+      tuft.position.set(cx + Math.cos(a) * radius * 0.8, cy - s * 0.45, cz + Math.sin(a) * radius * 0.8);
+      // Long axis laid tangentially around the ring so neighbouring tufts
+      // overlap into one scalloped edge instead of bristling outward.
+      tuft.rotation.set(droop * (0.8 + (i % 3) * 0.2), Math.PI / 2 - a, (i % 4) * 0.16);
+      tuft.scale.set(1.7, 0.55, 0.95);
+      tuft.castShadow = true;
+      parent.add(tuft);
+    }
+  };
+
+  /** Short, blunt, slightly hooked claw. */
+  const addClaw = (parent: THREE.Object3D, x: number, y: number, z: number, len: number, rad: number) => {
+    const c = new THREE.Mesh(new THREE.ConeGeometry(rad, len, 6), claw);
+    c.rotation.x = Math.PI / 2 + 0.45;
+    c.position.set(x, y, z);
+    c.castShadow = true;
+    parent.add(c);
+  };
 
   // Contact shadow
   const shadow = new THREE.Mesh(
@@ -468,6 +525,7 @@ export function createFrostYeti(): THREE.Group {
       depthWrite: false,
     }),
   );
+  shadow.name = 'contactShadow';
   shadow.rotation.x = -Math.PI / 2;
   shadow.position.y = 0.03;
   g.add(shadow);
@@ -475,41 +533,36 @@ export function createFrostYeti(): THREE.Group {
   // Legs (thick, slightly bent forward for hunched stance)
   const makeLeg = (side: number) => {
     const leg = new THREE.Group();
-    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.35, 3, 6), fur);
+    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.35, 6, 12), fur);
     thigh.position.set(0, 0.55, 0.05);
     thigh.rotation.x = 0.25;
     thigh.castShadow = true;
     leg.add(thigh);
-    // stripe on thigh
-    const thStripe = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.1, 0.38), stripe);
-    thStripe.position.set(0, 0.62, 0.08);
-    leg.add(thStripe);
-    const shin = new THREE.Mesh(new THREE.CapsuleGeometry(0.18, 0.28, 3, 6), furBlue);
+    addShag(leg, 0, 0.68, 0.06, 0.235, 14, 0.07, 0.45);
+    const shin = new THREE.Mesh(new THREE.CapsuleGeometry(0.18, 0.28, 6, 12), furBlue);
     shin.position.set(0, 0.22, 0.12);
     shin.rotation.x = -0.15;
     shin.castShadow = true;
     leg.add(shin);
-    const shStripe = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.08, 0.32), stripe);
-    shStripe.position.set(0, 0.28, 0.14);
-    leg.add(shStripe);
-    // Foot
-    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.14, 0.48), fur);
-    foot.position.set(0, 0.07, 0.18);
+    addShag(leg, 0, 0.4, 0.1, 0.195, 13, 0.06, 0.4, furShade, furDeep);
+    // Foot — a broad flat pad, wider than it is tall.
+    const foot = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10), fur);
+    foot.position.set(0, 0.08, 0.16);
+    foot.scale.set(0.95, 0.44, 1.25);
     foot.castShadow = true;
     leg.add(foot);
-    // Toes / claws — longer knife-clear polished claws (Drive ref, pass2)
-    for (let i = 0; i < 5; i++) {
-      const c = new THREE.Mesh(new THREE.ConeGeometry(0.036, 0.34, 5), i % 2 ? clawEdge : claw);
-      c.rotation.x = Math.PI / 2 + 0.22;
-      c.position.set(-0.13 + i * 0.065, 0.05, 0.52);
-      leg.add(c);
-      // Subtle highlight edge for polished read
-      if (i % 2 === 0) {
-        const edge = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.22, 4), clawEdge);
-        edge.rotation.x = Math.PI / 2 + 0.22;
-        edge.position.set(-0.13 + i * 0.065, 0.06, 0.58);
-        leg.add(edge);
-      }
+    const pad = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), hideDark);
+    pad.position.set(0, 0.035, 0.2);
+    pad.scale.set(0.9, 0.22, 1.0);
+    leg.add(pad);
+    // Four short toes tipped with stubby claws, not a fan of steak knives.
+    for (let i = 0; i < 4; i++) {
+      const x = (i - 1.5) * 0.078;
+      const toe = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), fur);
+      toe.position.set(x, 0.055, 0.3);
+      toe.scale.set(1, 0.8, 1.25);
+      leg.add(toe);
+      addClaw(leg, x, 0.05, 0.37, 0.11, 0.026);
     }
     leg.position.x = side * 0.32;
     return leg;
@@ -522,7 +575,7 @@ export function createFrostYeti(): THREE.Group {
   g.add(yetiLegR);
 
   // Torso — bulky upper body, hunched
-  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.55, 0.55, 4, 10), fur);
+  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.55, 0.55, 6, 12), fur);
   torso.position.set(0, 1.35, -0.08);
   torso.scale.set(1.15, 1, 0.95);
   torso.rotation.x = 0.2;
@@ -531,136 +584,95 @@ export function createFrostYeti(): THREE.Group {
   addOutline(torso, 1.06, 0x0a1520);
   g.add(torso);
 
-  // Horizontal charcoal stripes on torso
-  for (let i = 0; i < 4; i++) {
-    const band = new THREE.Mesh(
-      new THREE.TorusGeometry(0.58 + i * 0.02, 0.055, 5, 16),
-      stripe,
-    );
-    band.rotation.x = Math.PI / 2 + 0.15;
-    band.position.set(0, 1.55 - i * 0.18, -0.05 + i * 0.02);
-    band.scale.set(1.05, 0.85, 1);
-    g.add(band);
-  }
+  // Shag skirt around the bottom of the ribcage and a second tier over the
+  // shoulders — the two silhouette breaks that keep the torso from reading as
+  // one smooth egg.
+  addShag(g, 0, 1.14, -0.04, 0.68, 24, 0.095, 0.5);
+  addShag(g, 0, 1.74, -0.1, 0.66, 22, 0.09, 0.7, furShade, furDeep);
 
   // Belly slightly bluer
-  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.38, 8, 6), furBlue);
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.38, 12, 10), furBlue);
   belly.position.set(0, 1.15, 0.28);
   belly.scale.set(1.1, 1.0, 0.55);
   g.add(belly);
 
-  // Shoulder mane — layered strand clumps (less chunky than pass1 fat cones)
-  const makeManeClump = (x: number, y: number, z: number, s: number, matUse = fur) => {
-    const base = new THREE.Mesh(new THREE.ConeGeometry(0.11 * s, 0.36 * s, 5), matUse);
+  // Shoulder / head ruff — a few pointed clumps, parented to the body so they
+  // never read as extra floating arms.
+  const makeManeClump = (parent: THREE.Object3D, x: number, y: number, z: number, s: number, matUse = fur) => {
+    const base = new THREE.Mesh(new THREE.CapsuleGeometry(0.08 * s, 0.22 * s, 5, 10), matUse);
     base.position.set(x, y, z);
-    base.rotation.x = -0.55 - s * 0.08;
-    base.rotation.z = (x > 0 ? 1 : -1) * 0.08 * s;
+    base.rotation.x = -0.45;
+    base.rotation.z = (x > 0 ? 1 : x < 0 ? -1 : 0) * 0.12 * s;
     base.castShadow = true;
-    g.add(base);
-    // 3–4 thinner strand spikes around the base clump
-    for (let i = 0; i < 4; i++) {
-      const a = (i / 4) * Math.PI * 2 + s;
+    parent.add(base);
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI * 2 + s;
       const strand = new THREE.Mesh(
-        new THREE.ConeGeometry(0.035 * s, 0.26 * s, 4),
+        new THREE.CapsuleGeometry(0.028 * s, 0.16 * s, 4, 8),
         i % 2 === 0 ? furShade : matUse,
       );
-      strand.position.set(
-        x + Math.cos(a) * 0.06 * s,
-        y + 0.04 * s,
-        z + Math.sin(a) * 0.05 * s,
-      );
-      strand.rotation.x = -0.65 - (i % 3) * 0.08;
-      strand.rotation.z = (x > 0 ? 1 : -1) * (0.12 + i * 0.04);
-      strand.rotation.y = a * 0.3;
+      strand.position.set(x + Math.cos(a) * 0.05 * s, y + 0.03 * s, z + Math.sin(a) * 0.04 * s);
+      strand.rotation.x = -0.55;
+      strand.rotation.z = (x > 0 ? 1 : -1) * 0.14;
       strand.castShadow = true;
-      g.add(strand);
+      parent.add(strand);
     }
   };
-  makeManeClump(-0.55, 1.85, -0.15, 1.25);
-  makeManeClump(0.55, 1.85, -0.15, 1.25);
-  makeManeClump(-0.35, 2.0, -0.35, 1.1, furShade);
-  makeManeClump(0.35, 2.0, -0.35, 1.1, furShade);
-  makeManeClump(0, 2.08, -0.42, 1.2);
-  makeManeClump(-0.7, 1.65, 0.05, 1.0);
-  makeManeClump(0.7, 1.65, 0.05, 1.0);
-  makeManeClump(-0.45, 1.95, 0.1, 0.85, furBlue);
-  makeManeClump(0.45, 1.95, 0.1, 0.85, furBlue);
-  makeManeClump(-0.2, 2.12, -0.25, 0.95);
-  makeManeClump(0.2, 2.12, -0.25, 0.95);
-  makeManeClump(0, 1.75, -0.55, 1.05, furShade);
-  // Extra layered shag around chest / back
-  makeManeClump(-0.6, 1.5, -0.25, 0.8, furShade);
-  makeManeClump(0.6, 1.5, -0.25, 0.8, furShade);
-  makeManeClump(-0.25, 1.9, 0.25, 0.7, fur);
-  makeManeClump(0.25, 1.9, 0.25, 0.7, fur);
-  makeManeClump(0, 2.2, -0.15, 0.85, furShade);
-  makeManeClump(-0.5, 1.75, -0.45, 0.9);
-  makeManeClump(0.5, 1.75, -0.45, 0.9);
-  makeManeClump(-0.15, 2.05, -0.5, 0.75, furBlue);
-  makeManeClump(0.15, 2.05, -0.5, 0.75, furBlue);
-  // Limb shag tufts
-  for (const sx of [-1, 1]) {
-    makeManeClump(sx * 0.38, 0.75, 0.15, 0.5, furShade);
-    makeManeClump(sx * 0.35, 0.4, 0.2, 0.42, furBlue);
-    makeManeClump(sx * 0.55, 1.4, 0.1, 0.55, fur);
-  }
-  // Extra stripe fur strips for shaggy read
-  for (let i = 0; i < 8; i++) {
-    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.58, 0.075), stripe);
-    const a = (i / 8) * Math.PI * 2;
-    strip.position.set(Math.cos(a) * 0.5, 1.45, Math.sin(a) * 0.36 - 0.05);
-    strip.rotation.z = Math.cos(a) * 0.28;
-    strip.rotation.x = 0.15;
-    g.add(strip);
-  }
+  makeManeClump(torso, -0.42, 0.42, -0.12, 1.05);
+  makeManeClump(torso, 0.42, 0.42, -0.12, 1.05);
+  makeManeClump(torso, 0, 0.52, -0.28, 1.0, furShade);
+  makeManeClump(torso, -0.28, 0.48, 0.12, 0.75, furBlue);
+  makeManeClump(torso, 0.28, 0.48, 0.12, 0.75, furBlue);
 
-  // Arms
+  // Arms — parented chain so walk/attack rotate a real limb, not disconnected chunks.
   const makeArm = (side: number) => {
     const arm = new THREE.Group();
     arm.name = side < 0 ? 'yetiArmL' : 'yetiArmR';
-    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.4, 3, 6), fur);
-    upper.position.set(0, 0, 0);
-    upper.rotation.z = side * 0.55;
-    upper.rotation.x = -0.35;
+    arm.position.set(side * 0.68, 1.72, 0.08);
+    arm.rotation.z = side * 0.28;
+    arm.rotation.x = -0.22;
+
+    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.38, 6, 12), fur);
+    upper.position.set(0, -0.22, 0);
     upper.castShadow = true;
     arm.add(upper);
-    const uStripe = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.09, 0.28), stripe);
-    uStripe.position.set(side * 0.05, -0.05, 0.05);
-    uStripe.rotation.z = side * 0.55;
-    arm.add(uStripe);
-    const forearm = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.35, 3, 6), furBlue);
-    forearm.position.set(side * 0.28, -0.45, 0.25);
-    forearm.rotation.z = side * 0.35;
-    forearm.rotation.x = -0.5;
-    forearm.castShadow = true;
-    arm.add(forearm);
-    const fStripe = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.08, 0.24), stripe);
-    fStripe.position.set(side * 0.28, -0.4, 0.28);
-    arm.add(fStripe);
-    // Hand
-    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.16, 6, 5), fur);
-    hand.position.set(side * 0.42, -0.72, 0.45);
-    hand.castShadow = true;
-    arm.add(hand);
-    // Claws — longer knife-clear polished black (thumb + 4 fingers) pass2
+    addShag(arm, 0, -0.02, 0, 0.215, 13, 0.072, 0.6);
+    addShag(arm, 0, -0.4, 0, 0.205, 12, 0.062, 0.45, furShade, furDeep);
+
+    const forearm = new THREE.Group();
+    forearm.position.set(0, -0.46, 0);
+    forearm.rotation.x = -0.38;
+    const forearmMesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.32, 6, 12), furBlue);
+    forearmMesh.position.set(0, -0.2, 0);
+    forearmMesh.castShadow = true;
+    forearm.add(forearmMesh);
+    addShag(forearm, 0, -0.3, 0, 0.175, 12, 0.055, 0.4, furShade, furDeep);
+
+    const hand = new THREE.Group();
+    hand.position.set(0, -0.4, 0.05);
+    const palm = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), fur);
+    palm.scale.set(1, 0.85, 0.95);
+    palm.castShadow = true;
+    hand.add(palm);
+    const palmPad = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), hideDark);
+    palmPad.position.set(0, -0.02, 0.1);
+    palmPad.scale.set(1, 0.95, 0.35);
+    hand.add(palmPad);
     for (let i = 0; i < 4; i++) {
-      const c = new THREE.Mesh(new THREE.ConeGeometry(0.038, 0.5, 5), i % 2 ? clawEdge : claw);
-      c.rotation.x = Math.PI / 2 + 0.48;
-      c.position.set(side * 0.42 + (i - 1.5) * 0.075, -0.88, 0.82);
-      arm.add(c);
-      // Polished edge facet
-      const edge = new THREE.Mesh(new THREE.ConeGeometry(0.016, 0.32, 4), clawEdge);
-      edge.rotation.x = Math.PI / 2 + 0.48;
-      edge.position.set(side * 0.42 + (i - 1.5) * 0.075, -0.9, 0.92);
-      arm.add(edge);
+      const x = (i - 1.5) * 0.075;
+      const knuckle = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), fur);
+      knuckle.position.set(x, -0.05, 0.14);
+      knuckle.scale.set(1, 0.9, 1.2);
+      hand.add(knuckle);
+      addClaw(hand, x, -0.06, 0.22, 0.12, 0.026);
     }
-    // Opposable thumb claw
-    const thumb = new THREE.Mesh(new THREE.ConeGeometry(0.034, 0.4, 5), claw);
-    thumb.rotation.x = Math.PI / 2 + 0.2;
-    thumb.rotation.z = side * 0.75;
-    thumb.position.set(side * 0.28, -0.72, 0.68);
-    arm.add(thumb);
-    arm.position.set(side * 0.72, 1.7, 0.05);
+    const thumbBase = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), fur);
+    thumbBase.position.set(side * 0.13, -0.01, 0.06);
+    hand.add(thumbBase);
+    addClaw(hand, side * 0.17, -0.02, 0.12, 0.1, 0.024);
+
+    forearm.add(hand);
+    arm.add(forearm);
     return arm;
   };
   g.add(makeArm(-1));
@@ -672,140 +684,160 @@ export function createFrostYeti(): THREE.Group {
   head.position.set(0, 2.15, 0.15);
   head.rotation.x = -0.15;
 
-  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.38, 10, 8), fur);
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.38, 14, 12), fur);
   skull.scale.set(1.05, 0.95, 1.1);
   skull.castShadow = true;
   addOutline(skull, 1.08, 0x0a1520);
   head.add(skull);
+  makeManeClump(head, 0, 0.28, -0.18, 0.85, furShade);
+  makeManeClump(head, -0.22, 0.22, -0.08, 0.7);
+  makeManeClump(head, 0.22, 0.22, -0.08, 0.7);
 
-  // Brow ridge / shadowed sockets
-  const brow = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.12, 0.2), uniq(0xb8c8d4));
-  brow.position.set(0, 0.12, 0.28);
+  // Bare slate-grey face mask. Without it every feature is white-on-white and
+  // the head reads as a blank snowball from gameplay distance.
+  // The skull is a 0.38 sphere scaled 1.1 deep, so its front surface sits at
+  // z ~0.42. Every facial feature has to be pushed out past that or it ends up
+  // buried inside the head.
+  const mask = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 14), hide);
+  // Kept low enough that the brow hides its upper rim; any taller and the seam
+  // between mask and skull cuts across the forehead as a visible polygon edge.
+  mask.scale.set(0.84, 0.74, 0.76);
+  mask.position.set(0, -0.08, 0.18);
+  head.add(mask);
+
+  // Brow: a heavy shelf shading the eyes from above.
+  const brow = new THREE.Mesh(new THREE.SphereGeometry(0.27, 16, 12), hideDark);
+  brow.scale.set(0.96, 0.34, 0.6);
+  brow.position.set(0, 0.125, 0.2);
   head.add(brow);
+  for (const sx of [-1, 1]) {
+    const ridge = new THREE.Mesh(new THREE.SphereGeometry(0.078, 10, 8), hideDark);
+    ridge.scale.set(1.1, 0.46, 0.62);
+    ridge.rotation.z = sx * -0.3;
+    ridge.position.set(sx * 0.15, 0.105, 0.345);
+    head.add(ridge);
+  }
 
-  // Glowing amber eyes — larger + stronger emissive for fight readability
+  // Amber eyes with a vertical slit pupil, set on the mask so they catch light.
   const makeEye = (sx: number) => {
-    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.13, 6, 5), uniq(0x0a0606));
-    socket.position.set(sx, 0.06, 0.3);
+    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.068, 12, 10), hideDark);
+    socket.scale.set(1.1, 0.9, 0.6);
+    socket.position.set(sx, 0.04, 0.355);
     head.add(socket);
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), eyeMat);
-    eye.position.set(sx, 0.06, 0.42);
+    const eye = new THREE.Mesh(
+      new THREE.SphereGeometry(0.044, 12, 10),
+      uniq(0xf0a838, { emissive: 0xc06800, emissiveIntensity: 0.55, roughness: 0.25 }),
+    );
+    eye.scale.set(1, 0.86, 0.75);
+    eye.position.set(sx, 0.04, 0.395);
     eye.name = 'yetiEye';
     head.add(eye);
-    const pupil = new THREE.Mesh(
-      new THREE.SphereGeometry(0.038, 6, 5),
-      uniq(0x1a0800, { emissive: 0x441800, emissiveIntensity: 0.55 }),
-    );
-    pupil.position.set(sx, 0.06, 0.5);
-    head.add(pupil);
-    const glow = new THREE.Mesh(
-      new THREE.SphereGeometry(0.2, 8, 6),
-      new THREE.MeshBasicMaterial({
-        color: 0xffaa22,
-        transparent: true,
-        opacity: 0.55,
-        depthWrite: false,
-      }),
-    );
-    glow.position.set(sx, 0.06, 0.4);
-    glow.name = 'yetiEyeGlow';
-    head.add(glow);
-    // Outer halo for distance read (not neon — warm amber wash)
-    const halo = new THREE.Mesh(
-      new THREE.SphereGeometry(0.28, 8, 6),
-      new THREE.MeshBasicMaterial({
-        color: 0xff8800,
-        transparent: true,
-        opacity: 0.22,
-        depthWrite: false,
-      }),
-    );
-    halo.position.set(sx, 0.06, 0.38);
-    halo.name = 'yetiEyeGlow';
-    head.add(halo);
-    const eyeLight = new THREE.PointLight(0xff9900, 1.15, 4.2);
+    const slit = new THREE.Mesh(new THREE.CapsuleGeometry(0.008, 0.036, 3, 6), uniq(0x140a04));
+    slit.position.set(sx, 0.04, 0.428);
+    head.add(slit);
+    const eyeLight = new THREE.PointLight(0xff9900, 0.18, 1.2);
     eyeLight.name = 'yetiEyeLight';
-    eyeLight.position.set(sx, 0.06, 0.55);
+    eyeLight.position.set(sx, 0.05, 0.52);
     head.add(eyeLight);
   };
-  makeEye(-0.15);
-  makeEye(0.15);
+  makeEye(-0.145);
+  makeEye(0.145);
 
-  // Snout
-  const snout = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.18, 3, 6), furBlue);
-  snout.rotation.x = Math.PI / 2;
-  snout.position.set(0, -0.08, 0.42);
+  // Muzzle — short and broad, the bridge sunk between the brows.
+  const bridge = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.1, 5, 10), hide);
+  bridge.rotation.x = Math.PI / 2 - 0.4;
+  bridge.position.set(0, 0.015, 0.42);
+  head.add(bridge);
+  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.175, 14, 12), hide);
+  snout.scale.set(1.0, 0.8, 1.0);
+  snout.position.set(0, -0.1, 0.44);
   head.add(snout);
 
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 5), noseMat);
-  nose.position.set(0, -0.02, 0.58);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.052, 12, 10), noseMat);
+  nose.scale.set(1.3, 0.8, 0.85);
+  nose.position.set(0, -0.03, 0.585);
   head.add(nose);
+  for (const sx of [-1, 1]) {
+    const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 6), uniq(0x0e0c10));
+    nostril.position.set(sx * 0.03, -0.047, 0.608);
+    head.add(nostril);
+  }
 
-  // Open roaring mouth
-  const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.16, 0.28), mouthMat);
-  jaw.position.set(0, -0.22, 0.38);
-  head.add(jaw);
+  // Open maw: a dark throat with the lower jaw wrapped around it.
+  const maw = new THREE.Mesh(new THREE.SphereGeometry(0.145, 12, 10), mouthMat);
+  maw.scale.set(1.0, 0.62, 0.7);
+  maw.position.set(0, -0.2, 0.46);
+  head.add(maw);
+  const lowerJaw = new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 10), hide);
+  lowerJaw.scale.set(1.0, 0.5, 0.9);
+  lowerJaw.position.set(0, -0.27, 0.41);
+  head.add(lowerJaw);
+  addShag(head, 0, -0.32, 0.24, 0.27, 11, 0.052, 0.6, furShade, furDeep);
 
-  // Fangs
+  // Fangs — a pair top and bottom, everything else a low tooth row.
   const makeFang = (x: number, y: number, upper: boolean) => {
-    const fang = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.16, 4), fangMat);
+    const fang = new THREE.Mesh(new THREE.ConeGeometry(0.021, 0.08, 7), fangMat);
     fang.rotation.x = upper ? Math.PI : 0;
-    fang.position.set(x, y, 0.5);
+    fang.position.set(x, y, 0.535);
     head.add(fang);
   };
-  makeFang(-0.1, -0.12, true);
-  makeFang(0.1, -0.12, true);
-  makeFang(-0.08, -0.28, false);
-  makeFang(0.08, -0.28, false);
+  makeFang(-0.082, -0.16, true);
+  makeFang(0.082, -0.16, true);
+  makeFang(-0.07, -0.245, false);
+  makeFang(0.07, -0.245, false);
 
-  // Smaller teeth row
   for (let i = 0; i < 5; i++) {
-    const t = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, 0.04), fangMat);
-    t.position.set(-0.12 + i * 0.06, -0.14, 0.52);
+    const t = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.028, 0.022), fangMat);
+    t.position.set(-0.08 + i * 0.04, -0.178, 0.542);
     head.add(t);
   }
 
-  // Ear tufts
+  // Small round ears buried in the mane
   for (const s of [-1, 1]) {
-    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.22, 5), fur);
-    ear.position.set(s * 0.32, 0.22, -0.05);
-    ear.rotation.z = s * 0.4;
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8), fur);
+    ear.position.set(s * 0.28, 0.18, -0.08);
+    ear.scale.set(0.7, 0.85, 0.55);
     head.add(ear);
+    const inner = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), hide);
+    inner.scale.set(0.5, 0.85, 0.55);
+    inner.position.set(s * 0.3, 0.18, -0.05);
+    head.add(inner);
   }
+  addShag(head, 0, 0.02, -0.08, 0.43, 16, 0.08, 0.55, fur, furShade);
 
   g.add(head);
 
-  // Frost breath cone + mist puffs (animated via name) — more visible mid-fight
+  // Frost breath sits on the muzzle, not as a trail of spheres in front of the body.
   const breath = new THREE.Mesh(
-    new THREE.ConeGeometry(0.32, 1.05, 8, 1, true),
+    new THREE.ConeGeometry(0.12, 0.38, 8, 1, true),
     new THREE.MeshStandardMaterial({
       color: 0xd0f6ff,
       emissive: 0x66eeff,
-      emissiveIntensity: 1.45,
+      emissiveIntensity: 0.9,
       transparent: true,
-      opacity: 0.55,
-      flatShading: true,
+      opacity: 0.32,
+      flatShading: false,
       side: THREE.DoubleSide,
       depthWrite: false,
     }),
   );
   breath.rotation.x = Math.PI / 2;
-  breath.position.set(0, 2.0, 1.05);
+  breath.position.set(0, -0.15, 0.62);
   breath.name = 'yetiBreath';
-  g.add(breath);
-  for (let i = 0; i < 5; i++) {
+  head.add(breath);
+  for (let i = 0; i < 3; i++) {
     const mist = new THREE.Mesh(
-      new THREE.SphereGeometry(0.14 + i * 0.05, 6, 5),
+      new THREE.SphereGeometry(0.07 + i * 0.025, 6, 5),
       new THREE.MeshBasicMaterial({
         color: 0xb8e8ff,
         transparent: true,
-        opacity: 0.32 - i * 0.04,
+        opacity: 0.22 - i * 0.04,
         depthWrite: false,
       }),
     );
-    mist.position.set((i - 2) * 0.06, 1.95 - i * 0.015, 1.2 + i * 0.28);
+    mist.position.set((i - 1) * 0.04, -0.13, 0.75 + i * 0.1);
     mist.name = 'yetiBreathMist';
-    g.add(mist);
+    head.add(mist);
   }
 
   // Invisible hit volume
@@ -937,19 +969,20 @@ export function createOrcScout(): THREE.Group {
       color,
       roughness: opts.roughness ?? 0.85,
       metalness: opts.metalness ?? 0.05,
-      flatShading: true,
+      flatShading: false,
       ...opts,
     });
 
-  const skin = uniq(0x7a8d52, { roughness: 0.8 }); // Drive olive
-  const skinDark = uniq(0x556838, { roughness: 0.86 });
-  const hair = uniq(0x141416, { roughness: 0.96 });
-  const leather = uniq(0x3a2614, { roughness: 0.82 });
-  const leatherDark = uniq(0x24180c, { roughness: 0.88 });
-  const leatherMid = uniq(0x5a3e2b, { roughness: 0.7 });
-  const fur = uniq(0xc4a878, { roughness: 0.97 });
-  const furDark = uniq(0x9a7a52, { roughness: 0.97 });
-  const cloth = uniq(0x1a1e1c, { roughness: 0.93 });
+  const skin = uniq(0x8fa056, { roughness: 0.82 });
+  const skinDark = uniq(0x5e7038, { roughness: 0.88 });
+  const hair = uniq(0x2a2730, { roughness: 0.96 });
+  const hairLit = uniq(0x3c3844, { roughness: 0.94 });
+  const leather = uniq(0x6b4526, { roughness: 0.82 });
+  const leatherDark = uniq(0x3e2814, { roughness: 0.88 });
+  const leatherMid = uniq(0x8b5f3a, { roughness: 0.7 });
+  const fur = uniq(0xac9068, { roughness: 0.97 });
+  const furDark = uniq(0x7d6743, { roughness: 0.97 });
+  const cloth = uniq(0x33383a, { roughness: 0.93 });
   const metal = uniq(0xd0d6de, { metalness: 0.82, roughness: 0.2 });
   const wood = uniq(0x4a3014, { roughness: 0.88 });
   const tusk = uniq(0xf5f0e4, { roughness: 0.4, metalness: 0.08 });
@@ -962,34 +995,33 @@ export function createOrcScout(): THREE.Group {
     return mesh;
   };
 
-  const addFurSpikes = (
+  /**
+   * Fur trim as a ring of matted clumps around a band. Rings read as fur at
+   * gameplay distance; the ring of outward-pointing capsules this replaced read
+   * as a crown of sausages.
+   */
+  const addFurBand = (
     parent: THREE.Object3D,
     cx: number,
     cy: number,
     cz: number,
     radius: number,
-    count: number,
-    length: number,
-    tipRadius: number,
-    yawBias = 0,
+    thickness: number,
+    clumps = 0,
   ) => {
-    for (let i = 0; i < count; i++) {
-      const a = (i / count) * Math.PI * 2 + yawBias;
-      const lenJ = length * (0.8 + (i % 4) * 0.08);
-      const spike = new THREE.Mesh(
-        new THREE.ConeGeometry(tipRadius * (0.9 + (i % 3) * 0.08), lenJ, 4),
-        i % 3 === 0 ? furDark : fur,
-      );
-      spike.position.set(
-        cx + Math.cos(a) * radius,
-        cy + lenJ * 0.2 + (i % 3) * 0.012,
-        cz + Math.sin(a) * radius,
-      );
-      spike.rotation.z = -Math.cos(a) * 0.55;
-      spike.rotation.x = Math.sin(a) * 0.55;
-      spike.rotation.y = (i % 5) * 0.1;
-      spike.castShadow = true;
-      parent.add(spike);
+    const band = new THREE.Mesh(new THREE.TorusGeometry(radius, thickness, 6, 14), fur);
+    band.rotation.x = Math.PI / 2;
+    band.position.set(cx, cy, cz);
+    band.castShadow = true;
+    parent.add(band);
+    for (let i = 0; i < clumps; i++) {
+      const a = (i / clumps) * Math.PI * 2 + 0.3;
+      const lump = new THREE.Mesh(new THREE.IcosahedronGeometry(thickness * 1.45, 0), i % 2 ? furDark : fur);
+      lump.position.set(cx + Math.cos(a) * radius, cy + (i % 2) * thickness * 0.4, cz + Math.sin(a) * radius);
+      lump.rotation.set(0.3, a, 0.2);
+      lump.scale.set(1.2, 0.8, 1.1);
+      lump.castShadow = true;
+      parent.add(lump);
     }
   };
 
@@ -998,6 +1030,7 @@ export function createOrcScout(): THREE.Group {
     new THREE.CircleGeometry(0.4, 18),
     new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.4, depthWrite: false }),
   );
+  shadow.name = 'contactShadow';
   shadow.rotation.x = -Math.PI / 2;
   shadow.position.y = 0.03;
   g.add(shadow);
@@ -1005,28 +1038,33 @@ export function createOrcScout(): THREE.Group {
   // ===== Legs / dark trousers + fur-trimmed boots =====
   const makeLeg = (side: number) => {
     const leg = new THREE.Group();
-    const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.135, 0.42, 7), cloth);
-    thigh.position.set(0, 0.55, 0);
+    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.22, 5, 12), cloth);
+    thigh.position.set(0, 0.62, 0);
     addPart(thigh, leg);
-    const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.115, 0.28, 7), cloth);
-    shin.position.set(0, 0.28, 0.02);
+    const shin = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.12, 5, 12), cloth);
+    shin.position.set(0, 0.36, 0.015);
     addPart(shin, leg);
 
-    const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.135, 0.38, 7), leather);
+    const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.12, 0.16, 12), leather);
     boot.position.set(0, 0.2, 0.02);
     addPart(boot, leg, 1.05);
-    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.1, 0.28), leatherDark);
-    foot.position.set(0, 0.05, 0.08);
+    const ankle = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.07, 0.1, 12), leatherDark);
+    ankle.position.set(0, 0.08, 0.03);
+    addPart(ankle, leg);
+    const foot = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.14, 4, 10), leatherDark);
+    foot.rotation.x = Math.PI / 2;
+    foot.position.set(0, 0.04, 0.1);
+    foot.scale.set(1.1, 1, 0.7);
     addPart(foot, leg);
 
-    for (let i = 0; i < 3; i++) {
-      const strap = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.018, 4, 10), leatherMid);
-      strap.rotation.x = Math.PI / 2;
-      strap.position.set(0, 0.12 + i * 0.1, 0.02);
+    for (const dir of [-1, 1]) {
+      const strap = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.22, 0.018), leatherMid);
+      strap.position.set(0, 0.16, 0.02);
+      strap.rotation.z = dir * 0.7;
       leg.add(strap);
     }
-    addFurSpikes(leg, 0, 0.36, 0.02, 0.13, 12, 0.11, 0.03);
-    leg.position.x = side * 0.17;
+    addFurBand(leg, 0, 0.29, 0.02, 0.114, 0.02, 6);
+    leg.position.x = side * 0.18;
     return leg;
   };
   const orcLegL = makeLeg(-1);
@@ -1037,26 +1075,37 @@ export function createOrcScout(): THREE.Group {
   g.add(orcLegR);
 
   // Hips / leather skirt flaps
-  const hips = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.29, 0.22, 8), leather);
+  const hips = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.27, 0.22, 14), leather);
   hips.position.y = 0.78;
   addPart(hips, g);
   for (const [z, ry] of [
-    [0.16, 0],
-    [-0.16, Math.PI],
+    [0.18, 0],
+    [-0.18, Math.PI],
   ] as const) {
-    const flap = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.22, 0.055), leatherDark);
-    flap.position.set(0, 0.68, z);
+    const shape = new THREE.Shape();
+    shape.moveTo(-0.14, 0);
+    shape.lineTo(0.14, 0);
+    shape.lineTo(0, -0.22);
+    shape.closePath();
+    const flap = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: 0.04, bevelEnabled: false }), leatherDark);
+    flap.position.set(0, 0.72, z);
     flap.rotation.y = ry;
     addPart(flap, g);
   }
   for (const sx of [-1, 1]) {
-    const flap = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.2, 0.18), leatherMid);
-    flap.position.set(sx * 0.23, 0.68, 0);
+    const shape = new THREE.Shape();
+    shape.moveTo(-0.1, 0);
+    shape.lineTo(0.1, 0);
+    shape.lineTo(0, -0.18);
+    shape.closePath();
+    const flap = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: 0.035, bevelEnabled: false }), leatherMid);
+    flap.position.set(sx * 0.24, 0.72, 0);
+    flap.rotation.y = sx * Math.PI * 0.5;
     addPart(flap, g);
   }
 
   // ===== Torso / brown leather vest =====
-  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.29, 0.55, 9), leather);
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.27, 0.55, 14), leather);
   torso.position.y = 1.12;
   addPart(torso, g, 1.07);
   torso.name = 'orcBody';
@@ -1067,8 +1116,8 @@ export function createOrcScout(): THREE.Group {
 
   // Bare upper arms / shoulders peek (olive skin)
   for (const sx of [-1, 1]) {
-    const deltoid = new THREE.Mesh(new THREE.SphereGeometry(0.12, 7, 5), skin);
-    deltoid.position.set(sx * 0.3, 1.38, 0);
+    const deltoid = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 10), skin);
+    deltoid.position.set(sx * 0.34, 1.38, 0);
     deltoid.scale.set(0.9, 0.85, 1);
     addPart(deltoid, g);
   }
@@ -1093,10 +1142,14 @@ export function createOrcScout(): THREE.Group {
       g.add(rivet);
     }
   };
-  makeStrap(0.55, 0.25);
-  makeStrap(-0.55, 0.25);
-  makeStrap(0.55, -0.22);
-  makeStrap(-0.55, -0.22);
+  makeStrap(0.55, 0.27);
+  makeStrap(-0.55, 0.27);
+  makeStrap(0.55, -0.27);
+  makeStrap(-0.55, -0.27);
+  const backJoin = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.04, 6), metal);
+  backJoin.rotation.x = Math.PI / 2;
+  backJoin.position.set(0, 1.18, -0.29);
+  g.add(backJoin);
 
   const chestBuckle = new THREE.Mesh(new THREE.OctahedronGeometry(0.075, 0), metal);
   chestBuckle.scale.set(1.15, 0.9, 0.45);
@@ -1108,53 +1161,72 @@ export function createOrcScout(): THREE.Group {
   pouch.position.set(0.28, 0.82, 0.12);
   addPart(pouch, g);
 
-  // ===== Thick spiky tan fur collar (denser Drive silhouette) =====
-  const collarBase = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.11, 6, 14), fur);
-  collarBase.rotation.x = Math.PI / 2;
-  collarBase.position.set(0, 1.42, 0);
-  collarBase.scale.set(1.22, 1.08, 0.98);
-  addPart(collarBase, g);
-  addFurSpikes(g, 0, 1.4, 0, 0.31, 26, 0.22, 0.048);
-  addFurSpikes(g, 0, 1.52, -0.04, 0.25, 18, 0.17, 0.04, 0.18);
-  addFurSpikes(g, 0, 1.34, 0.06, 0.33, 14, 0.14, 0.036, 0.35);
-  for (const sx of [-1, 1]) {
-    addFurSpikes(g, sx * 0.32, 1.34, 0.04, 0.13, 12, 0.15, 0.036);
-    const drape = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.32, 5), furDark);
-    drape.position.set(sx * 0.35, 1.26, 0);
-    drape.rotation.z = sx * 0.7;
-    drape.rotation.x = -0.28;
-    addPart(drape, g);
+  // ===== Fur mantle across the shoulders =====
+  // A shoulder mantle, not a ring: a full torus wider than the head reads as a
+  // life preserver. Two low arcs front and back leave the neck clear.
+  for (const [rz, cz] of [
+    [0, 0.11],
+    [Math.PI, -0.11],
+  ] as const) {
+    const arc = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.045, 6, 12, Math.PI * 1.05), fur);
+    arc.rotation.set(Math.PI / 2, 0, rz - Math.PI * 0.52);
+    arc.position.set(0, 1.4, cz);
+    arc.scale.set(1.5, 1.0, 1.0);
+    addPart(arc, g);
+  }
+  for (let i = 0; i < 13; i++) {
+    const a = (i / 13) * Math.PI * 2 + 0.28;
+    const lump = new THREE.Mesh(new THREE.IcosahedronGeometry(0.052, 0), i % 2 ? furDark : fur);
+    lump.position.set(Math.cos(a) * 0.285, 1.38 + (i % 3) * 0.02, Math.sin(a) * 0.175);
+    lump.rotation.set(0.35, Math.PI / 2 - a, 0.2);
+    lump.scale.set(1.5, 0.7, 1.0);
+    addPart(lump, g);
   }
 
-  // ===== Arms: bare olive upper + leather gauntlets with fur =====
+  // ===== Arms: bare olive upper + leather gauntlets with elbow AND wrist fur =====
   const makeArm = (side: number) => {
     const arm = new THREE.Group();
     arm.name = side < 0 ? 'orcArmL' : 'orcArmR';
-    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.105, 0.34, 7), skin);
+    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.22, 5, 12), skin);
     upper.position.set(0, 0, 0);
-    upper.rotation.z = side * 0.32;
+    upper.rotation.z = side * 0.22;
     addPart(upper, arm);
 
-    const gauntlet = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.115, 0.3, 7), leather);
-    gauntlet.position.set(side * 0.12, -0.3, 0.02);
-    gauntlet.rotation.z = side * 0.18;
+    // The bracer tapers with the forearm; a straight sleeve at the same radius
+    // as the elbow reads as a bucket strapped to the wrist.
+    const gauntlet = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.088, 0.24, 12), leather);
+    gauntlet.position.set(side * 0.11, -0.31, 0.02);
+    gauntlet.rotation.z = side * 0.14;
     addPart(gauntlet, arm, 1.04);
-    for (let i = 0; i < 2; i++) {
-      const s = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.015, 4, 8), leatherDark);
-      s.rotation.x = Math.PI / 2;
-      s.position.set(side * 0.12, -0.22 - i * 0.1, 0.02);
+    for (const dir of [-1, 1]) {
+      const s = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.22, 0.014), leatherDark);
+      s.position.set(side * 0.1, -0.31, 0.03);
+      s.rotation.z = side * 0.16 + dir * 0.55;
       arm.add(s);
     }
-    const furGroup = new THREE.Group();
-    furGroup.position.set(side * 0.08, -0.12, 0.02);
-    addFurSpikes(furGroup, 0, 0, 0, 0.108, 12, 0.1, 0.028);
-    arm.add(furGroup);
+    addFurBand(arm, side * 0.07, -0.17, 0.02, 0.094, 0.017, 0);
 
-    const hand = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.12), skin);
-    hand.position.set(side * 0.16, -0.48, 0.04);
-    addPart(hand, arm);
+    const hand = new THREE.Group();
+    hand.position.set(side * 0.14, -0.48, 0.03);
+    const palm = new THREE.Mesh(new THREE.SphereGeometry(0.062, 10, 8), skin);
+    palm.scale.set(0.85, 1, 0.95);
+    addPart(palm, hand);
+    // Fingers wrapped forward around whatever the hand is holding.
+    for (let i = 0; i < 4; i++) {
+      const f = new THREE.Mesh(new THREE.CapsuleGeometry(0.016, 0.05, 3, 6), skin);
+      f.position.set((i - 1.5) * 0.03, -0.05, 0.045);
+      f.rotation.x = 1.15;
+      hand.add(f);
+    }
+    const thumb = new THREE.Mesh(new THREE.CapsuleGeometry(0.016, 0.045, 3, 6), skin);
+    thumb.position.set(side * 0.05, -0.015, 0.05);
+    thumb.rotation.set(0.9, 0, side * 0.8);
+    hand.add(thumb);
+    arm.add(hand);
 
-    arm.position.set(side * 0.36, 1.28, 0);
+    // Rooted just inside the deltoid so the shoulder joint is covered; further
+    // out and the arm floats free of the vest.
+    arm.position.set(side * 0.32, 1.3, 0);
     return arm;
   };
   g.add(makeArm(-1));
@@ -1162,73 +1234,120 @@ export function createOrcScout(): THREE.Group {
   g.add(armR);
 
   // ===== Distinct orc head: tusks, pointed ears, heavy brow, spiky hair =====
+  // Thick neck lifting the skull clear of the mantle — without it the jaw rests
+  // straight on the collar and the orc looks decapitated.
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.115, 0.22, 10), skin);
+  neck.position.set(0, 1.46, 0.005);
+  addPart(neck, g);
+  const trap = new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 10), skin);
+  trap.scale.set(1.25, 0.55, 0.9);
+  trap.position.set(0, 1.37, 0);
+  addPart(trap, g);
+
   const head = new THREE.Group();
   head.name = 'orcHead';
-  head.position.set(0, 1.58, 0);
+  head.position.set(0, 1.72, 0.008);
 
-  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.19, 10, 8), skin);
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.19, 14, 12), skin);
   skull.scale.set(1.05, 1.05, 0.95);
   addPart(skull, head, 1.1);
 
-  // Heavy brow ridge
-  const brow = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.07, 0.12), skinDark);
-  brow.position.set(0, 0.08, 0.12);
-  head.add(brow);
+  // Brow sits high enough to shade the eyes without swallowing them.
+  const brow = new THREE.Mesh(new THREE.SphereGeometry(0.15, 14, 10), skin);
+  brow.scale.set(1.04, 0.34, 0.58);
+  brow.position.set(0, 0.098, 0.088);
+  addPart(brow, head);
+  for (const sx of [-1, 1]) {
+    const ridge = new THREE.Mesh(new THREE.CapsuleGeometry(0.016, 0.055, 3, 8), skinDark);
+    ridge.rotation.z = Math.PI / 2 + sx * -0.24;
+    ridge.rotation.x = -0.2;
+    ridge.position.set(sx * 0.06, 0.088, 0.152);
+    head.add(ridge);
+    const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), skin);
+    cheek.scale.set(0.78, 0.58, 0.45);
+    cheek.position.set(sx * 0.1, -0.035, 0.105);
+    head.add(cheek);
+  }
 
-  // Broad flat nose
-  const nose = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 0.1), skinDark);
-  nose.position.set(0, -0.02, 0.18);
+  // Broad flat orc nose: a bridge running down from the brow into a wide tip.
+  const bridge = new THREE.Mesh(new THREE.CapsuleGeometry(0.026, 0.06, 4, 8), skin);
+  bridge.rotation.x = 0.35;
+  bridge.position.set(0, 0.03, 0.158);
+  head.add(bridge);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.048, 10, 8), skin);
+  nose.scale.set(1.25, 0.78, 1.0);
+  nose.position.set(0, -0.034, 0.178);
   head.add(nose);
+  for (const sx of [-1, 1]) {
+    const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 6), skinDark);
+    nostril.scale.set(0.8, 1, 0.7);
+    nostril.position.set(sx * 0.032, -0.052, 0.195);
+    head.add(nostril);
+  }
 
-  // Strong prognathic jaw
-  const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.14, 0.18), skinDark);
-  jaw.position.set(0, -0.12, 0.06);
+  // Prognathic jaw: pushed forward and down off the skull.
+  const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.135, 14, 11), skinDark);
+  jaw.scale.set(1.0, 0.7, 0.95);
+  jaw.position.set(0, -0.105, 0.07);
   addPart(jaw, head);
+  const chin = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), skinDark);
+  chin.scale.set(1.15, 0.85, 1.0);
+  chin.position.set(0, -0.155, 0.14);
+  head.add(chin);
+  const mouth = new THREE.Mesh(new THREE.CapsuleGeometry(0.011, 0.055, 3, 8), uniq(0x3a1c18));
+  mouth.rotation.z = Math.PI / 2;
+  mouth.position.set(0, -0.095, 0.185);
+  head.add(mouth);
 
-  // White tusks from lower jaw — larger Drive-ref silhouette
+  // Tusks rise from the corners of the lower jaw. They frame the face; sized
+  // any bigger they hide it entirely.
   for (const sx of [-1, 1]) {
-    const t = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.22, 5), tusk);
-    t.position.set(sx * 0.08, -0.1, 0.2);
-    t.rotation.x = Math.PI + 0.2;
-    t.rotation.z = sx * -0.38;
+    const t = new THREE.Mesh(new THREE.ConeGeometry(0.024, 0.115, 7), tusk);
+    t.position.set(sx * 0.092, -0.065, 0.155);
+    t.rotation.set(-0.3, 0, sx * -0.26);
     head.add(t);
-    const tip = new THREE.Mesh(
-      new THREE.ConeGeometry(0.02, 0.07, 4),
-      uniq(0xfff8f0, { roughness: 0.28, metalness: 0.12 }),
-    );
-    tip.position.set(sx * 0.08, 0.02, 0.26);
-    tip.rotation.x = Math.PI + 0.2;
-    tip.rotation.z = sx * -0.38;
-    head.add(tip);
   }
 
-  // Deep-set eyes
+  // Eyes: pale sclera with a dark iris, sunk under the brow but still catching
+  // light so the face has a direction to read from.
   for (const sx of [-1, 1]) {
-    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 4), uniq(0x1a1208));
-    socket.position.set(sx * 0.075, 0.03, 0.15);
+    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.048, 10, 8), skinDark);
+    socket.scale.set(1.1, 0.9, 0.6);
+    socket.position.set(sx * 0.072, 0.022, 0.135);
     head.add(socket);
+    const sclera = new THREE.Mesh(new THREE.SphereGeometry(0.027, 10, 8), uniq(0xd8d2b8, { roughness: 0.45 }));
+    sclera.scale.set(1.1, 0.82, 0.66);
+    sclera.position.set(sx * 0.072, 0.022, 0.149);
+    head.add(sclera);
     const iris = new THREE.Mesh(
-      new THREE.SphereGeometry(0.025, 5, 4),
-      uniq(0x2a3a18, { emissive: 0x1a2808, emissiveIntensity: 0.4 }),
+      new THREE.SphereGeometry(0.014, 8, 6),
+      uniq(0x8a4a20, { emissive: 0x501c04, emissiveIntensity: 0.35, roughness: 0.35 }),
     );
-    iris.position.set(sx * 0.075, 0.03, 0.185);
+    iris.position.set(sx * 0.074, 0.022, 0.163);
     head.add(iris);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 5), uniq(0x120a04));
+    pupil.position.set(sx * 0.075, 0.022, 0.172);
+    head.add(pupil);
   }
 
-  // Pointed swept-back ears (signature orc — larger in motion)
+  // Pointed ears swept nearly horizontal
   for (const sx of [-1, 1]) {
-    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.24, 5), skin);
-    ear.position.set(sx * 0.22, 0.08, -0.04);
-    ear.rotation.z = sx * -0.9;
-    ear.rotation.y = sx * 0.4;
-    ear.rotation.x = -0.28;
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), skin);
+    ear.scale.set(0.55, 1.7, 0.45);
+    ear.position.set(sx * 0.24, 0.04, -0.02);
+    ear.rotation.z = sx * -1.25;
+    ear.rotation.y = sx * 0.18;
+    ear.rotation.x = -0.12;
     addPart(ear, head);
   }
 
   // Spiky dark charcoal hair
-  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.185, 8, 5), hair);
-  hairCap.position.set(0, 0.08, -0.02);
-  hairCap.scale.set(1.05, 0.65, 1.05);
+  const hairCap = new THREE.Mesh(
+    new THREE.SphereGeometry(0.192, 14, 11, 0, Math.PI * 2, 0, Math.PI * 0.46),
+    hair,
+  );
+  hairCap.position.set(0, 0.072, -0.018);
+  hairCap.scale.set(1.04, 1.0, 1.06);
   addPart(hairCap, head);
   const spikePts: [number, number, number, number][] = [
     [0, 0.22, 0.04, 1.15],
@@ -1242,60 +1361,63 @@ export function createOrcScout(): THREE.Group {
     [-0.05, 0.24, -0.02, 1.1],
     [0.05, 0.24, -0.02, 1.1],
     [0, 0.2, 0.14, 0.85],
-    [-0.16, 0.1, 0.04, 0.8],
-    [0.16, 0.1, 0.04, 0.8],
   ];
-  for (const [x, y, z, s] of spikePts) {
-    const spike = new THREE.Mesh(new THREE.ConeGeometry(0.05 * s, 0.15 * s, 4), hair);
-    spike.position.set(x, y, z);
-    spike.rotation.x = z * 1.1;
-    spike.rotation.z = -x * 1.4;
-    head.add(spike);
-  }
+  spikePts.forEach(([x, y, z, s], i) => {
+    // Flattened wedges swept back off the crown, so it reads as a matted
+    // topknot rather than a bundle of upright pegs. They hug the cap closely —
+    // stacked any higher the crown builds into a pine cone.
+    const lock = new THREE.Mesh(new THREE.IcosahedronGeometry(0.07 * s, 0), i % 3 === 0 ? hairLit : hair);
+    lock.position.set(x, y - 0.012, z);
+    lock.rotation.set(-0.45 + z * 1.4, x * 1.8, -x * 1.2);
+    lock.scale.set(1.1, 0.42, 1.25);
+    head.add(lock);
+  });
 
   g.add(head);
 
-  // ===== Long spear (held in right hand) — clearer diamond facets =====
+  // ===== Long spear held in the right hand =====
   const spear = new THREE.Group();
   spear.name = 'orcSpear';
-  spear.position.set(0.42, 0.2, 0.12);
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.032, 2.05, 7), wood);
+  // Seated in the closed fist: the shaft runs up through the curled fingers.
+  spear.position.set(0.14, -0.62, 0.062);
+  spear.rotation.set(0.12, 0, 0.05);
+  spear.userData.rest = { x: 0.14, y: -0.62, z: 0.062, rx: 0.12, ry: 0, rz: 0.05 };
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.03, 2.05, 6), wood);
   shaft.position.y = 1.05;
   addPart(shaft, spear);
   const binding = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.04, 0.1, 6), leatherDark);
   binding.position.y = 1.9;
   spear.add(binding);
-  // Faceted metal tip with ridge
-  const tip = new THREE.Mesh(new THREE.OctahedronGeometry(0.11, 0), metal);
-  tip.scale.set(0.45, 1.75, 0.3);
-  tip.position.y = 2.18;
+  const tip = new THREE.Mesh(new THREE.OctahedronGeometry(0.13, 0), metal);
+  tip.scale.set(0.4, 1.85, 0.28);
+  tip.position.y = 2.2;
   addPart(tip, spear);
   const ridge = new THREE.Mesh(
-    new THREE.BoxGeometry(0.018, 0.3, 0.085),
+    new THREE.BoxGeometry(0.018, 0.34, 0.085),
     uniq(0xeef2f6, { metalness: 0.9, roughness: 0.14 }),
   );
-  ridge.position.y = 2.18;
+  ridge.position.y = 2.2;
   spear.add(ridge);
-  const tipCollar = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.038, 0.1, 7), metal);
+  const tipCollar = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.038, 0.1, 6), metal);
   tipCollar.position.y = 1.96;
   spear.add(tipCollar);
   for (const sx of [-1, 1]) {
     const barb = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.14, 4), metal);
-    barb.position.set(sx * 0.055, 2.05, 0);
+    barb.position.set(sx * 0.055, 2.08, 0);
     barb.rotation.z = sx * 1.15;
     spear.add(barb);
   }
   const tipEdge = new THREE.Mesh(
-    new THREE.ConeGeometry(0.06, 0.2, 5),
+    new THREE.ConeGeometry(0.06, 0.22, 4),
     uniq(0xf0f4f8, { metalness: 0.88, roughness: 0.15 }),
   );
-  tipEdge.position.y = 2.34;
+  tipEdge.position.y = 2.4;
   spear.add(tipEdge);
   const butt = new THREE.Mesh(new THREE.ConeGeometry(0.032, 0.1, 4), metal);
   butt.rotation.x = Math.PI;
   butt.position.y = 0.02;
   spear.add(butt);
-  g.add(spear);
+  armR.add(spear);
 
   // Hit volume
   const hit = new THREE.Mesh(
@@ -1331,8 +1453,14 @@ export function animateOrcSpear(orc: THREE.Group, progress: number): void {
     thrust = 1.1 * (1 - w);
   }
   if (spear) {
-    spear.rotation.x = -thrust * 0.95;
-    spear.position.z = 0.12 + thrust * 0.55 - pull * 0.25;
+    const r = spear.userData.rest as { x: number; y: number; z: number; rx: number; ry: number; rz: number } | undefined;
+    if (r) {
+      spear.rotation.x = r.rx - thrust * 0.35;
+      spear.position.z = r.z + thrust * 0.22 - pull * 0.1;
+    } else {
+      spear.rotation.x = -thrust * 0.95;
+      spear.position.z = 0.12 + thrust * 0.55 - pull * 0.25;
+    }
   }
   if (armR) armR.rotation.x = -thrust * 1.05 + pull * 0.4;
   const head = orc.getObjectByName('orcHead');

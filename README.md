@@ -18,6 +18,7 @@ Original world, names, and art (procedural Three.js). Visual layout inspired by 
 - Desktop + mobile (touch-friendly)
 - Studio-style low-poly character/monster art with richer world lighting
 - Walk/attack/gather animation cycles, hit flinch, death collapse, combat telegraphs
+- Model Studio (`V`) to orbit every 3D mesh and review poses
 
 ## Develop
 
@@ -45,6 +46,7 @@ Production base path is `/hunterscape/` for GitHub Pages.
 | Click / tap tree, rock, dummy, yeti, orc | Gather or fight |
 | Action bar 1–5 / keys 1–5 | Attack, Chop, Mine, Eat, Examine |
 | Skills button / `K` | Toggle skills |
+| Studio button / `V` | Inspect 3D models (drag to orbit) |
 | Inventory rations | Click to eat |
 
 ## Deploy notes

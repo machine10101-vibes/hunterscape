@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { HUD } from '../ui/HUD';
+import { ModelStudio } from '../ui/ModelStudio';
 import {
   animateOrcSpear,
   animateYetiSwipe,
@@ -130,6 +131,7 @@ export class Game {
   private pointer = new THREE.Vector2();
   private clock = new THREE.Clock();
   private hud: HUD;
+  private studio: ModelStudio;
   private vfx: VFX;
   private save: SaveData;
   private objects: WorldObject[] = [];
@@ -204,6 +206,8 @@ export class Game {
 
     this.setupLights();
     this.setupReflectionEnv();
+    this.studio = new ModelStudio(canvas);
+    this.studio.setEnvironment(this.scene.environment);
     this.scene.add(createSkyDome(70));
     this.ground = createGround(48);
     this.scene.add(this.ground);
@@ -546,6 +550,7 @@ export class Game {
 
   private bindInput(canvas: HTMLCanvasElement): void {
     const onPointer = (ev: PointerEvent) => {
+      if (this.studio.isOpen()) return;
       const t = ev.target as HTMLElement;
       if (t !== canvas) return;
       this.pointer.x = (ev.clientX / window.innerWidth) * 2 - 1;
@@ -555,6 +560,7 @@ export class Game {
     canvas.addEventListener('pointerdown', onPointer);
 
     window.addEventListener('keydown', (e) => {
+      if (this.studio.isOpen()) return;
       this.keys.add(e.key.toLowerCase());
       if (e.key === '1') this.handleAction('attack');
       if (e.key === '2') this.handleAction('chop');
@@ -1039,11 +1045,9 @@ export class Game {
         const fight = this.yetiAggroed || (this.activity.type === 'combat' && this.activity.target?.kind === 'yeti');
         const m = (obj as THREE.Mesh).material as THREE.MeshStandardMaterial;
         if (m && m.emissiveIntensity !== undefined) {
-          const base = fight ? 7.2 : 4.8;
-          m.emissiveIntensity = base + Math.sin(now * 6.8) * (fight ? 2.4 : 0.8);
+          const base = fight ? 1.35 : 0.55;
+          m.emissiveIntensity = base + Math.sin(now * 6.8) * (fight ? 0.35 : 0.12);
         }
-        const pulse = 1 + Math.sin(now * 6.5) * (fight ? 0.12 : 0.04);
-        obj.scale.setScalar(pulse);
       }
       if (obj.name === 'yetiEyeLight') {
         const fight = this.yetiAggroed || (this.activity.type === 'combat' && this.activity.target?.kind === 'yeti');
@@ -1956,12 +1960,18 @@ export class Game {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.studio.resize(window.innerWidth, window.innerHeight);
   }
 
   private animate = (): void => {
     if (!this.running) return;
     requestAnimationFrame(this.animate);
     const dt = Math.min(0.05, this.clock.getDelta());
+    if (this.studio.isOpen()) {
+      this.studio.tick(dt);
+      this.studio.render(this.renderer);
+      return;
+    }
     this.update(dt);
     this.renderer.render(this.scene, this.camera);
   };
