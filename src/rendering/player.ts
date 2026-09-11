@@ -108,9 +108,9 @@ function leatherMaps() {
       const blotch = fbm(u * 4.5, v * 3.2, 3);
       const scratch = Math.pow(valueNoise(u * 9 + v * 40, v * 2), 8);
       const tone = 0.42 + grain * 0.28 + blotch * 0.16 - scratch * 0.22 + pores * 0.06;
-      const r = 48 + tone * 110;
-      const g = 28 + tone * 62;
-      const b = 16 + tone * 32;
+      const r = 138 + tone * 108;
+      const g = 112 + tone * 92;
+      const b = 92 + tone * 74;
       return { r, g, b, rough: 110 + grain * 90 - scratch * 40, bump: 90 + grain * 110 + pores * 30 - scratch * 50 };
     });
     leatherTex.map.repeat.set(2.2, 2.2);
@@ -127,9 +127,9 @@ function clothMaps() {
       const n = fbm(u * 10, v * 10, 4);
       const tone = 0.28 + n * 0.18 + weave;
       return {
-        r: 28 + tone * 40,
-        g: 32 + tone * 46,
-        b: 30 + tone * 38,
+        r: 124 + tone * 74,
+        g: 130 + tone * 78,
+        b: 126 + tone * 70,
         rough: 170 + weave * 80,
         bump: 100 + weave * 90 + n * 40,
       };
@@ -146,9 +146,9 @@ function skinMaps() {
     skinTex = bakeMaps(256, (u, v) => {
       const n = fbm(u * 6, v * 8, 4);
       const freck = Math.pow(valueNoise(u * 40, v * 40), 6);
-      const r = 198 + n * 28 - freck * 18;
-      const g = 148 + n * 18 - freck * 14;
-      const b = 112 + n * 12 - freck * 10;
+      const r = 212 + n * 24 - freck * 22;
+      const g = 196 + n * 18 - freck * 18;
+      const b = 184 + n * 14 - freck * 14;
       return { r, g, b, rough: 96 + n * 40, bump: 118 + n * 28 };
     });
   }
@@ -208,8 +208,8 @@ function skinMat(tint: number, extra: PhysOpts = {}): THREE.MeshPhysicalMaterial
     sheenColor: new THREE.Color(0xc07050),
     sheenRoughness: 0.55,
     envMapIntensity: 0.32,
-    emissive: new THREE.Color(0x3a1810),
-    emissiveIntensity: 0.02,
+    emissive: new THREE.Color(0x2a1410),
+    emissiveIntensity: 0.012,
     flatShading: false,
     ...extra,
   });
@@ -418,18 +418,18 @@ export function createPlayerMesh(): THREE.Group {
   g.name = 'player';
   g.userData.locomotionY = 0;
 
-  const skin = skinMat(0xd4a07a);
-  const skinDark = skinMat(0xb8845e, { roughness: 0.56 });
-  const hairCol = mat(0x1a120c, {
+  const skin = skinMat(0xc08c62);
+  const skinDark = skinMat(0xa2724c, { roughness: 0.56 });
+  const hairCol = mat(0x30231a, {
     roughness: 0.94,
     sheen: 0.22,
     sheenColor: new THREE.Color(0x3a2818),
     flatShading: true,
   });
-  const leather = leatherMat(0x5a3a22);
-  const leatherDark = leatherMat(0x2e1c10, { roughness: 0.78, clearcoat: 0.04 });
-  const leatherMid = leatherMat(0x7a4e2c, { roughness: 0.58, clearcoat: 0.12 });
-  const fur = mat(0xb08a58, {
+  const leather = leatherMat(0x9a6238);
+  const leatherDark = leatherMat(0x52321c, { roughness: 0.78, clearcoat: 0.04 });
+  const leatherMid = leatherMat(0xc08a52, { roughness: 0.58, clearcoat: 0.12 });
+  const fur = mat(0xc9a874, {
     roughness: 0.92,
     metalness: 0,
     sheen: 0.22,
@@ -438,20 +438,20 @@ export function createPlayerMesh(): THREE.Group {
     envMapIntensity: 0.12,
     flatShading: true,
   });
-  const furDark = mat(0x6a4a28, {
+  const furDark = mat(0x8d6c44, {
     roughness: 0.95,
     sheen: 0.16,
     sheenColor: new THREE.Color(0x8a6038),
     flatShading: true,
   });
-  const furMid = mat(0x8e6840, {
+  const furMid = mat(0xac8859, {
     roughness: 0.93,
     sheen: 0.18,
     sheenColor: new THREE.Color(0xaa8048),
     flatShading: true,
   });
-  const cloth = clothMat(0x3a403c);
-  const clothDark = clothMat(0x2a302c);
+  const cloth = clothMat(0x555d57);
+  const clothDark = clothMat(0x3e463f);
   const metal = mat(0xe8eef4, {
     metalness: 0.92,
     roughness: 0.18,
@@ -635,10 +635,25 @@ export function createPlayerMesh(): THREE.Group {
     pad.position.set(sx * 0.24, 0.16, 0.01);
     pad.rotation.z = sx * -0.32;
     addPart(pad, torso);
-    const deltoid = new THREE.Mesh(new THREE.SphereGeometry(0.095, 8, 6), skin);
-    deltoid.scale.set(1.1, 0.95, 1.05);
-    deltoid.position.set(sx * 0.25, 0.1, 0);
+    const deltoid = new THREE.Mesh(new THREE.SphereGeometry(0.094, 14, 11), skin);
+    deltoid.scale.set(1.08, 0.98, 1.0);
+    deltoid.position.set(sx * 0.25, 0.1, -0.008);
     addPart(deltoid, torso);
+    // Studded leather cap: breaks up the bare shoulder ball in silhouette.
+    const cap = new THREE.Mesh(
+      new THREE.SphereGeometry(0.102, 12, 9, 0, Math.PI * 2, 0, Math.PI * 0.56),
+      leatherMid,
+    );
+    cap.scale.set(1.06, 0.92, 1.02);
+    cap.rotation.z = sx * -0.36;
+    cap.position.set(sx * 0.248, 0.114, -0.006);
+    addPart(cap, torso);
+    for (let i = 0; i < 3; i++) {
+      const stud = new THREE.Mesh(new THREE.SphereGeometry(0.011, 6, 5), metalBright);
+      const a = -0.5 + i * 0.5;
+      stud.position.set(sx * (0.248 + Math.cos(a) * 0.02), 0.166, Math.sin(a) * 0.078);
+      torso.add(stud);
+    }
   }
 
   const collarBase = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.055, 8, 12), furMid);
@@ -701,104 +716,161 @@ export function createPlayerMesh(): THREE.Group {
   head.name = 'playerHead';
   head.position.set(0, 0.5, 0.015);
 
-  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.165, 20, 16), skin);
-  skull.scale.set(0.96, 1.06, 0.92);
+  const hairShade = mat(0x3b2b1f, { roughness: 0.95, sheen: 0.18, sheenColor: new THREE.Color(0x53402c) });
+
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.163, 22, 18), skin);
+  skull.scale.set(0.95, 1.07, 0.94);
   addPart(skull, head);
 
-  const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.118, 14, 12), skinDark);
-  jaw.scale.set(1.02, 0.7, 0.92);
-  jaw.position.set(0, -0.095, 0.045);
+  // Brow shelf and cheekbones give the face structure that a single sphere cannot.
+  const browRidge = new THREE.Mesh(new THREE.SphereGeometry(0.112, 16, 12), skin);
+  browRidge.scale.set(1.1, 0.3, 0.5);
+  browRidge.position.set(0, 0.05, 0.068);
+  addPart(browRidge, head);
+
+  const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.114, 16, 13), skinDark);
+  jaw.scale.set(1.04, 0.74, 0.95);
+  jaw.position.set(0, -0.093, 0.04);
   addPart(jaw, head);
 
-  const chin = new THREE.Mesh(new THREE.SphereGeometry(0.042, 8, 6), skinDark);
-  chin.scale.set(1.15, 0.85, 1.1);
-  chin.position.set(0, -0.155, 0.11);
+  const chin = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 8), skinDark);
+  chin.scale.set(1.2, 0.9, 1.12);
+  chin.position.set(0, -0.15, 0.105);
   head.add(chin);
 
-  const stubble = new THREE.Mesh(
-    new THREE.SphereGeometry(0.088, 8, 6),
-    mat(0x4a382c, { roughness: 0.95, sheen: 0.2, sheenColor: new THREE.Color(0x2a1c14) }),
-  );
-  stubble.scale.set(1.05, 0.45, 0.55);
-  stubble.position.set(0, -0.12, 0.12);
-  head.add(stubble);
-
   for (const sx of [-1, 1]) {
-    const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.052, 8, 6), skinDark);
-    cheek.scale.set(0.7, 1, 0.85);
-    cheek.position.set(sx * 0.11, -0.02, 0.09);
+    const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.044, 12, 9), skin);
+    cheek.scale.set(0.8, 0.6, 0.5);
+    cheek.position.set(sx * 0.088, -0.026, 0.076);
     head.add(cheek);
+  }
+
+  // Short beard: a jaw-hugging mass plus a moustache, not a flat decal.
+  const beard = new THREE.Mesh(new THREE.SphereGeometry(0.113, 14, 11), hairShade);
+  beard.scale.set(1.03, 0.74, 0.92);
+  beard.position.set(0, -0.112, 0.03);
+  addPart(beard, head);
+  const beardFront = new THREE.Mesh(new THREE.SphereGeometry(0.056, 10, 8), hairShade);
+  beardFront.scale.set(1.12, 0.9, 0.82);
+  beardFront.position.set(0, -0.146, 0.082);
+  head.add(beardFront);
+  for (const sx of [-1, 1]) {
+    const chop = new THREE.Mesh(new THREE.CapsuleGeometry(0.016, 0.062, 4, 8), hairShade);
+    chop.position.set(sx * 0.128, -0.03, 0.006);
+    chop.rotation.z = sx * 0.16;
+    head.add(chop);
+    const tache = new THREE.Mesh(new THREE.CapsuleGeometry(0.0105, 0.026, 3, 8), hairShade);
+    tache.rotation.z = Math.PI / 2;
+    tache.rotation.y = sx * 0.3;
+    tache.position.set(sx * 0.019, -0.069, 0.133);
+    head.add(tache);
   }
 
   const nose = new THREE.Mesh(
     latheBody(
       [
-        [0.008, 0.05],
-        [0.016, 0.02],
-        [0.022, -0.01],
-        [0.012, -0.03],
+        [0.005, 0.046],
+        [0.013, 0.016],
+        [0.021, -0.01],
+        [0.025, -0.03],
+        [0.013, -0.044],
       ],
-      8,
+      10,
     ),
-    skinDark,
+    skin,
   );
-  nose.rotation.x = 0.15;
-  nose.position.set(0, -0.01, 0.155);
-  head.add(nose);
+  nose.rotation.x = 0.3;
+  nose.position.set(0, -0.006, 0.152);
+  addPart(nose, head);
+  const bridge = new THREE.Mesh(new THREE.CapsuleGeometry(0.013, 0.05, 4, 8), skin);
+  bridge.rotation.x = 0.2;
+  bridge.position.set(0, 0.018, 0.14);
+  head.add(bridge);
+  for (const sx of [-1, 1]) {
+    const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.0105, 8, 6), skinDark);
+    nostril.scale.set(1, 0.8, 0.9);
+    nostril.position.set(sx * 0.02, -0.05, 0.148);
+    head.add(nostril);
+  }
 
   for (const sx of [-1, 1]) {
-    const brow = new THREE.Mesh(new THREE.CapsuleGeometry(0.012, 0.05, 3, 8), hairCol);
-    brow.rotation.z = Math.PI / 2 + sx * -0.18;
-    brow.position.set(sx * 0.055, 0.055, 0.145);
+    const brow = new THREE.Mesh(new THREE.CapsuleGeometry(0.0105, 0.046, 3, 8), hairShade);
+    brow.rotation.z = Math.PI / 2 + sx * -0.2;
+    brow.rotation.x = -0.25;
+    brow.position.set(sx * 0.052, 0.064, 0.134);
     head.add(brow);
 
-    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.032, 10, 8), mat(0x1a100c, { roughness: 0.8 }));
-    socket.position.set(sx * 0.05, 0.02, 0.128);
+    // Eye: a small dark socket with a recessed ball, so it does not read as a
+    // pasted-on white disc at gameplay distance.
+    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.029, 12, 9), skinDark);
+    socket.scale.set(1.15, 0.9, 0.62);
+    socket.position.set(sx * 0.053, 0.014, 0.114);
     head.add(socket);
-    const sclera = new THREE.Mesh(new THREE.CircleGeometry(0.018, 12), mat(0xe8ddd0, { roughness: 0.4 }));
-    sclera.position.set(sx * 0.05, 0.02, 0.158);
-    head.add(sclera);
+    const eyeball = new THREE.Mesh(new THREE.SphereGeometry(0.0182, 14, 11), mat(0xcabdae, { roughness: 0.32 }));
+    eyeball.position.set(sx * 0.053, 0.014, 0.126);
+    head.add(eyeball);
     const iris = new THREE.Mesh(
-      new THREE.CircleGeometry(0.011, 12),
-      mat(0x4a301c, { roughness: 0.45, emissive: 0x2a180c, emissiveIntensity: 0.15 }),
+      new THREE.SphereGeometry(0.0108, 10, 8),
+      mat(0x4a3a22, { roughness: 0.3, clearcoat: 0.6, clearcoatRoughness: 0.1 }),
     );
-    iris.position.set(sx * 0.05, 0.02, 0.162);
+    iris.position.set(sx * 0.053, 0.014, 0.143);
     head.add(iris);
-    const pupil = new THREE.Mesh(new THREE.CircleGeometry(0.005, 10), mat(0x080604));
-    pupil.position.set(sx * 0.05, 0.02, 0.164);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.005, 8, 6), mat(0x0a0806, { roughness: 0.25 }));
+    pupil.position.set(sx * 0.053, 0.014, 0.15);
     head.add(pupil);
+    // Upper lid keeps the eye from staring.
+    const lid = new THREE.Mesh(new THREE.SphereGeometry(0.0208, 12, 9, 0, Math.PI * 2, 0, Math.PI * 0.52), skin);
+    lid.scale.set(1.08, 1, 0.9);
+    lid.rotation.x = -0.42;
+    lid.position.set(sx * 0.053, 0.019, 0.124);
+    head.add(lid);
 
-    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.032, 10, 8), skin);
-    ear.scale.set(0.45, 1.15, 0.7);
-    ear.position.set(sx * 0.162, 0.01, -0.01);
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.028, 10, 8), skin);
+    ear.scale.set(0.34, 1.05, 0.6);
+    ear.position.set(sx * 0.152, 0.006, -0.004);
     head.add(ear);
+    const lobe = new THREE.Mesh(new THREE.SphereGeometry(0.013, 8, 6), skinDark);
+    lobe.scale.set(0.45, 0.85, 0.65);
+    lobe.position.set(sx * 0.152, -0.024, -0.002);
+    head.add(lobe);
   }
 
-  const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.012, 0.016), mat(0x6a3028, { roughness: 0.5 }));
-  mouth.position.set(0, -0.11, 0.155);
+  const mouth = new THREE.Mesh(new THREE.CapsuleGeometry(0.008, 0.034, 3, 8), mat(0x5c3026, { roughness: 0.55 }));
+  mouth.rotation.z = Math.PI / 2;
+  mouth.position.set(0, -0.105, 0.142);
   head.add(mouth);
 
-  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.172, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.58), hairCol);
-  hairCap.position.set(0, 0.04, -0.02);
-  hairCap.scale.set(1.06, 0.88, 1.08);
+  // Hair: one swept cap with a few broad locks. Small round lumps read as
+  // gravel at gameplay distance, so the locks are flattened and aligned.
+  const hairCap = new THREE.Mesh(
+    new THREE.SphereGeometry(0.171, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.47),
+    hairCol,
+  );
+  hairCap.position.set(0, 0.052, -0.016);
+  hairCap.scale.set(1.06, 1.0, 1.1);
   addPart(hairCap, head);
-  const hairClumps: [number, number, number, number][] = [
-    [0, 0.16, 0.04, 0.07],
-    [-0.08, 0.14, 0.05, 0.06],
-    [0.08, 0.14, 0.05, 0.06],
-    [-0.1, 0.12, -0.04, 0.055],
-    [0.1, 0.12, -0.04, 0.055],
-    [0, 0.14, -0.1, 0.065],
-    [-0.05, 0.17, -0.02, 0.05],
-    [0.05, 0.17, -0.02, 0.05],
+  const locks: [number, number, number, number, number][] = [
+    [0, 0.15, 0.062, 0.082, 0.5],
+    [-0.078, 0.142, 0.05, 0.074, 0.35],
+    [0.078, 0.142, 0.05, 0.074, -0.35],
+    [-0.128, 0.098, -0.01, 0.07, 0.2],
+    [0.128, 0.098, -0.01, 0.07, -0.2],
+    [-0.072, 0.122, -0.108, 0.078, 0.1],
+    [0.072, 0.122, -0.108, 0.078, -0.1],
+    [0, 0.1, -0.152, 0.082, 0],
   ];
-  for (const [x, y, z, s] of hairClumps) {
-    const clump = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 0), hairCol);
-    clump.position.set(x, y, z);
-    clump.rotation.set(z * 0.5, x * 1.2, 0);
-    clump.scale.set(1.15, 0.9, 1.05);
-    head.add(clump);
+  for (const [x, y, z, s, tilt] of locks) {
+    const lock = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 0), hairCol);
+    lock.position.set(x, y, z);
+    lock.rotation.set(-0.4 + z * 1.2, x * 1.6, tilt);
+    lock.scale.set(1.1, 0.52, 1.25);
+    head.add(lock);
   }
+  const fringe = new THREE.Mesh(new THREE.IcosahedronGeometry(0.082, 0), hairCol);
+  fringe.scale.set(1.6, 0.3, 0.62);
+  fringe.rotation.set(0.42, 0, 0.12);
+  fringe.position.set(0.014, 0.125, 0.098);
+  head.add(fringe);
   torso.add(head);
 
   const idleSpear = createIdleSpear(wood, leatherDark, metal);
