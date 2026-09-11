@@ -1045,11 +1045,9 @@ export class Game {
         const fight = this.yetiAggroed || (this.activity.type === 'combat' && this.activity.target?.kind === 'yeti');
         const m = (obj as THREE.Mesh).material as THREE.MeshStandardMaterial;
         if (m && m.emissiveIntensity !== undefined) {
-          const base = fight ? 7.2 : 4.8;
-          m.emissiveIntensity = base + Math.sin(now * 6.8) * (fight ? 2.4 : 0.8);
+          const base = fight ? 1.35 : 0.55;
+          m.emissiveIntensity = base + Math.sin(now * 6.8) * (fight ? 0.35 : 0.12);
         }
-        const pulse = 1 + Math.sin(now * 6.5) * (fight ? 0.12 : 0.04);
-        obj.scale.setScalar(pulse);
       }
       if (obj.name === 'yetiEyeLight') {
         const fight = this.yetiAggroed || (this.activity.type === 'combat' && this.activity.target?.kind === 'yeti');
