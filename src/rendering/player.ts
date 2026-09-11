@@ -300,7 +300,13 @@ function addFurCuff(
  * X. Every handle — sword, hatchet, pickaxe, spear — is therefore mounted at
  * GRIP_POINT with its shaft along +X, and the tool exits on the thumb side.
  */
-const GRIP_POINT = new THREE.Vector3(0, -0.021, 0.036);
+/*
+ * Centre of the tube the closed fingers actually enclose, measured off the
+ * curled chain rather than eyeballed: knuckle row at z 0.012, fingertips back
+ * up at y +0.011 / z 0.064. Mounting lower than this leaves the haft resting
+ * against the outside of the fingers instead of inside them.
+ */
+const GRIP_POINT = new THREE.Vector3(0, -0.008, 0.041);
 
 type FingerChain = { root: THREE.Group; mid: THREE.Group; tip: THREE.Group };
 
@@ -543,8 +549,12 @@ export function createPlayerMesh(): THREE.Group {
     toe.position.set(0, -0.004, 0.12);
     toe.scale.set(1.2, 1, 0.68);
     addPart(toe, foot);
-    const sole = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.028, 0.3), mat(0x140e0a, { roughness: 0.96 }));
-    sole.position.set(0, -0.026, 0.1);
+    // Tucked inside the boot's footprint; any wider and it reads as a black
+    // rectangle floating under each foot.
+    const sole = new THREE.Mesh(new THREE.CapsuleGeometry(0.052, 0.16, 4, 10), mat(0x1c1410, { roughness: 0.96 }));
+    sole.rotation.x = Math.PI / 2;
+    sole.scale.set(1.12, 1, 0.36);
+    sole.position.set(0, -0.032, 0.1);
     foot.add(sole);
     shin.add(foot);
 
@@ -959,13 +969,19 @@ function createIdleSpear(
 }
 
 /** Steel that reads as a forged edge rather than a flat grey slab. */
+/**
+ * Stylised steel. Metalness stays well below 1 on purpose: a near-pure metal
+ * takes almost all its colour from reflections, so every face turned away from
+ * the key light went black and each part of a tool head read as a separate dark
+ * block instead of one piece of forged metal.
+ */
 function steel(tint = 0xc2cedc, extra: PhysOpts = {}): THREE.MeshPhysicalMaterial {
   return mat(tint, {
-    metalness: 0.88,
-    roughness: 0.22,
-    clearcoat: 0.45,
-    clearcoatRoughness: 0.18,
-    envMapIntensity: 1.25,
+    metalness: 0.42,
+    roughness: 0.28,
+    clearcoat: 0.5,
+    clearcoatRoughness: 0.2,
+    envMapIntensity: 1.0,
     ...extra,
   });
 }
@@ -1008,42 +1024,51 @@ function createHatchetTool(): THREE.Group {
   // Bit profile drawn in the swing plane: x runs out to the edge, y is the
   // beard/toe flare. The extrude depth is the blade's thin side-to-side axis.
   const bitShape = new THREE.Shape();
-  bitShape.moveTo(0.0, -0.052);
-  bitShape.lineTo(0.07, -0.062);
-  bitShape.lineTo(0.15, -0.105);
-  bitShape.lineTo(0.178, -0.088);
-  bitShape.lineTo(0.185, 0.075);
-  bitShape.lineTo(0.14, 0.088);
-  bitShape.lineTo(0.06, 0.058);
-  bitShape.lineTo(0.0, 0.052);
+  bitShape.moveTo(0.0, -0.046);
+  bitShape.lineTo(0.075, -0.058);
+  bitShape.lineTo(0.155, -0.112);
+  bitShape.lineTo(0.192, -0.092);
+  bitShape.lineTo(0.2, 0.082);
+  bitShape.lineTo(0.15, 0.096);
+  bitShape.lineTo(0.065, 0.054);
+  bitShape.lineTo(0.0, 0.046);
   bitShape.closePath();
+  // A thin extrusion under a deep bevel gives the cross-section its wedge. The
+  // slab this replaced was a constant 0.04 thick and read as a sledgehammer.
   const bit = new THREE.Mesh(
     new THREE.ExtrudeGeometry(bitShape, {
-      depth: 0.03,
+      depth: 0.008,
       bevelEnabled: true,
-      bevelSize: 0.009,
-      bevelThickness: 0.005,
-      bevelSegments: 1,
+      bevelSize: 0.013,
+      bevelThickness: 0.017,
+      bevelSegments: 2,
     }),
     steel(0xb2c0d0),
   );
   bit.rotation.y = -Math.PI / 2;
-  bit.position.set(0.015, 0, 0);
+  bit.position.set(0.021, 0, 0);
   addPart(bit, head);
 
   // Bright honed edge along the bit's leading face.
-  const edge = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.17, 0.016), steel(0xeef4fa, { roughness: 0.08, clearcoat: 0.75 }));
+  // Deliberately low metalness: a mirror-finish edge reflects the dark sky and
+  // renders as a black bar welded to the end of the bit.
+  const edge = new THREE.Mesh(
+    new THREE.BoxGeometry(0.007, 0.185, 0.01),
+    mat(0xeaf2fb, { metalness: 0.22, roughness: 0.16, clearcoat: 0.6, envMapIntensity: 0.9 }),
+  );
   edge.name = 'toolEdge';
-  edge.position.set(0, -0.006, 0.192);
+  edge.position.set(0, -0.006, 0.206);
   edge.rotation.x = 0.06;
   head.add(edge);
 
-  const poll = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.075, 0.072), steel(0x7e8a97, { roughness: 0.34 }));
+  // A small hammer butt. Anything chunkier balances the bit and the whole head
+  // reads as a double-ended maul.
+  const poll = new THREE.Mesh(new THREE.BoxGeometry(0.044, 0.058, 0.038), steel(0x93a0ae, { roughness: 0.34 }));
   poll.name = 'toolHeel';
-  poll.position.set(0, 0.006, -0.055);
+  poll.position.set(0, 0.004, -0.042);
   addPart(poll, head);
-  const wedge = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.012, 0.016), steel(0x5e6a76, { roughness: 0.5 }));
-  wedge.position.set(0, 0.056, 0.005);
+  const wedge = new THREE.Mesh(new THREE.BoxGeometry(0.038, 0.01, 0.014), steel(0x5e6a76, { roughness: 0.5 }));
+  wedge.position.set(0, 0.052, 0.004);
   head.add(wedge);
 
   g.add(head);
@@ -1062,30 +1087,37 @@ function createPickaxeTool(): THREE.Group {
   const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.038, 0.09, 10), steel(0x8a95a2));
   addPart(collar, head);
 
-  // Curved pick arm plus a stubby chisel on the opposite side.
-  for (let i = 0; i < 5; i++) {
-    const t = i / 4;
+  // Curved pick arm plus a stubby chisel on the opposite side. The arm has to
+  // reach well past the haft or the whole head reads as a claw hammer.
+  for (let i = 0; i < 6; i++) {
+    const t = i / 5;
     const seg = new THREE.Mesh(
-      new THREE.BoxGeometry(0.052 - t * 0.03, 0.05 - t * 0.026, 0.05 - t * 0.028),
-      steel(0x9aa8b8 - i * 0x040404),
+      new THREE.BoxGeometry(0.058 - t * 0.034, 0.056 - t * 0.031, 0.062 - t * 0.032),
+      steel(0x9aa8b8 - i * 0x030303),
     );
-    seg.position.set(0, 0.016 - t * t * 0.085, 0.05 + t * 0.15);
-    seg.rotation.x = t * 0.6;
+    seg.position.set(0, 0.02 - t * t * 0.125, 0.055 + t * 0.2);
+    seg.rotation.x = t * 0.72;
     addPart(seg, head);
   }
-  const spike = new THREE.Mesh(new THREE.ConeGeometry(0.016, 0.07, 6), steel(0xe4ecf4, { roughness: 0.12 }));
+  const spike = new THREE.Mesh(
+    new THREE.ConeGeometry(0.018, 0.085, 6),
+    mat(0xe4ecf4, { metalness: 0.24, roughness: 0.18, clearcoat: 0.5, envMapIntensity: 0.9 }),
+  );
   spike.name = 'toolEdge';
-  spike.rotation.x = Math.PI * 0.62;
-  spike.position.set(0, -0.082, 0.225);
+  spike.rotation.x = Math.PI * 0.66;
+  spike.position.set(0, -0.128, 0.292);
   addPart(spike, head);
 
-  const chisel = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.045, 0.13), steel(0x8a95a2));
+  const chisel = new THREE.Mesh(new THREE.BoxGeometry(0.048, 0.048, 0.17), steel(0x8a95a2));
   chisel.name = 'toolHeel';
-  chisel.position.set(0, 0.012, -0.07);
+  chisel.position.set(0, 0.014, -0.088);
   chisel.rotation.x = -0.22;
   addPart(chisel, head);
-  const chiselEdge = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.012, 0.02), steel(0xdfe8f2, { roughness: 0.12 }));
-  chiselEdge.position.set(0, 0.038, -0.135);
+  const chiselEdge = new THREE.Mesh(
+    new THREE.BoxGeometry(0.05, 0.012, 0.02),
+    mat(0xdfe8f2, { metalness: 0.24, roughness: 0.18, clearcoat: 0.5, envMapIntensity: 0.9 }),
+  );
+  chiselEdge.position.set(0, 0.042, -0.175);
   head.add(chiselEdge);
 
   g.add(head);
