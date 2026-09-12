@@ -36,12 +36,13 @@ export class HeroPane {
     this.scene.add(rim);
 
     this.camera = new THREE.PerspectiveCamera(32, 1, 0.1, 20);
-    this.camera.position.set(0.55, 1.15, 2.55);
-    this.camera.lookAt(0, 0.95, 0);
+    // Same 3/4 framing as the pose harness so the face and the weapon both read.
+    const look = new THREE.Vector3(0, 1.0, 0);
+    this.camera.position.setFromSpherical(new THREE.Spherical(3.4, 1.22, 0.55)).add(look);
+    this.camera.lookAt(look);
 
     this.pivot = new THREE.Group();
     this.hero = createPlayerMesh();
-    this.hero.rotation.y = 0.35;
     this.pivot.add(this.hero);
     this.scene.add(this.pivot);
 
@@ -61,14 +62,9 @@ export class HeroPane {
   }
 
   syncEquipment(save: SaveData): void {
-    const tool: 'sword' | 'hatchet' | 'pickaxe' | null = save.equipped.weapon
-      ? 'sword'
-      : save.equipped.hatchet
-        ? 'hatchet'
-        : save.equipped.pickaxe
-          ? 'pickaxe'
-          : null;
-    setPlayerTool(this.hero, tool);
+    // The portrait only draws the worn weapon. Tools appear when that slot is
+    // inspected — otherwise a standing hunter with a hatchet looks like a bug.
+    setPlayerTool(this.hero, save.equipped.weapon ? 'sword' : null);
   }
 
   /** Prefer the slot the player just clicked so the portrait matches the inspect. */
@@ -88,7 +84,7 @@ export class HeroPane {
       if (!this.running) return;
       this.raf = requestAnimationFrame(tick);
       const dt = Math.min(0.05, this.clock.getDelta());
-      this.pivot.rotation.y += dt * 0.35;
+      this.pivot.rotation.y += dt * 0.18;
       animatePlayerIdle(this.hero, this.clock.elapsedTime);
       this.renderer.render(this.scene, this.camera);
     };

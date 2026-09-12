@@ -192,8 +192,7 @@ export function resetPlayerPose(player: THREE.Group): void {
  */
 export function animatePlayerIdle(player: THREE.Group, t: number, ready = false): void {
   if (isToolVisible(player, 'tool_sword')) {
-    if (ready) animateSwordGuard(player, t);
-    else animateSwordCarry(player, t);
+    animateSwordGuard(player, t);
     return;
   }
 
@@ -263,48 +262,6 @@ const SWORD_GUARD: BodyPose = {
   gripL: 0.3,
   lift: 0.02,
 };
-
-/**
- * Overworld sword idle. A lowered carry — blade along the right hip — so the
- * hunter does not stand in a combat crouch just because a weapon is equipped.
- */
-function animateSwordCarry(player: THREE.Group, t: number): void {
-  const breath = Math.sin(t * 1.35) * 0.016;
-  const sway = Math.sin(t * 0.48) * 0.012;
-  const hips = get(player, 'playerHips');
-  const torso = get(player, 'playerTorso');
-  if (hips) {
-    hips.rotation.set(0.01, -0.06 + sway, 0.02);
-    hips.position.set(0.015, 0, 0);
-  }
-  if (torso) {
-    torso.rotation.set(0.04 + breath * 0.45, -0.1 + sway * 0.4, 0.02);
-    torso.position.x = 0;
-    torso.position.z = 0;
-    torso.scale.set(1 + breath * 0.006, 1 + breath * 0.01, 1);
-  }
-  rot(get(player, 'playerHead'), -0.02 + breath * 0.2, 0.1, -0.02);
-  rot(get(player, 'clavL'), 0.02, 0.04, 0.04);
-  rot(get(player, 'clavR'), 0.06, -0.06, -0.06);
-  rot(get(player, 'armL'), 0.08 + breath * 0.05, 0.06, 0.08);
-  rot(get(player, 'forearmL'), -0.18, 0.06, 0.04);
-  rot(get(player, 'handL'), 0.06, 0.04, 0.04);
-  // Right arm hangs with the elbow slightly bent; wrist pronation keeps the
-  // welded blade along the hip instead of sticking out sideways.
-  rot(get(player, 'armR'), 0.18 + sway * 0.4, 0.1, -0.28);
-  rot(get(player, 'forearmR'), -0.55 - breath * 0.3, -0.08, 0.04);
-  rot(get(player, 'handR'), 0.22, -1.15, -0.28);
-  rot(get(player, 'legL'), -0.04, 0.03, 0.03);
-  rot(get(player, 'legR'), 0.03, -0.02, -0.03);
-  rot(get(player, 'shinL'), knee(0.1), 0, 0);
-  rot(get(player, 'shinR'), knee(0.08), 0, 0);
-  rot(get(player, 'footL'), 0.03, 0.04, 0);
-  rot(get(player, 'footR'), 0.02, -0.03, 0);
-  setHandGrip(get(player, 'handR'), 0.96);
-  setHandGrip(get(player, 'handL'), 0.22);
-  poseEquippedTool(player);
-  setLocomotionY(player, breath * 0.018);
-}
 
 /** One-handed guard with breathing and a slow settle on the blade. */
 function animateSwordGuard(player: THREE.Group, t: number): void {
