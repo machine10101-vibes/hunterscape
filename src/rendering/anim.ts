@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { YETI_REST } from './monsters';
 import { poseEquippedTool, setHandGrip } from './player';
 
 /** Smoothstep helper */
@@ -871,28 +872,28 @@ export function animateYetiAttack(yeti: THREE.Group, progress: number): void {
   // the arms forward of the chest (−X ≈ −1.6 is a punch, not a hang).
   rot(
     get(yeti, 'yetiArmR'),
-    rest * -0.42 + coil * -2.25 + hit * -1.85,
+    rest * YETI_REST.armX + coil * -2.25 + hit * -1.85,
     rest * 0.04 + coil * -0.48 + hit * 0.55,
-    rest * 0.4 + coil * 0.85 + hit * 0.22,
+    rest * YETI_REST.armZ + coil * 0.85 + hit * 0.22,
   );
   rot(
     get(yeti, 'yetiArmL'),
-    rest * -0.42 + coil * -2.05 + hit * -1.7,
+    rest * YETI_REST.armX + coil * -2.05 + hit * -1.7,
     rest * -0.04 + coil * 0.4 + hit * -0.5,
-    rest * -0.4 + coil * -0.78 + hit * -0.2,
+    rest * -YETI_REST.armZ + coil * -0.78 + hit * -0.2,
   );
-  rot(get(yeti, 'yetiForearmR'), rest * -0.48 + coil * -1.25 + hit * -0.18, 0.1, 0.06);
-  rot(get(yeti, 'yetiForearmL'), rest * -0.48 + coil * -1.1 + hit * -0.16, -0.1, -0.06);
+  rot(get(yeti, 'yetiForearmR'), rest * YETI_REST.forearmX + coil * -1.25 + hit * -0.18, 0.1, 0.06);
+  rot(get(yeti, 'yetiForearmL'), rest * YETI_REST.forearmX + coil * -1.1 + hit * -0.16, -0.1, -0.06);
 
   const head = get(yeti, 'yetiHead');
   if (head) {
-    head.rotation.x = -0.28 - roar * 0.45 + hit * 0.18;
+    head.rotation.x = YETI_REST.headX - roar * 0.45 + hit * 0.18;
     head.rotation.y = hit * 0.2;
     head.rotation.z = coil * 0.06;
   }
   const body = get(yeti, 'yetiBody');
   if (body) {
-    body.rotation.x = 0.32 + lean;
+    body.rotation.x = YETI_REST.bodyX + lean;
     body.rotation.y = hit * 0.22 - coil * 0.1;
     body.rotation.z = hit * 0.08;
   }
@@ -987,25 +988,25 @@ export function animateYetiWalk(yeti: THREE.Group, phase: number, moving: boolea
     const drift = Math.sin(t * 0.31 + 1.2) * 0.012;
     const look = Math.sin(t * 0.22) * 0.07 + Math.sin(t * 0.09) * 0.035;
 
-    rot(get(yeti, 'yetiArmR'), -0.42 + breath * 0.3 + shift * 0.35, 0.05, 0.4);
-    rot(get(yeti, 'yetiArmL'), -0.42 - breath * 0.22 - shift * 0.35, -0.05, -0.4);
-    rot(get(yeti, 'yetiForearmR'), -0.48 - breath * 0.12, 0.05, 0.04);
-    rot(get(yeti, 'yetiForearmL'), -0.48 + breath * 0.1, -0.05, -0.04);
-    rot(get(yeti, 'yetiLegL'), 0.06 + shift * 0.32, 0, 0.04);
-    rot(get(yeti, 'yetiLegR'), 0.06 - shift * 0.32, 0, -0.04);
-    rot(get(yeti, 'yetiShinL'), knee(0.12 + Math.max(0, shift) * 0.1), 0, 0);
-    rot(get(yeti, 'yetiShinR'), knee(0.12 + Math.max(0, -shift) * 0.1), 0, 0);
-    rot(get(yeti, 'yetiFootL'), -0.05, 0, 0);
-    rot(get(yeti, 'yetiFootR'), -0.05, 0, 0);
+    rot(get(yeti, 'yetiArmR'), YETI_REST.armX + breath * 0.3 + shift * 0.35, 0.05, YETI_REST.armZ);
+    rot(get(yeti, 'yetiArmL'), YETI_REST.armX - breath * 0.22 - shift * 0.35, -0.05, -YETI_REST.armZ);
+    rot(get(yeti, 'yetiForearmR'), YETI_REST.forearmX - breath * 0.12, 0.05, 0.04);
+    rot(get(yeti, 'yetiForearmL'), YETI_REST.forearmX + breath * 0.1, -0.05, -0.04);
+    rot(get(yeti, 'yetiLegL'), YETI_REST.legX + shift * 0.32, 0, 0.04);
+    rot(get(yeti, 'yetiLegR'), YETI_REST.legX - shift * 0.32, 0, -0.04);
+    rot(get(yeti, 'yetiShinL'), knee(YETI_REST.kneeX + Math.max(0, shift) * 0.1), 0, 0);
+    rot(get(yeti, 'yetiShinR'), knee(YETI_REST.kneeX + Math.max(0, -shift) * 0.1), 0, 0);
+    rot(get(yeti, 'yetiFootL'), YETI_REST.footX, 0, 0);
+    rot(get(yeti, 'yetiFootR'), YETI_REST.footX, 0, 0);
     const head = get(yeti, 'yetiHead');
     if (head) {
-      head.rotation.x = -0.28 + breath * 0.28;
+      head.rotation.x = YETI_REST.headX + breath * 0.28;
       head.rotation.y = look;
       head.rotation.z = drift * 0.35;
     }
     const body = get(yeti, 'yetiBody');
     if (body) {
-      body.rotation.x = 0.32 + breath * 0.1;
+      body.rotation.x = YETI_REST.bodyX + breath * 0.1;
       body.rotation.y = shift * 0.3;
       body.rotation.z = shift * 0.18;
     }
@@ -1044,20 +1045,20 @@ export function animateYetiWalk(yeti: THREE.Group, phase: number, moving: boolea
   rot(get(yeti, 'yetiFootL'), -passingL * 0.26 + plantedL * Math.max(0, hipL) * 0.24, 0, 0);
   rot(get(yeti, 'yetiFootR'), -passingR * 0.26 + plantedR * Math.max(0, hipR) * 0.24, 0, 0);
 
-  rot(get(yeti, 'yetiArmL'), -0.42 - hipL * 0.72 * blend, 0.06, -0.4);
-  rot(get(yeti, 'yetiArmR'), -0.42 - hipR * 0.72 * blend, -0.06, 0.4);
-  rot(get(yeti, 'yetiForearmL'), -0.48 - Math.max(0, hipL) * 0.55, 0.06, -0.04);
-  rot(get(yeti, 'yetiForearmR'), -0.48 - Math.max(0, hipR) * 0.55, -0.06, 0.04);
+  rot(get(yeti, 'yetiArmL'), YETI_REST.armX - hipL * 0.72 * blend, 0.06, -YETI_REST.armZ);
+  rot(get(yeti, 'yetiArmR'), YETI_REST.armX - hipR * 0.72 * blend, -0.06, YETI_REST.armZ);
+  rot(get(yeti, 'yetiForearmL'), YETI_REST.forearmX - Math.max(0, hipL) * 0.55, 0.06, -0.04);
+  rot(get(yeti, 'yetiForearmR'), YETI_REST.forearmX - Math.max(0, hipR) * 0.55, -0.06, 0.04);
 
   const body = get(yeti, 'yetiBody');
   if (body) {
-    body.rotation.x = 0.34 + lift * 0.9;
+    body.rotation.x = YETI_REST.bodyX + 0.02 + lift * 0.9;
     body.rotation.y = -hipL * 0.1 * blend;
     body.rotation.z = hipL * 0.05 * blend;
   }
   const head = get(yeti, 'yetiHead');
   if (head) {
-    head.rotation.x = -0.3 - lift * 0.55;
+    head.rotation.x = YETI_REST.headX - 0.02 - lift * 0.55;
     head.rotation.y = hipL * 0.055 * blend;
     head.rotation.z = -hipL * 0.025 * blend;
   }
@@ -1176,12 +1177,12 @@ export function animateDeath(mesh: THREE.Group, kind: 'yeti' | 'orc' | 'dummy', 
     const armL = get(mesh, 'yetiArmL');
     if (armR) armR.rotation.x = secondary * 0.8;
     if (armL) armL.rotation.x = -secondary * 0.5;
-    rot(get(mesh, 'yetiForearmR'), -0.38 - secondary * 0.4, 0, 0);
-    rot(get(mesh, 'yetiForearmL'), -0.38 + secondary * 0.25, 0, 0);
+    rot(get(mesh, 'yetiForearmR'), YETI_REST.forearmX - secondary * 0.4, 0, 0);
+    rot(get(mesh, 'yetiForearmL'), YETI_REST.forearmX + secondary * 0.25, 0, 0);
     rot(get(mesh, 'yetiShinL'), knee(secondary * 0.55), 0, 0);
     rot(get(mesh, 'yetiShinR'), knee(secondary * 0.4), 0, 0);
     const head = get(mesh, 'yetiHead');
-    if (head) head.rotation.x = -0.15 + secondary * 0.6;
+    if (head) head.rotation.x = YETI_REST.headX + secondary * 0.6;
   } else if (kind === 'orc') {
     mesh.rotation.x = primary * 1.45;
     mesh.rotation.z = secondary * 0.25;
