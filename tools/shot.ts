@@ -9,6 +9,8 @@ import {
   animateYetiAttack,
   animateYetiWalk,
   walkFrequency,
+  YETI_WALK_FREQ,
+  ORC_WALK_FREQ,
 } from '../src/rendering/anim';
 import { createFrostYeti, createOrcScout, createPlayerMesh, setPlayerTool } from '../src/rendering/meshes';
 import { poseEquippedTool } from '../src/rendering/player';
@@ -103,10 +105,10 @@ function frame(opts: {
     m.position.y = Number(m.userData.locomotionY) || 0;
   } else if (o.model === 'yeti') {
     if (o.pose === 'attack') animateYetiAttack(m, o.t);
-    else animateYetiWalk(m, o.t, o.pose === 'walk', 1);
+    else animateYetiWalk(m, o.pose === 'walk' ? o.t * YETI_WALK_FREQ : o.t, o.pose === 'walk', 1);
   } else {
     if (o.pose === 'attack') animateOrcAttack(m, o.t);
-    else animateOrcWalk(m, o.t, o.pose === 'walk', 1);
+    else animateOrcWalk(m, o.pose === 'walk' ? o.t * ORC_WALK_FREQ : o.t, o.pose === 'walk', 1);
   }
 
   camera.fov = o.fov;

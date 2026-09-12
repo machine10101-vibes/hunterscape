@@ -34,6 +34,10 @@ import {
   animatePlayerWalk,
   animateYetiAttack,
   PoseSmoother,
+  ORC_SMOOTH_JOINTS,
+  ORC_STEP_LENGTH,
+  YETI_SMOOTH_JOINTS,
+  YETI_STEP_LENGTH,
   walkFrequency,
   walkStepLength,
   animateYetiWalk,
@@ -182,6 +186,10 @@ export class Game {
   /** Gait phase in radians; advanced from ground speed so feet do not skate. */
   private gaitPhase = 0;
   private poseSmoother = new PoseSmoother();
+  private yetiGait = 0;
+  private orcGait = 0;
+  private yetiSmoother = new PoseSmoother(YETI_SMOOTH_JOINTS);
+  private orcSmoother = new PoseSmoother(ORC_SMOOTH_JOINTS);
   private lastMoveDir = new THREE.Vector3(0, 0, 1);
   /** Target hit-react timers (mesh uuid → remaining) */
   private hitReacts: { mesh: THREE.Object3D; t: number; inten: number }[] = [];
@@ -1096,6 +1104,8 @@ export class Game {
         this.yetiHitDone = false;
         this.yetiTeleDone = false;
         this.yetiMoveBlend = 0;
+        this.yetiGait = 0;
+        this.yetiSmoother.reset();
         animateYetiSwipe(o.mesh, 0);
         animateYetiWalk(o.mesh, this.animTime, false);
         this.hud.chat('A Frost Yeti stomps back into the north-east clearing!', 'combat');
@@ -1111,7 +1121,10 @@ export class Game {
         this.orcAttackCd = 0;
         this.orcSwipeT = 0;
         this.orcHitDone = false;
+        this.orcGait = 0;
+        this.orcSmoother.reset();
         animateOrcSpear(o.mesh, 0);
+        animateOrcWalk(o.mesh, this.animTime, false);
         this.hud.chat('An Orc Scout stalks back onto the south-west trail!', 'combat');
       }
     }
@@ -1478,6 +1491,8 @@ export class Game {
       }
     }
     this.poseSmoother.apply(this.player, dt, this.activity.type === 'combat' ? 26 : 18);
+    if (this.yetiTarget) this.yetiSmoother.apply(this.yetiTarget.mesh, dt, this.yetiAggroed ? 22 : 16);
+    if (this.orcTarget) this.orcSmoother.apply(this.orcTarget.mesh, dt, this.orcAggroed ? 24 : 16);
     this.snapMoversToGround();
     tickTerrainFoliage(this.animTime);
     this.updateCamera(dt);
@@ -1689,7 +1704,7 @@ export class Game {
         yeti.mesh.position.z += (hz / hd) * step;
         yeti.mesh.rotation.y = turnTowardYaw(yeti.mesh.rotation.y, Math.atan2(hx, hz), 4, dt);
         yeti.mesh.position.y = 0;
-        animateYetiWalk(yeti.mesh, this.animTime, true, Math.min(1, hd / 2));
+        animateYetiWalk(yeti.mesh, this.tickMonsterGait('yeti', 2.8, dt), true, Math.min(1, hd / 2));
         animateYetiSwipe(yeti.mesh, 0);
         return;
       }
@@ -1732,6 +1747,8 @@ export class Game {
       this.yetiAggroed = false;
       this.yetiSwipeT = 0;
       this.hud.chat('The Frost Yeti loses interest and returns to the clearing.', 'system');
+      const ox = yeti.mesh.position.x;
+      const oz = yeti.mesh.position.z;
       yeti.mesh.position.x += (YETI_HOME.x - yeti.mesh.position.x) * Math.min(1, dt * 0.9);
       yeti.mesh.position.z += (YETI_HOME.z - yeti.mesh.position.z) * Math.min(1, dt * 0.9);
       if (this.activity.type === 'combat' && this.activity.target === yeti) {
@@ -1740,7 +1757,8 @@ export class Game {
         resetPlayerPose(this.player);
         this.hud.hideTarget();
       }
-      animateYetiWalk(yeti.mesh, this.animTime, true, 0.7);
+      const leashSpeed = dt > 1e-5 ? Math.hypot(yeti.mesh.position.x - ox, yeti.mesh.position.z - oz) / dt : 0;
+      animateYetiWalk(yeti.mesh, this.tickMonsterGait('yeti', leashSpeed, dt), true, 0.7);
       return;
     }
 
@@ -1769,7 +1787,11 @@ export class Game {
         animateYetiSwipe(yeti.mesh, 0);
       }
     } else {
-      animateYetiWalk(yeti.mesh, this.animTime, moving, Math.max(this.yetiMoveBlend, moving ? 0.4 : 0));
+      const walkBlend = Math.max(this.yetiMoveBlend, moving ? 0.4 : 0);
+      const gait = moving
+        ? this.tickMonsterGait('yeti', 2.35 * this.yetiMoveBlend, dt)
+        : this.animTime;
+      animateYetiWalk(yeti.mesh, gait, moving, walkBlend);
       this.yetiAttackCd -= dt;
       if (dist <= YETI_ATTACK_RANGE + 0.4 && this.yetiAttackCd <= 0) {
         this.yetiAttackCd = 2.55;
@@ -1876,6 +1898,8 @@ export class Game {
       this.orcAggroed = false;
       this.orcSwipeT = 0;
       this.hud.chat('The Orc Scout loses interest and returns to the trail.', 'system');
+      const ox = orc.mesh.position.x;
+      const oz = orc.mesh.position.z;
       orc.mesh.position.x += (ORC_HOME.x - orc.mesh.position.x) * Math.min(1, dt * 1.1);
       orc.mesh.position.z += (ORC_HOME.z - orc.mesh.position.z) * Math.min(1, dt * 1.1);
       if (this.activity.type === 'combat' && this.activity.target === orc) {
@@ -1884,7 +1908,8 @@ export class Game {
         resetPlayerPose(this.player);
         this.hud.hideTarget();
       }
-      animateOrcWalk(orc.mesh, this.animTime, true, 0.75);
+      const leashSpeed = dt > 1e-5 ? Math.hypot(orc.mesh.position.x - ox, orc.mesh.position.z - oz) / dt : 0;
+      animateOrcWalk(orc.mesh, this.tickMonsterGait('orc', leashSpeed, dt), true, 0.75);
       return;
     }
 
@@ -1912,7 +1937,11 @@ export class Game {
         animateOrcSpear(orc.mesh, 0);
       }
     } else {
-      animateOrcWalk(orc.mesh, this.animTime, moving, Math.max(this.orcMoveBlend, moving ? 0.45 : 0));
+      const walkBlend = Math.max(this.orcMoveBlend, moving ? 0.45 : 0);
+      const gait = moving
+        ? this.tickMonsterGait('orc', 3.2 * this.orcMoveBlend, dt)
+        : this.animTime;
+      animateOrcWalk(orc.mesh, gait, moving, walkBlend);
       this.orcAttackCd -= dt;
       if (dist <= ORC_ATTACK_RANGE + 0.4 && this.orcAttackCd <= 0) {
         this.orcAttackCd = 2.05;
@@ -1974,6 +2003,18 @@ export class Game {
     setPlayerTool(this.player, 'sword');
   }
 
+  /** Advance a monster gait from actual ground speed so planted feet do not skate. */
+  private tickMonsterGait(kind: 'yeti' | 'orc', speed: number, dt: number): number {
+    const stepLen = kind === 'yeti' ? YETI_STEP_LENGTH : ORC_STEP_LENGTH;
+    const minCadence = kind === 'yeti' ? 2.4 : 4.2;
+    const cur = kind === 'yeti' ? this.yetiGait : this.orcGait;
+    if (speed < 0.08) return cur;
+    const next = cur + Math.max(minCadence * 0.5, (Math.PI * speed) / stepLen) * dt;
+    if (kind === 'yeti') this.yetiGait = next;
+    else this.orcGait = next;
+    return next;
+  }
+
   private sitOnGround(obj: THREE.Object3D, extraY = 0): void {
     obj.position.y = groundHeight(obj.position.x, obj.position.z) + extraY;
   }
@@ -1981,8 +2022,12 @@ export class Game {
   private snapMoversToGround(): void {
     const dying = new Set(this.deathAnims.map((d) => d.mesh));
     this.sitOnGround(this.player, Number(this.player.userData.locomotionY) || 0);
-    if (this.yetiTarget && !dying.has(this.yetiTarget.mesh)) this.sitOnGround(this.yetiTarget.mesh);
-    if (this.orcTarget && !dying.has(this.orcTarget.mesh)) this.sitOnGround(this.orcTarget.mesh);
+    if (this.yetiTarget && !dying.has(this.yetiTarget.mesh)) {
+      this.sitOnGround(this.yetiTarget.mesh, Number(this.yetiTarget.mesh.userData.locomotionY) || 0);
+    }
+    if (this.orcTarget && !dying.has(this.orcTarget.mesh)) {
+      this.sitOnGround(this.orcTarget.mesh, Number(this.orcTarget.mesh.userData.locomotionY) || 0);
+    }
     if (this.dummyTarget && !dying.has(this.dummyTarget.mesh)) this.sitOnGround(this.dummyTarget.mesh);
     if (this.moveMarker.visible) this.sitOnGround(this.moveMarker, 0.06);
   }

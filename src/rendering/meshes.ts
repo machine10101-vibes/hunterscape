@@ -551,42 +551,67 @@ export function createFrostYeti(): THREE.Group {
   shadow.position.y = 0.03;
   g.add(shadow);
 
-  // Legs (thick, slightly bent forward for hunched stance)
+  // Legs hang from the hip. The old chain was rooted at the sole, so every
+  // walk rotation pivoted around the foot and the gait looked like a wobble.
   const makeLeg = (side: number) => {
-    const leg = new THREE.Group();
-    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.35, 6, 12), fur);
-    thigh.position.set(0, 0.55, 0.05);
-    thigh.rotation.x = 0.25;
+    const hip = new THREE.Group();
+    hip.name = side < 0 ? 'yetiLegL' : 'yetiLegR';
+    hip.position.set(side * 0.34, 0.94, 0.02);
+
+    const hipBall = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10), fur);
+    hipBall.position.set(0, -0.02, 0.02);
+    hipBall.castShadow = true;
+    hip.add(hipBall);
+    const glute = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 10), furShade);
+    glute.scale.set(1.05, 0.85, 0.95);
+    glute.position.set(side * -0.02, 0.02, -0.08);
+    hip.add(glute);
+    const quad = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), fur);
+    quad.scale.set(1.15, 1.35, 0.85);
+    quad.position.set(0, -0.2, 0.1);
+    hip.add(quad);
+
+    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.28, 6, 12), fur);
+    thigh.position.set(0, -0.22, 0.04);
     thigh.castShadow = true;
-    leg.add(thigh);
-    addShag(leg, 0, 0.68, 0.06, 0.235, 14, 0.07, 0.45);
-    const shin = new THREE.Mesh(new THREE.CapsuleGeometry(0.18, 0.28, 6, 12), furBlue);
-    shin.position.set(0, 0.22, 0.12);
-    shin.rotation.x = -0.15;
-    shin.castShadow = true;
-    leg.add(shin);
-    addShag(leg, 0, 0.4, 0.1, 0.195, 13, 0.06, 0.4, furShade, furDeep);
-    // Foot — a broad flat pad, wider than it is tall.
-    const foot = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10), fur);
-    foot.position.set(0, 0.08, 0.16);
-    foot.scale.set(0.95, 0.44, 1.25);
-    foot.castShadow = true;
-    leg.add(foot);
-    const pad = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), hideDark);
-    pad.position.set(0, 0.035, 0.2);
-    pad.scale.set(0.9, 0.22, 1.0);
-    leg.add(pad);
-    // Four short toes tipped with stubby claws, not a fan of steak knives.
+    hip.add(thigh);
+    addShag(hip, 0, -0.12, 0.04, 0.22, 12, 0.065, 0.45);
+
+    const shin = new THREE.Group();
+    shin.name = side < 0 ? 'yetiShinL' : 'yetiShinR';
+    shin.position.set(0, -0.46, 0.06);
+    const knee = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), fur);
+    knee.castShadow = true;
+    shin.add(knee);
+    const calf = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.22, 6, 12), furBlue);
+    calf.position.set(0, -0.18, 0.02);
+    calf.castShadow = true;
+    shin.add(calf);
+    addShag(shin, 0, -0.16, 0.02, 0.175, 11, 0.055, 0.4, furShade, furDeep);
+
+    const foot = new THREE.Group();
+    foot.name = side < 0 ? 'yetiFootL' : 'yetiFootR';
+    foot.position.set(0, -0.38, 0.06);
+    const pad = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 10), fur);
+    pad.scale.set(0.95, 0.42, 1.3);
+    pad.position.set(0, -0.02, 0.1);
+    pad.castShadow = true;
+    foot.add(pad);
+    const sole = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), hideDark);
+    sole.position.set(0, -0.055, 0.12);
+    sole.scale.set(0.9, 0.22, 1.05);
+    foot.add(sole);
     for (let i = 0; i < 4; i++) {
       const x = (i - 1.5) * 0.078;
-      const toe = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), fur);
-      toe.position.set(x, 0.055, 0.3);
-      toe.scale.set(1, 0.8, 1.25);
-      leg.add(toe);
-      addClaw(leg, x, 0.05, 0.37, 0.11, 0.026);
+      const toe = new THREE.Mesh(new THREE.SphereGeometry(0.052, 8, 6), fur);
+      toe.position.set(x, -0.02, 0.24);
+      toe.scale.set(1, 0.75, 1.25);
+      foot.add(toe);
+      addClaw(foot, x, -0.02, 0.32, 0.12, 0.026);
     }
-    leg.position.x = side * 0.32;
-    return leg;
+    shin.add(foot);
+    hip.add(shin);
+    return hip;
   };
   const yetiLegL = makeLeg(-1);
   yetiLegL.name = 'yetiLegL';
@@ -617,20 +642,27 @@ export function createFrostYeti(): THREE.Group {
   belly.scale.set(1.1, 1.0, 0.55);
   g.add(belly);
 
-  // Charcoal-blue stripes — the markings that say "frost beast" instead of
-  // "white gorilla". Laid along the pecs and ribs so they read at distance.
-  const stripe = uniq(0x2a3848, { roughness: 0.96 });
-  for (const [x, y, z, len, rad, rz] of [
-    [-0.22, 1.46, 0.46, 0.42, 0.055, 0.28],
-    [0.22, 1.46, 0.46, 0.42, 0.055, -0.28],
-    [-0.12, 1.18, 0.5, 0.3, 0.042, 0.15],
-    [0.12, 1.18, 0.5, 0.3, 0.042, -0.15],
-    [0.0, 1.58, 0.42, 0.26, 0.05, 0.0],
-  ] as const) {
-    const band = new THREE.Mesh(new THREE.CapsuleGeometry(rad, len, 4, 8), stripe);
-    band.position.set(x, y, z);
-    band.rotation.z = rz;
-    g.add(band);
+  // Pecs and lats so the chest is a torso, not an egg. Dark under-fur in
+  // the cleft and along the ribs reads as marking without becoming a logo.
+  for (const sx of [-1, 1]) {
+    const pec = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 12), fur);
+    pec.scale.set(1.15, 0.85, 0.7);
+    pec.position.set(sx * 0.22, 1.52, 0.32);
+    pec.castShadow = true;
+    g.add(pec);
+    const lat = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10), furShade);
+    lat.scale.set(1.1, 1.2, 0.7);
+    lat.position.set(sx * 0.42, 1.42, -0.12);
+    g.add(lat);
+  }
+  const cleft = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.34, 4, 8), uniq(0x3a4a58, { roughness: 0.96 }));
+  cleft.position.set(0, 1.48, 0.4);
+  g.add(cleft);
+  for (const sx of [-1, 1]) {
+    const rib = new THREE.Mesh(new THREE.CapsuleGeometry(0.04, 0.22, 4, 8), uniq(0x3a4a58, { roughness: 0.96 }));
+    rib.position.set(sx * 0.18, 1.22, 0.4);
+    rib.rotation.z = sx * 0.35;
+    g.add(rib);
   }
 
   // Ice grown into the shoulder ruff and spine — crystals, not icicles.
@@ -662,6 +694,12 @@ export function createFrostYeti(): THREE.Group {
       parent.add(strand);
     }
   };
+  for (const sx of [-1, 1]) {
+    const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 10), fur);
+    shoulder.position.set(sx * 0.52, 0.38, 0.02);
+    shoulder.scale.set(1.15, 0.85, 1.05);
+    torso.add(shoulder);
+  }
   makeManeClump(torso, -0.42, 0.42, -0.12, 1.05);
   makeManeClump(torso, 0.42, 0.42, -0.12, 1.05);
   makeManeClump(torso, 0, 0.52, -0.28, 1.0, furShade);
@@ -685,6 +723,7 @@ export function createFrostYeti(): THREE.Group {
     addShag(arm, 0, -0.48, 0, 0.205, 12, 0.062, 0.45, furShade, furDeep);
 
     const forearm = new THREE.Group();
+    forearm.name = side < 0 ? 'yetiForearmL' : 'yetiForearmR';
     forearm.position.set(0, -0.56, 0);
     forearm.rotation.x = -0.38;
     const forearmMesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.38, 6, 12), furBlue);
@@ -715,6 +754,12 @@ export function createFrostYeti(): THREE.Group {
     thumbBase.position.set(side * 0.13, -0.01, 0.06);
     hand.add(thumbBase);
     addClaw(hand, side * 0.17, -0.02, 0.12, 0.1, 0.024);
+    for (let i = 0; i < 4; i++) {
+      const tuft = new THREE.Mesh(new THREE.IcosahedronGeometry(0.034, 0), i % 2 ? furShade : fur);
+      tuft.position.set((i - 1.5) * 0.07, 0.04, 0.1);
+      tuft.scale.set(1.3, 0.55, 0.9);
+      hand.add(tuft);
+    }
 
     forearm.add(hand);
     arm.add(forearm);
@@ -787,6 +832,18 @@ export function createFrostYeti(): THREE.Group {
   };
   makeEye(-0.145);
   makeEye(0.145);
+  // Heavy lids so the amber slits sit in a real socket, not on a blank mask.
+  for (const sx of [-1, 1]) {
+    const lid = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), hideDark);
+    lid.scale.set(1.15, 0.32, 0.55);
+    lid.position.set(sx * 0.145, 0.072, 0.4);
+    lid.rotation.x = -0.35;
+    head.add(lid);
+    const bag = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), hide);
+    bag.scale.set(1.2, 0.35, 0.5);
+    bag.position.set(sx * 0.145, 0.002, 0.4);
+    head.add(bag);
+  }
 
   // Muzzle — short and broad, the bridge sunk between the brows.
   const bridge = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.1, 5, 10), hide);
@@ -855,6 +912,14 @@ export function createFrostYeti(): THREE.Group {
 
   g.add(head);
 
+  // Dewlap / neck ruff so the skull is planted on the torso instead of floating.
+  const dewlap = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), fur);
+  dewlap.scale.set(1.15, 0.7, 0.85);
+  dewlap.position.set(0, 1.92, 0.08);
+  dewlap.castShadow = true;
+  g.add(dewlap);
+  addShag(g, 0, 1.88, 0.06, 0.34, 14, 0.07, 0.55, furShade, furDeep);
+
   // Frost breath sits on the muzzle, not as a trail of spheres in front of the body.
   const breath = new THREE.Mesh(
     new THREE.ConeGeometry(0.12, 0.38, 8, 1, true),
@@ -910,8 +975,7 @@ export function animateYetiSwipe(yeti: THREE.Group, progress: number): void {
   let raise = 0;
   let swipe = 0;
   if (p <= 0) {
-    raise = 0;
-    swipe = 0;
+    return;
   } else if (p < 0.35) {
     const w = p / 0.35;
     raise = -1.35 * w;
@@ -1085,37 +1149,58 @@ export function createOrcScout(): THREE.Group {
   shadow.position.y = 0.03;
   g.add(shadow);
 
-  // ===== Legs / dark trousers + fur-trimmed boots =====
+  // ===== Legs hang from the hip so a walk rotates the thigh, not the sole. =====
   const makeLeg = (side: number) => {
-    const leg = new THREE.Group();
-    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.22, 5, 12), cloth);
-    thigh.position.set(0, 0.62, 0);
-    addPart(thigh, leg);
-    const shin = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.12, 5, 12), cloth);
-    shin.position.set(0, 0.36, 0.015);
-    addPart(shin, leg);
+    const hip = new THREE.Group();
+    hip.name = side < 0 ? 'orcLegL' : 'orcLegR';
+    hip.position.set(side * 0.18, 0.8, 0);
 
-    const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.12, 0.16, 12), leather);
-    boot.position.set(0, 0.2, 0.02);
-    addPart(boot, leg, 1.05);
-    const ankle = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.07, 0.1, 12), leatherDark);
-    ankle.position.set(0, 0.08, 0.03);
-    addPart(ankle, leg);
-    const foot = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.14, 4, 10), leatherDark);
+    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 0.2, 5, 12), cloth);
+    thigh.position.set(0, -0.16, 0);
+    addPart(thigh, hip);
+    const quad = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), cloth);
+    quad.scale.set(1.15, 1.35, 0.85);
+    quad.position.set(0, -0.14, 0.06);
+    addPart(quad, hip);
+    const ham = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), cloth);
+    ham.scale.set(1.05, 1.2, 0.8);
+    ham.position.set(0, -0.16, -0.05);
+    addPart(ham, hip);
+
+    const shin = new THREE.Group();
+    shin.name = side < 0 ? 'orcShinL' : 'orcShinR';
+    shin.position.set(0, -0.36, 0);
+    const knee = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), cloth);
+    addPart(knee, shin);
+    const calf = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.08, 5, 12), cloth);
+    calf.position.set(0, -0.1, 0.01);
+    addPart(calf, shin);
+
+    const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.112, 0.14, 12), leather);
+    boot.position.set(0, -0.22, 0.02);
+    addPart(boot, shin, 1.05);
+    const ankle = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.065, 0.08, 12), leatherDark);
+    ankle.position.set(0, -0.32, 0.025);
+    addPart(ankle, shin);
+    const footG = new THREE.Group();
+    footG.name = side < 0 ? 'orcFootL' : 'orcFootR';
+    footG.position.set(0, -0.36, 0);
+    const foot = new THREE.Mesh(new THREE.CapsuleGeometry(0.065, 0.13, 4, 10), leatherDark);
     foot.rotation.x = Math.PI / 2;
-    foot.position.set(0, 0.04, 0.1);
+    foot.position.set(0, 0, 0.09);
     foot.scale.set(1.1, 1, 0.7);
-    addPart(foot, leg);
+    addPart(foot, footG);
+    shin.add(footG);
 
     for (const dir of [-1, 1]) {
-      const strap = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.22, 0.018), leatherMid);
-      strap.position.set(0, 0.16, 0.02);
+      const strap = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.18, 0.018), leatherMid);
+      strap.position.set(0, -0.24, 0.02);
       strap.rotation.z = dir * 0.7;
-      leg.add(strap);
+      shin.add(strap);
     }
-    addFurBand(leg, 0, 0.29, 0.02, 0.114, 0.02, 6);
-    leg.position.x = side * 0.18;
-    return leg;
+    addFurBand(shin, 0, -0.16, 0.02, 0.11, 0.02, 6);
+    hip.add(shin);
+    return hip;
   };
   const orcLegL = makeLeg(-1);
   orcLegL.name = 'orcLegL';
@@ -1160,9 +1245,16 @@ export function createOrcScout(): THREE.Group {
   addPart(torso, g, 1.07);
   torso.name = 'orcBody';
 
-  const chestPlate = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.32, 0.16), leatherMid);
-  chestPlate.position.set(0, 1.2, 0.14);
-  addPart(chestPlate, g);
+  // Two pec plates so the vest is a chest, not a single crate strapped on.
+  for (const sx of [-1, 1]) {
+    const pec = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), leatherMid);
+    pec.scale.set(1.15, 0.85, 0.55);
+    pec.position.set(sx * 0.12, 1.24, 0.18);
+    addPart(pec, g);
+  }
+  const sternum = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.22, 0.04), leatherDark);
+  sternum.position.set(0, 1.22, 0.22);
+  addPart(sternum, g);
 
   // Bare upper arms / shoulders peek (olive skin). Left pauldron marks him
   // as a scout — one shoulder armoured, the spear arm free.
@@ -1256,27 +1348,36 @@ export function createOrcScout(): THREE.Group {
     upper.position.set(0, 0, 0);
     upper.rotation.z = side * 0.22;
     addPart(upper, arm);
+    const bicep = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), skin);
+    bicep.scale.set(1.15, 1.25, 0.9);
+    bicep.position.set(side * 0.02, -0.04, 0.03);
+    addPart(bicep, arm);
     const armBar = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.16, 0.04), paint);
     armBar.position.set(side * -0.02, 0.02, 0.09);
     armBar.rotation.z = side * 0.22;
     arm.add(armBar);
 
+    const forearm = new THREE.Group();
+    forearm.name = side < 0 ? 'orcForearmL' : 'orcForearmR';
+    forearm.position.set(side * 0.08, -0.2, 0.01);
+    forearm.rotation.x = -0.28;
+
     // The bracer tapers with the forearm; a straight sleeve at the same radius
     // as the elbow reads as a bucket strapped to the wrist.
     const gauntlet = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.088, 0.24, 12), leather);
-    gauntlet.position.set(side * 0.11, -0.31, 0.02);
+    gauntlet.position.set(side * 0.03, -0.12, 0.01);
     gauntlet.rotation.z = side * 0.14;
-    addPart(gauntlet, arm, 1.04);
+    addPart(gauntlet, forearm, 1.04);
     for (const dir of [-1, 1]) {
       const s = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.22, 0.014), leatherDark);
-      s.position.set(side * 0.1, -0.31, 0.03);
+      s.position.set(side * 0.02, -0.12, 0.02);
       s.rotation.z = side * 0.16 + dir * 0.55;
-      arm.add(s);
+      forearm.add(s);
     }
-    addFurBand(arm, side * 0.07, -0.17, 0.02, 0.094, 0.017, 0);
+    addFurBand(forearm, side * 0.0, 0.02, 0.01, 0.094, 0.017, 0);
 
     const hand = new THREE.Group();
-    hand.position.set(side * 0.14, -0.48, 0.03);
+    hand.position.set(side * 0.06, -0.28, 0.02);
     const palm = new THREE.Mesh(new THREE.SphereGeometry(0.062, 10, 8), skin);
     palm.scale.set(0.85, 1, 0.95);
     addPart(palm, hand);
@@ -1291,7 +1392,8 @@ export function createOrcScout(): THREE.Group {
     thumb.position.set(side * 0.05, -0.015, 0.05);
     thumb.rotation.set(0.9, 0, side * 0.8);
     hand.add(thumb);
-    arm.add(hand);
+    forearm.add(hand);
+    arm.add(forearm);
 
     // Rooted just inside the deltoid so the shoulder joint is covered; further
     // out and the arm floats free of the vest.
@@ -1466,9 +1568,10 @@ export function createOrcScout(): THREE.Group {
   const spear = new THREE.Group();
   spear.name = 'orcSpear';
   // Seated in the closed fist: the shaft runs up through the curled fingers.
-  spear.position.set(0.14, -0.62, 0.062);
-  spear.rotation.set(0.12, 0, 0.05);
-  spear.userData.rest = { x: 0.14, y: -0.62, z: 0.062, rx: 0.12, ry: 0, rz: 0.05 };
+  // Fist sits on the forearm chain at about (0.14, -0.48, 0.03) from the shoulder.
+  spear.position.set(0.15, -0.5, 0.07);
+  spear.rotation.set(0.16, 0, 0.06);
+  spear.userData.rest = { x: 0.15, y: -0.5, z: 0.07, rx: 0.16, ry: 0, rz: 0.06 };
   const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.03, 2.05, 6), wood);
   shaft.position.y = 1.05;
   addPart(shaft, spear);
@@ -1526,8 +1629,14 @@ export function animateOrcSpear(orc: THREE.Group, progress: number): void {
   let pull = 0;
   let thrust = 0;
   if (p <= 0) {
-    pull = 0;
-    thrust = 0;
+    const r = spear?.userData.rest as
+      | { x: number; y: number; z: number; rx: number; ry: number; rz: number }
+      | undefined;
+    if (spear && r) {
+      spear.position.set(r.x, r.y, r.z);
+      spear.rotation.set(r.rx, r.ry, r.rz);
+    }
+    return;
   } else if (p < 0.32) {
     pull = p / 0.32;
     thrust = -0.35 * pull;
