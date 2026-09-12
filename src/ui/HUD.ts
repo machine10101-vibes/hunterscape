@@ -1,11 +1,16 @@
+import type { Texture } from 'three';
 import {
+  EQUIP_SLOTS,
   ITEM_META,
   SKILL_META,
   xpForLevel,
+  type EquipSlot,
   type ItemStack,
   type SaveData,
   type SkillId,
 } from '../game/types';
+import { HeroPane } from './HeroPane';
+import { paintItemIcon } from './ItemIcon';
 
 export type ChatKind = 'system' | 'xp' | 'combat' | 'loot' | 'plain';
 
@@ -32,12 +37,17 @@ export class HUD {
   private touchHint: HTMLElement;
   private inventory!: HTMLElement;
   private btnInventory!: HTMLButtonElement;
+  private gearPanel!: HTMLElement;
+  private btnGear!: HTMLButtonElement;
+  private gearInspect!: HTMLElement;
+  private heroPane: HeroPane;
   private narrowMq!: MediaQueryList;
   private desktopInvInited = false;
   private circum = 2 * Math.PI * 28;
 
   onAction: ((action: string) => void) | null = null;
   onInventoryClick: ((index: number) => void) | null = null;
+  onGearSlotClick: ((slot: EquipSlot) => void) | null = null;
 
   constructor() {
     this.chatLog = el('chat-log');
@@ -63,7 +73,20 @@ export class HUD {
 
     this.inventory = el('inventory');
     this.btnInventory = el('btn-inventory') as HTMLButtonElement;
+    this.gearPanel = el('gear-panel');
+    this.btnGear = el('btn-gear') as HTMLButtonElement;
+    this.gearInspect = el('gear-inspect');
+    this.heroPane = new HeroPane(el('gear-hero') as HTMLCanvasElement);
     this.narrowMq = window.matchMedia('(max-width: 480px)');
+
+    this.btnGear.addEventListener('click', () => this.setGearOpen(this.gearPanel.hidden));
+    el('gear-close').addEventListener('click', () => this.setGearOpen(false));
+    this.gearPanel.querySelectorAll('.gear-slot').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const slot = (btn as HTMLElement).dataset.slot as EquipSlot | undefined;
+        if (slot) this.onGearSlotClick?.(slot);
+      });
+    });
 
     el('btn-skills').addEventListener('click', () => {
       this.skillsPanel.hidden = !this.skillsPanel.hidden;
@@ -108,6 +131,57 @@ export class HUD {
       this.desktopInvInited = true;
       this.setInventoryOpen(true);
     }
+  }
+
+  setGearOpen(open: boolean): void {
+    this.gearPanel.hidden = !open;
+    this.btnGear.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) {
+      this.heroPane.resize();
+      this.heroPane.start();
+    } else {
+      this.heroPane.stop();
+    }
+  }
+
+  isGearOpen(): boolean {
+    return !this.gearPanel.hidden;
+  }
+
+  setEnvironment(env: Texture | null): void {
+    this.heroPane.setEnvironment(env);
+  }
+
+  setEquipment(save: SaveData, inspect?: string): void {
+    this.heroPane.syncEquipment(save);
+    for (const { id, label } of EQUIP_SLOTS) {
+      const btn = this.gearPanel.querySelector(`.gear-slot[data-slot="${id}"]`) as HTMLElement | null;
+      if (!btn) continue;
+      const itemId = save.equipped[id];
+      const canvas = btn.querySelector('canvas.item-icon') as HTMLCanvasElement | null;
+      const empty = btn.querySelector('.gear-empty') as HTMLElement | null;
+      btn.classList.toggle('filled', !!itemId);
+      if (itemId && canvas) {
+        paintItemIcon(canvas, itemId);
+        canvas.hidden = false;
+        if (empty) empty.hidden = true;
+        const meta = ITEM_META[itemId];
+        btn.title = `${label}: ${meta?.name ?? itemId} (click to unequip)`;
+      } else {
+        if (canvas) canvas.hidden = true;
+        if (empty) empty.hidden = false;
+        btn.title = `${label}: empty`;
+      }
+    }
+    if (inspect) this.gearInspect.textContent = inspect;
+  }
+
+  inspectGear(text: string): void {
+    this.gearInspect.textContent = text;
+  }
+
+  showSlotPreview(slot: EquipSlot | null, save: SaveData): void {
+    this.heroPane.showSlot(slot, save);
   }
 
   private setInventoryOpen(open: boolean): void {
@@ -155,8 +229,15 @@ export class HUD {
       if (item) {
         slot.classList.add('has-item');
         const meta = ITEM_META[item.id];
-        slot.textContent = meta?.icon ?? '?';
-        slot.title = `${meta?.name ?? item.id}${item.qty > 1 ? ` ×${item.qty}` : ''}`;
+        const icon = document.createElement('canvas');
+        icon.className = 'item-icon';
+        icon.width = 128;
+        icon.height = 128;
+        paintItemIcon(icon, item.id);
+        slot.appendChild(icon);
+        slot.title = `${meta?.name ?? item.id}${item.qty > 1 ? ` ×${item.qty}` : ''}${
+          meta?.slot ? ' — click to equip' : item.id === 'camp_rations' ? ' — click to eat' : ''
+        }`;
         if (item.qty > 1) {
           const q = document.createElement('span');
           q.className = 'inv-qty';

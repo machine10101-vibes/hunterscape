@@ -11,6 +11,8 @@ export interface SkillState {
   xp: number;
 }
 
+export type EquipSlot = 'weapon' | 'hatchet' | 'pickaxe';
+
 export interface ItemStack {
   id: string;
   qty: number;
@@ -47,11 +49,11 @@ export const SKILL_META: Record<
 
 export const ITEM_META: Record<
   string,
-  { name: string; icon: string; stackable: boolean }
+  { name: string; icon: string; stackable: boolean; slot?: EquipSlot }
 > = {
-  bronze_hatchet: { name: 'Bronze Hatchet', icon: '🪓', stackable: false },
-  bronze_pickaxe: { name: 'Bronze Pickaxe', icon: '⛏', stackable: false },
-  bronze_sword: { name: 'Bronze Sword', icon: '⚔', stackable: false },
+  bronze_hatchet: { name: 'Bronze Hatchet', icon: '🪓', stackable: false, slot: 'hatchet' },
+  bronze_pickaxe: { name: 'Bronze Pickaxe', icon: '⛏', stackable: false, slot: 'pickaxe' },
+  bronze_sword: { name: 'Bronze Sword', icon: '⚔', stackable: false, slot: 'weapon' },
   whisper_logs: { name: 'Whisper Logs', icon: '🪵', stackable: true },
   copper_ore: { name: 'Copper Ore', icon: '🟠', stackable: true },
   tin_ore: { name: 'Tin Ore', icon: '⚪', stackable: true },
@@ -61,6 +63,12 @@ export const ITEM_META: Record<
   orc_tooth: { name: 'Orc Tooth', icon: '🦷', stackable: true },
   scout_leather: { name: 'Scout Leather', icon: '🦺', stackable: true },
 };
+
+export const EQUIP_SLOTS: { id: EquipSlot; label: string }[] = [
+  { id: 'weapon', label: 'Weapon' },
+  { id: 'hatchet', label: 'Hatchet' },
+  { id: 'pickaxe', label: 'Pickaxe' },
+];
 
 /** Classic-style XP curve approximation */
 export function xpForLevel(level: number): number {
@@ -94,12 +102,7 @@ export function defaultSave(): SaveData {
       woodcutting: { level: 1, xp: 0 },
       mining: { level: 1, xp: 0 },
     },
-    inventory: [
-      { id: 'bronze_hatchet', qty: 1 },
-      { id: 'bronze_pickaxe', qty: 1 },
-      { id: 'bronze_sword', qty: 1 },
-      { id: 'camp_rations', qty: 5 },
-    ],
+    inventory: [{ id: 'camp_rations', qty: 5 }],
     equipped: {
       weapon: 'bronze_sword',
       hatchet: 'bronze_hatchet',

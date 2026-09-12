@@ -53,7 +53,39 @@
 
         <!-- Skills toggle button -->
         <button type="button" id="btn-skills" title="Skills (K)">⚔ Skills</button>
+        <button type="button" id="btn-gear" title="Hero gear (C)">🛡 Gear</button>
         <button type="button" id="btn-studio" title="Model Studio (V)">◈ Studio</button>
+
+        <!-- Hero gear / equipment -->
+        <div id="gear-panel" class="panel" hidden>
+          <div class="panel-head">
+            <span>Hero</span>
+            <button type="button" class="panel-close" id="gear-close" aria-label="Close">✕</button>
+          </div>
+          <div id="gear-body">
+            <div class="gear-col">
+              <button type="button" class="gear-slot" data-slot="weapon" title="Weapon">
+                <canvas class="item-icon" width="128" height="128"></canvas>
+                <span class="gear-empty">Weapon</span>
+                <span class="gear-label">Weapon</span>
+              </button>
+            </div>
+            <canvas id="gear-hero" width="220" height="300" aria-label="Hero preview"></canvas>
+            <div class="gear-col">
+              <button type="button" class="gear-slot" data-slot="hatchet" title="Hatchet">
+                <canvas class="item-icon" width="128" height="128"></canvas>
+                <span class="gear-empty">Hatchet</span>
+                <span class="gear-label">Hatchet</span>
+              </button>
+              <button type="button" class="gear-slot" data-slot="pickaxe" title="Pickaxe">
+                <canvas class="item-icon" width="128" height="128"></canvas>
+                <span class="gear-empty">Pickaxe</span>
+                <span class="gear-label">Pickaxe</span>
+              </button>
+            </div>
+          </div>
+          <div id="gear-inspect">Click a slot to unequip · Click inventory to equip</div>
+        </div>
 
         <!-- Skills panel -->
         <div id="skills-panel" class="panel" hidden>

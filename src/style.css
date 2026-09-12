@@ -44,7 +44,7 @@ html, body {
 
 #hud[hidden] { display: none !important; }
 
-#hud button, #hud .ab-slot, #hud .inv-slot, #chat, #inventory, #skills-panel, #btn-skills, #btn-studio, #btn-inventory {
+#hud button, #hud .ab-slot, #hud .inv-slot, #chat, #inventory, #skills-panel, #gear-panel, #btn-skills, #btn-gear, #btn-studio, #btn-inventory {
   pointer-events: auto;
 }
 
@@ -209,9 +209,25 @@ html, body {
 
 #btn-skills:hover { border-color: var(--gold); background: rgba(20, 18, 12, 0.95); }
 
-#btn-studio {
+#btn-gear {
   position: absolute;
   top: calc(44px + var(--safe-top));
+  left: 8px;
+  background: var(--panel);
+  border: 1px solid var(--gold-dim);
+  color: var(--gold);
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+#btn-gear:hover, #btn-gear[aria-expanded="true"] { border-color: var(--gold); background: rgba(20, 18, 12, 0.95); }
+
+#btn-studio {
+  position: absolute;
+  top: calc(80px + var(--safe-top));
   left: 8px;
   background: var(--panel);
   border: 1px solid var(--gold-dim);
@@ -389,6 +405,84 @@ html, body {
   max-height: 55vh;
   overflow-y: auto;
   z-index: 20;
+}
+
+#gear-panel {
+  position: absolute;
+  top: calc(80px + var(--safe-top));
+  left: 8px;
+  width: min(420px, calc(100vw - 16px));
+  z-index: 22;
+}
+#gear-body {
+  display: grid;
+  grid-template-columns: 72px 1fr 72px;
+  gap: 8px;
+  padding: 10px 10px 4px;
+  align-items: center;
+}
+#gear-hero {
+  width: 100%;
+  height: 280px;
+  display: block;
+  border-radius: 6px;
+  background:
+    radial-gradient(ellipse at 50% 80%, rgba(212,168,75,0.12), transparent 55%),
+    linear-gradient(180deg, rgba(24, 28, 36, 0.35), rgba(8, 10, 14, 0.55));
+}
+.gear-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.gear-slot {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  padding: 4px;
+  background: var(--slot);
+  border: 1px solid #3a3420;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-dim);
+}
+.gear-slot.filled { border-color: var(--gold-dim); }
+.gear-slot:hover { border-color: var(--gold); }
+.gear-slot .item-icon {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.gear-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+.gear-slot.filled .gear-empty { display: none; }
+.gear-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -14px;
+  font-size: 8px;
+  text-align: center;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+#gear-inspect {
+  padding: 16px 10px 8px;
+  font-size: 11px;
+  color: var(--text-dim);
+  min-height: 2.2em;
 }
 
 #skills-list {
@@ -572,6 +666,13 @@ html, body {
 .inv-slot.has-item {
   border-color: var(--gold-dim);
   cursor: pointer;
+}
+
+.item-icon {
+  width: 86%;
+  height: 86%;
+  display: block;
+  pointer-events: none;
 }
 
 .inv-slot.has-item:hover { border-color: var(--gold); }
@@ -797,11 +898,25 @@ html, body {
     font-size: 12px;
   }
 
-  #btn-studio {
+  #btn-gear {
     top: calc(40px + var(--safe-top));
     padding: 5px 10px;
     font-size: 12px;
   }
+
+  #btn-studio {
+    top: calc(72px + var(--safe-top));
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+
+  #gear-panel {
+    top: calc(72px + var(--safe-top));
+    width: min(360px, calc(100vw - 16px));
+  }
+  #gear-hero { height: 220px; }
+  .gear-slot { width: 60px; height: 60px; }
+  #gear-body { grid-template-columns: 60px 1fr 60px; }
 
   #studio-top {
     padding: 8px 10px 8px 8px;

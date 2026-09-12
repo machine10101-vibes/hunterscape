@@ -9,8 +9,11 @@ import {
   animateYetiAttack,
   animateYetiWalk,
   ORC_ATTACK_DURATION,
+  ORC_WALK_FREQ,
   PLAYER_ATTACK_DURATION,
+  walkFrequency,
   YETI_ATTACK_DURATION,
+  YETI_WALK_FREQ,
 } from '../rendering/anim';
 import {
   createBarrel,
@@ -479,7 +482,7 @@ export class ModelStudio {
     }
     if (pose === 'walk') {
       setPlayerTool(mesh, null);
-      animatePlayerWalk(mesh, this.animT, 0.9, 1);
+      animatePlayerWalk(mesh, this.animT * walkFrequency(0.9), 0.9, 1);
       return;
     }
     if (pose === 'sword') {
@@ -489,7 +492,7 @@ export class ModelStudio {
     }
     if (pose === 'sword-walk') {
       setPlayerTool(mesh, 'sword');
-      animatePlayerWalk(mesh, this.animT, 0.9, 1);
+      animatePlayerWalk(mesh, this.animT * walkFrequency(0.9), 0.9, 1);
       return;
     }
     if (pose === 'slash') {
@@ -509,7 +512,7 @@ export class ModelStudio {
 
   private applyYeti(mesh: THREE.Group): void {
     if (this.pose === 'walk') {
-      animateYetiWalk(mesh, this.animT, true, 1);
+      animateYetiWalk(mesh, this.animT * YETI_WALK_FREQ, true, 1);
       return;
     }
     if (this.pose === 'attack') {
@@ -522,7 +525,7 @@ export class ModelStudio {
 
   private applyOrc(mesh: THREE.Group): void {
     if (this.pose === 'walk') {
-      animateOrcWalk(mesh, this.animT, true, 1);
+      animateOrcWalk(mesh, this.animT * ORC_WALK_FREQ, true, 1);
       return;
     }
     if (this.pose === 'attack') {
