@@ -1223,30 +1223,32 @@ export function createSwordTool(): THREE.Group {
   addPart(ricasso, g);
 
   // Tapered blade built from stacked slices so it narrows toward the point.
+  // Width stays generous so the face reads from the game camera; a 4 cm
+  // blade vanished into a needle at that distance.
   const bladeMat = steel(0xd4e0ec, { roughness: 0.14, clearcoat: 0.6, emissive: 0x1d2c3c, emissiveIntensity: 0.1 });
   const slices = 6;
   for (let i = 0; i < slices; i++) {
     const t = i / slices;
-    const w = 0.044 - t * 0.016;
-    const slice = new THREE.Mesh(new THREE.BoxGeometry(w, 0.58 / slices + 0.004, 0.013 - t * 0.004), bladeMat);
+    const w = 0.078 - t * 0.03;
+    const slice = new THREE.Mesh(new THREE.BoxGeometry(w, 0.58 / slices + 0.004, 0.02 - t * 0.006), bladeMat);
     slice.position.y = 0.17 + (0.58 / slices) * (i + 0.5);
     addPart(slice, g);
   }
   const fuller = new THREE.Mesh(
-    new THREE.BoxGeometry(0.011, 0.44, 0.017),
+    new THREE.BoxGeometry(0.016, 0.44, 0.024),
     steel(0x9fb0c2, { roughness: 0.3, clearcoat: 0.3 }),
   );
   fuller.position.y = 0.4;
   g.add(fuller);
   for (const sx of [-1, 1]) {
     const bevel = new THREE.Mesh(
-      new THREE.BoxGeometry(0.006, 0.58, 0.009),
+      new THREE.BoxGeometry(0.008, 0.58, 0.012),
       steel(0xf4f9ff, { roughness: 0.08, clearcoat: 0.75 }),
     );
-    bevel.position.set(sx * 0.019, 0.46, 0);
+    bevel.position.set(sx * 0.032, 0.46, 0);
     g.add(bevel);
   }
-  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.12, 4), bladeMat);
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.034, 0.12, 4), bladeMat);
   tip.name = 'toolEdge';
   tip.rotation.y = Math.PI / 4;
   tip.scale.set(1, 1, 0.42);
@@ -1267,7 +1269,10 @@ function poseToolRoot(root: THREE.Object3D, tool: 'hatchet' | 'pickaxe' | 'sword
   } else if (tool === 'pickaxe') {
     root.rotation.set(0.08, -0.1, -Math.PI / 2);
   } else {
-    root.rotation.set(0, -0.1, -Math.PI / 2);
+    // +π/2 puts the wide face in the knuckle plane (edge leads a cut).
+    // The extra 0.7 tips that face toward the sky so the game camera,
+    // looking down, sees a blade instead of a needle.
+    root.rotation.set(Math.PI / 2 + 0.7, -0.1, -Math.PI / 2);
   }
 }
 

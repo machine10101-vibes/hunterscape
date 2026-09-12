@@ -1220,20 +1220,24 @@ export class Game {
       const dx = tx - this.player.position.x;
       const dz = tz - this.player.position.z;
       const dist = Math.hypot(dx, dz);
-      // Ease into full walk speed; start decelerating near destination
-      const want = dist < 0.55 ? Math.max(0.35, dist / 0.55) * MOVE_SPEED : MOVE_SPEED;
+      // Ease into full walk speed; start decelerating near destination.
+      // Do not floor the wanted speed: a 0.35×MOVE_SPEED floor (1.47) sat
+      // above the old 0.55 arrival gate, so the hunter never left the walk
+      // clip after he had already arrived.
+      const want = dist < 0.55 ? (dist / 0.55) * MOVE_SPEED : MOVE_SPEED;
       if (this.moveSpeedCur < want) {
         this.moveSpeedCur = Math.min(want, this.moveSpeedCur + MOVE_ACCEL * dt);
       } else {
         this.moveSpeedCur = Math.max(want, this.moveSpeedCur - MOVE_DECEL * dt);
       }
       this.moveBlend = Math.min(1, this.moveBlend + dt * 4.5);
-      if (dist < 0.1 && this.moveSpeedCur < 0.55) {
+      if (dist < 0.12) {
         this.player.position.x = tx;
         this.player.position.z = tz;
         this.moveMarker.visible = false;
-        // Residual settle steps before full idle
-        this.stoppingSteps = 0.28;
+        // PoseSmoother eases walk → idle; do not keep playing the walk clip.
+        this.stoppingSteps = 0;
+        this.moveBlend = 0;
         this.activity = { type: 'idle' };
         this.moveSpeedCur = 0;
         if (this.pendingGather) {
