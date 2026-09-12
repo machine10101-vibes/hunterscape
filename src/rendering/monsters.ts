@@ -409,8 +409,8 @@ export function createFrostYeti(): THREE.Group {
 
   for (const sx of [-1, 1]) {
     const deltoid = new THREE.Mesh(new THREE.SphereGeometry(0.29, 12, 10), fur);
-    deltoid.scale.set(1.1, 0.98, 1.08);
-    deltoid.position.set(sx * 0.5, 0.74, 0.02);
+    deltoid.scale.set(1.05, 0.98, 1.05);
+    deltoid.position.set(sx * 0.44, 0.74, 0.02);
     deltoid.castShadow = true;
     body.add(deltoid);
     const lat = new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 8), furMid);
@@ -418,14 +418,27 @@ export function createFrostYeti(): THREE.Group {
     lat.position.set(sx * 0.56, 0.42, 0);
     body.add(lat);
 
+    // The deltoids are the largest bare domes on the model. Ruff them with a
+    // band tipped outward so the coat sheds off the shoulder, and ride it on
+    // the body rather than the arm so a raised arm does not drag it along.
+    const cape = new THREE.Group();
+    cape.position.set(sx * 0.46, 0.78, 0.02);
+    cape.rotation.z = sx * 0.55;
+    body.add(cape);
+    addShagBand(cape, 0.1, 0.27, 14, 0.22, 1.14, pelt, peltU);
+    addShagBand(cape, -0.08, 0.29, 14, 0.2, 1.1, pelt, peltU);
+    addRime(cape, 0, 0.16, -0.04, 0.18, 5, 0.055, ice, sx + 4);
   }
 
   const coatShell = new THREE.Group();
   coatShell.scale.set(1.24, 1, 0.9);
   body.add(coatShell);
   addShagBand(coatShell, 0.8, 0.51, 22, 0.24, 1.08, pelt, peltU, -0.02);
+  addShagBand(coatShell, 0.68, 0.55, 22, 0.18, 1.04, pelt, peltU, -0.01);
   addShagBand(coatShell, 0.56, 0.56, 24, 0.24, 1.05, pelt, peltU);
+  addShagBand(coatShell, 0.43, 0.54, 22, 0.18, 1.03, peltMid, peltMidU);
   addShagBand(coatShell, 0.3, 0.5, 22, 0.24, 1.05, peltMid, peltMidU);
+  addShagBand(coatShell, 0.17, 0.47, 20, 0.18, 1.04, peltDeep, peltDeepU);
   addShagBand(coatShell, 0.04, 0.44, 20, 0.22, 1.07, peltDeep, peltDeepU);
 
   for (const [x, y, z, s, rx, rz] of [
@@ -744,34 +757,35 @@ export function createFrostYeti(): THREE.Group {
     head.add(inner);
   }
 
-  const breath = new THREE.Mesh(
-    new THREE.ConeGeometry(0.11, 0.36, 8, 1, true),
-    new THREE.MeshStandardMaterial({
-      color: 0xd0f6ff,
-      emissive: 0x66eeff,
-      emissiveIntensity: 0.9,
-      transparent: true,
-      opacity: 0.32,
-      flatShading: false,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-    }),
-  );
-  breath.rotation.x = Math.PI / 2;
-  breath.position.set(0, -0.22, 0.5);
+  // A cone reads as a paper party hat at any distance; overlapping puffs give
+  // the plume a soft edge. Kept as a Group — Game.ts only scales this node and
+  // guards the material lookup, and the mist behind it still pulses.
+  const breathMat = new THREE.MeshBasicMaterial({
+    color: 0xd6f6ff,
+    transparent: true,
+    opacity: 0.2,
+    depthWrite: false,
+  });
+  const breath = new THREE.Group();
   breath.name = 'yetiBreath';
+  breath.position.set(0, -0.24, 0.44);
+  for (let i = 0; i < 4; i++) {
+    const puff = new THREE.Mesh(new THREE.IcosahedronGeometry(0.055 + i * 0.026, 0), breathMat);
+    puff.position.set((i % 2 ? 1 : -1) * 0.018 * i, -i * 0.014, i * 0.082);
+    breath.add(puff);
+  }
   head.add(breath);
   for (let i = 0; i < 3; i++) {
     const mist = new THREE.Mesh(
-      new THREE.SphereGeometry(0.065 + i * 0.025, 6, 5),
+      new THREE.IcosahedronGeometry(0.06 + i * 0.028, 0),
       new THREE.MeshBasicMaterial({
         color: 0xb8e8ff,
         transparent: true,
-        opacity: 0.22 - i * 0.04,
+        opacity: 0.2 - i * 0.045,
         depthWrite: false,
       }),
     );
-    mist.position.set((i - 1) * 0.04, -0.21, 0.62 + i * 0.1);
+    mist.position.set((i - 1) * 0.045, -0.24, 0.78 + i * 0.11);
     mist.name = 'yetiBreathMist';
     head.add(mist);
   }
