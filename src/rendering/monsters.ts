@@ -39,7 +39,7 @@ function lathe(radii: [number, number][], segs = 10): THREE.LatheGeometry {
   );
 }
 
-/** Outward-pointing fur tufts that break a smooth balloon silhouette. */
+/** Overlapping flattened clumps — shag, not a hedgehog of cones. */
 function addFurBurst(
   parent: THREE.Object3D,
   cx: number,
@@ -53,14 +53,16 @@ function addFurBurst(
 ): void {
   for (let i = 0; i < count; i++) {
     const a = (i / count) * Math.PI * 2 + size * 7;
-    const elev = -0.35 + (i % 5) * 0.22;
-    const s = size * (0.75 + (i % 4) * 0.12);
-    const tuft = new THREE.Mesh(new THREE.ConeGeometry(s * 0.55, s * 1.8, 5), mats[i % mats.length]);
-    const x = cx + Math.cos(a) * radius;
-    const z = cz + Math.sin(a) * radius;
-    tuft.position.set(x, cy + Math.sin(elev) * radius * 0.35, z);
-    tuft.lookAt(cx, cy - droop, cz);
-    tuft.rotateX(Math.PI);
+    const elev = -0.25 + (i % 4) * 0.16;
+    const s = size * (0.85 + (i % 3) * 0.1);
+    const tuft = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 0), mats[i % mats.length]);
+    tuft.position.set(
+      cx + Math.cos(a) * radius * 0.92,
+      cy - droop * s * 0.4 + Math.sin(elev) * radius * 0.2,
+      cz + Math.sin(a) * radius * 0.92,
+    );
+    tuft.rotation.set(droop + (i % 3) * 0.2, a + 0.4, (i % 5) * 0.15);
+    tuft.scale.set(1.7, 0.55, 1.05);
     tuft.castShadow = true;
     parent.add(tuft);
   }
@@ -119,7 +121,6 @@ export function createFrostYeti(): THREE.Group {
   const hideDark = phys(0x1e262e, { roughness: 0.88, flatShading: false });
   const claw = phys(0x16181c, { roughness: 0.28, metalness: 0.35, flatShading: false });
   const noseMat = phys(0x141418, { roughness: 0.42, flatShading: false });
-  const gum = phys(0x6a2430, { roughness: 0.78, flatShading: false });
   const throat = phys(0x2a1016, { roughness: 0.9, flatShading: false });
   const fang = phys(0xf4ecd8, { roughness: 0.32, flatShading: false });
   const ice = phys(0xb8e8ff, {
@@ -387,47 +388,40 @@ export function createFrostYeti(): THREE.Group {
   mask.position.set(0, -0.04, 0.2);
   head.add(mask);
 
-  // Heavy V-brow from the sheet — shades the glowing slits.
-  const brow = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 10), hideDark);
-  brow.scale.set(1.15, 0.32, 0.62);
-  brow.position.set(0, 0.16, 0.22);
+  // Heavy brow shelf from the sheet — shades the glowing slits.
+  const brow = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 10), hideDark);
+  brow.scale.set(1.2, 0.28, 0.55);
+  brow.position.set(0, 0.18, 0.24);
   head.add(brow);
-  for (const sx of [-1, 1]) {
-    const ridge = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.14, 4, 8), hideDark);
-    ridge.rotation.z = sx * -0.55;
-    ridge.rotation.x = -0.35;
-    ridge.position.set(sx * 0.12, 0.12, 0.4);
-    head.add(ridge);
-  }
 
   const makeEye = (sx: number) => {
-    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), hideDark);
-    socket.scale.set(1.15, 0.85, 0.55);
-    socket.position.set(sx, 0.055, 0.4);
+    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.078, 10, 8), hideDark);
+    socket.scale.set(1.2, 0.88, 0.55);
+    socket.position.set(sx, 0.06, 0.4);
     head.add(socket);
     const eye = new THREE.Mesh(
-      new THREE.SphereGeometry(0.042, 10, 8),
+      new THREE.SphereGeometry(0.05, 10, 8),
       phys(0xffc24a, {
         emissive: 0xff9900,
-        emissiveIntensity: 1.15,
+        emissiveIntensity: 1.25,
         roughness: 0.2,
         flatShading: false,
       }),
     );
-    eye.scale.set(1, 0.72, 0.7);
-    eye.position.set(sx, 0.05, 0.44);
+    eye.scale.set(1.05, 0.75, 0.72);
+    eye.position.set(sx, 0.055, 0.445);
     eye.name = 'yetiEye';
     head.add(eye);
-    const slit = new THREE.Mesh(new THREE.CapsuleGeometry(0.006, 0.034, 3, 6), phys(0x0a0604, { flatShading: false }));
-    slit.position.set(sx, 0.058, 0.468);
+    const slit = new THREE.Mesh(new THREE.CapsuleGeometry(0.007, 0.038, 3, 6), phys(0x0a0604, { flatShading: false }));
+    slit.position.set(sx, 0.062, 0.478);
     head.add(slit);
-    const eyeLight = new THREE.PointLight(0xff9900, 0.35, 1.6);
+    const eyeLight = new THREE.PointLight(0xff9900, 0.4, 1.6);
     eyeLight.name = 'yetiEyeLight';
     eyeLight.position.set(sx, 0.06, 0.56);
     head.add(eyeLight);
   };
-  makeEye(-0.13);
-  makeEye(0.13);
+  makeEye(-0.135);
+  makeEye(0.135);
 
   // Short broad muzzle sitting over a wide-open roar.
   const snout = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), hide);
@@ -445,15 +439,15 @@ export function createFrostYeti(): THREE.Group {
   }
 
   // The sheet's roar: a dropped jaw, dark throat, and a full tooth fence.
-  const maw = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10), throat);
-  maw.scale.set(1.05, 0.7, 0.85);
-  maw.position.set(0, -0.2, 0.46);
+  const maw = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), throat);
+  maw.scale.set(1.1, 0.75, 0.88);
+  maw.position.set(0, -0.22, 0.45);
   head.add(maw);
-  const gumPad = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.028, 8, 16, Math.PI), gum);
-  gumPad.rotation.x = 1.05;
-  gumPad.scale.set(1.2, 0.75, 1);
-  gumPad.position.set(0, -0.12, 0.54);
-  head.add(gumPad);
+  const lip = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.018, 6, 14, Math.PI), hideDark);
+  lip.rotation.x = 1.1;
+  lip.scale.set(1.15, 0.65, 1);
+  lip.position.set(0, -0.12, 0.55);
+  head.add(lip);
 
   const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 10), hide);
   jaw.scale.set(1.08, 0.42, 0.95);
@@ -571,7 +565,7 @@ export function createOrcScout(): THREE.Group {
     return mesh;
   };
 
-  /** Drive sheet fur: a ring of tan spikes pointing outward, not a torus buoy. */
+  /** Drive sheet fur: chunky faceted pyramids, not a necklace of needles. */
   const addSpikeFur = (
     parent: THREE.Object3D,
     cx: number,
@@ -584,9 +578,9 @@ export function createOrcScout(): THREE.Group {
   ) => {
     for (let i = 0; i < count; i++) {
       const a = (i / count) * Math.PI * 2 + 0.2;
-      const elev = ((i % 3) - 1) * 0.22;
-      const spike = new THREE.Mesh(new THREE.ConeGeometry(len * 0.28, len, 5), i % 3 === 0 ? furDark : fur);
-      spike.position.set(cx + Math.cos(a) * radius, cy + elev * len * 0.35, cz + Math.sin(a) * radius);
+      const elev = ((i % 3) - 1) * 0.18;
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(len * 0.48, len * 0.85, 5), i % 3 === 0 ? furDark : fur);
+      spike.position.set(cx + Math.cos(a) * radius, cy + elev * len * 0.25, cz + Math.sin(a) * radius);
       spike.lookAt(cx, cy - tilt, cz);
       spike.rotateX(Math.PI);
       spike.castShadow = true;
@@ -651,7 +645,7 @@ export function createOrcScout(): THREE.Group {
         ],
         10,
       ),
-      leather,
+      leatherMid,
     );
     boot.position.set(0, -0.12, 0.01);
     addPart(boot, shin, 1.04);
@@ -820,15 +814,14 @@ export function createOrcScout(): THREE.Group {
   skull.scale.set(1.02, 1.06, 0.92);
   addPart(skull, head, 1.08);
 
-  const brow = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8), skinDark);
-  brow.scale.set(1.15, 0.42, 0.7);
-  brow.position.set(0, 0.1, 0.1);
+  const brow = new THREE.Mesh(new THREE.SphereGeometry(0.145, 10, 8), skinDark);
+  brow.scale.set(1.18, 0.38, 0.72);
+  brow.position.set(0, 0.112, 0.1);
   addPart(brow, head);
   for (const sx of [-1, 1]) {
-    const ridge = new THREE.Mesh(new THREE.CapsuleGeometry(0.014, 0.06, 3, 6), skinDark);
-    ridge.rotation.z = Math.PI / 2 + sx * -0.28;
-    ridge.rotation.x = -0.25;
-    ridge.position.set(sx * 0.055, 0.078, 0.155);
+    const ridge = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.016, 0.02), skinDark);
+    ridge.rotation.z = sx * -0.22;
+    ridge.position.set(sx * 0.05, 0.082, 0.168);
     head.add(ridge);
   }
 
@@ -853,11 +846,11 @@ export function createOrcScout(): THREE.Group {
   mouth.position.set(0, -0.09, 0.185);
   head.add(mouth);
 
-  // Small tusks from the lower jaw corners — the sheet, not walrus spears.
+  // Tusks from the lower jaw corners — visible from the gameplay camera.
   for (const sx of [-1, 1]) {
-    const t = new THREE.Mesh(new THREE.ConeGeometry(0.016, 0.085, 6), tusk);
-    t.position.set(sx * 0.055, -0.1, 0.175);
-    t.rotation.set(0.55, 0, sx * 0.35);
+    const t = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.11, 6), tusk);
+    t.position.set(sx * 0.052, -0.085, 0.188);
+    t.rotation.set(0.7, 0, sx * 0.28);
     head.add(t);
   }
 
