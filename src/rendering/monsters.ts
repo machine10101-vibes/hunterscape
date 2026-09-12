@@ -56,14 +56,15 @@ function addFurSkirt(
   flare: number,
   mat: THREE.Material,
   cz = 0,
+  phase = 0,
 ): void {
   const pos: number[] = [];
   const push = (a: number, y: number, r: number) => {
     pos.push(Math.cos(a) * r, y, cz + Math.sin(a) * r);
   };
   for (let i = 0; i < count; i++) {
-    const a0 = (i / count) * Math.PI * 2;
-    const a1 = ((i + 1) / count) * Math.PI * 2;
+    const a0 = ((i + phase) / count) * Math.PI * 2;
+    const a1 = ((i + 1 + phase) / count) * Math.PI * 2;
     const am = (a0 + a1) / 2;
     const jitter = ((i * 7) % 5) / 5;
     const d = drop * (0.7 + jitter * 0.55);
@@ -77,6 +78,26 @@ function addFurSkirt(
   const skirt = new THREE.Mesh(geo, mat);
   skirt.castShadow = true;
   parent.add(skirt);
+}
+
+/**
+ * A band of coat: a longer, darker under-layer tucked inside a bright top
+ * layer. A lone skirt is a flat cutout; the sliver of shadow showing between
+ * the two is what makes the fur read as having depth.
+ */
+function addShagBand(
+  parent: THREE.Object3D,
+  cy: number,
+  radius: number,
+  count: number,
+  drop: number,
+  flare: number,
+  top: THREE.Material,
+  under: THREE.Material,
+  cz = 0,
+): void {
+  addFurSkirt(parent, cy + drop * 0.1, radius * 0.98, count, drop * 1.18, flare * 0.96, under, cz, 0.5);
+  addFurSkirt(parent, cy, radius, count, drop, flare, top, cz);
 }
 
 /** Fur patch that hugs a curved surface — the sheet's charcoal marbling. */
@@ -120,23 +141,50 @@ function addClaw(
   root.rotation.z = splay;
   root.rotation.x = -pitch;
 
-  const base = new THREE.Mesh(new THREE.ConeGeometry(rad, len * 0.6, 6), mat);
-  base.rotation.x = Math.PI;
-  base.position.y = -len * 0.3;
+  // One continuous taper across the two segments. A cone per segment leaves an
+  // apex halfway down that then widens again, which reads as two stacked claws.
+  const joint = rad * 0.55;
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(rad, joint, len * 0.55, 6), mat);
+  base.position.y = -len * 0.275;
   base.castShadow = true;
   root.add(base);
 
   const curl = new THREE.Group();
-  curl.position.y = -len * 0.56;
-  curl.rotation.x = -0.55;
-  const tip = new THREE.Mesh(new THREE.ConeGeometry(rad * 0.66, len * 0.52, 6), mat);
+  curl.position.y = -len * 0.55;
+  curl.rotation.x = -0.72;
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(joint, len * 0.5, 6), mat);
   tip.rotation.x = Math.PI;
-  tip.position.y = -len * 0.26;
+  tip.position.y = -len * 0.25;
   tip.castShadow = true;
   curl.add(tip);
   root.add(curl);
 
   parent.add(root);
+}
+
+/** Rime crust — frost shards clinging to the upward-facing fur. */
+function addRime(
+  parent: THREE.Object3D,
+  x: number,
+  y: number,
+  z: number,
+  spread: number,
+  count: number,
+  size: number,
+  mat: THREE.Material,
+  seed = 1,
+): void {
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2 + seed;
+    const r = spread * (0.35 + (((i * 5 + seed) % 4) / 4) * 0.75);
+    const s = size * (0.6 + (((i * 3) % 5) / 5) * 0.9);
+    const shard = new THREE.Mesh(new THREE.OctahedronGeometry(s, 0), mat);
+    shard.position.set(x + Math.cos(a) * r, y + ((i % 3) - 1) * size * 0.3, z + Math.sin(a) * r);
+    shard.rotation.set(a * 0.7, a, ((i % 5) - 2) * 0.25);
+    shard.scale.set(0.42, 1.5 + ((i * 7) % 4) * 0.35, 0.42);
+    shard.castShadow = true;
+    parent.add(shard);
+  }
 }
 
 /**
@@ -175,8 +223,6 @@ export function createFrostYeti(): THREE.Group {
     sheenColor: new THREE.Color(0x9cb2c6),
   });
   const furDeep = phys(0x7d91a6, { roughness: 0.97 });
-  const furShade = phys(0x51627a, { roughness: 0.98 });
-  const charcoal = phys(0x2b333e, { roughness: 0.96 });
   const hide = phys(0x6d7c8a, { roughness: 0.8, flatShading: false });
   const hideDark = phys(0x29313a, { roughness: 0.85, flatShading: false });
   const claw = phys(0x14161a, { roughness: 0.3, metalness: 0.3, flatShading: false });
@@ -196,9 +242,11 @@ export function createFrostYeti(): THREE.Group {
     sheen: 0.26,
     sheenColor: new THREE.Color(0xc4d7e8),
   });
-  const peltMid = phys(0xa8bcd0, { roughness: 0.97, side: THREE.DoubleSide });
-  const peltDeep = phys(0x7e93aa, { roughness: 0.97, side: THREE.DoubleSide });
-  const peltDark = phys(0x54657c, { roughness: 0.98, side: THREE.DoubleSide });
+  const peltU = phys(0xb5c8db, { roughness: 0.97, side: THREE.DoubleSide });
+  const peltMid = phys(0xb0c3d6, { roughness: 0.97, side: THREE.DoubleSide });
+  const peltMidU = phys(0x92a8be, { roughness: 0.97, side: THREE.DoubleSide });
+  const peltDeep = phys(0x8fa4ba, { roughness: 0.97, side: THREE.DoubleSide });
+  const peltDeepU = phys(0x74899f, { roughness: 0.98, side: THREE.DoubleSide });
 
   const shadow = new THREE.Mesh(
     new THREE.CircleGeometry(0.85, 20),
@@ -244,8 +292,9 @@ export function createFrostYeti(): THREE.Group {
     );
     thigh.castShadow = true;
     hip.add(thigh);
-    addFurSkirt(hip, -0.16, 0.26, 15, 0.2, 1.05, pelt);
-    addFurSkirt(hip, -0.34, 0.225, 14, 0.18, 1.08, peltMid);
+    addShagBand(hip, -0.16, 0.26, 15, 0.2, 1.05, pelt, peltU);
+    addShagBand(hip, -0.34, 0.225, 14, 0.18, 1.08, peltMid, peltMidU);
+    addRime(hip, 0, 0.02, -0.12, 0.15, 4, 0.045, ice, side + 1);
 
     const shin = new THREE.Group();
     shin.name = side < 0 ? 'yetiShinL' : 'yetiShinR';
@@ -270,8 +319,8 @@ export function createFrostYeti(): THREE.Group {
     );
     calf.castShadow = true;
     shin.add(calf);
-    addFurSkirt(shin, -0.14, 0.205, 14, 0.17, 1.08, peltDeep);
-    addFurSkirt(shin, -0.32, 0.17, 13, 0.15, 1.1, peltDark);
+    addShagBand(shin, -0.14, 0.205, 14, 0.17, 1.08, peltMid, peltMidU);
+    addShagBand(shin, -0.32, 0.17, 13, 0.15, 1.1, peltDeep, peltDeepU);
 
     const foot = new THREE.Group();
     foot.name = side < 0 ? 'yetiFootL' : 'yetiFootR';
@@ -290,7 +339,7 @@ export function createFrostYeti(): THREE.Group {
     sole.scale.set(0.95, 0.2, 1.45);
     sole.position.set(0, -0.15, 0.13);
     foot.add(sole);
-    addFurSkirt(foot, 0, 0.17, 12, 0.13, 1.3, peltDeep);
+    addShagBand(foot, 0, 0.17, 12, 0.13, 1.3, peltMid, peltMidU);
 
     for (let i = 0; i < 4; i++) {
       const x = (i - 1.5) * 0.095;
@@ -303,7 +352,7 @@ export function createFrostYeti(): THREE.Group {
       toePad.scale.set(1, 0.5, 1);
       toePad.position.set(x, -0.15, 0.3);
       foot.add(toePad);
-      addClaw(foot, x, -0.11, 0.36, 0.19, 0.03, claw, 1.15, x * 1.2);
+      addClaw(foot, x, -0.11, 0.35, 0.14, 0.021, claw, 1.1, x * 1.2);
     }
 
     shin.add(foot);
@@ -374,13 +423,10 @@ export function createFrostYeti(): THREE.Group {
   const coatShell = new THREE.Group();
   coatShell.scale.set(1.24, 1, 0.9);
   body.add(coatShell);
-  addFurSkirt(coatShell, 0.8, 0.51, 22, 0.24, 1.08, pelt, -0.02);
-  addFurSkirt(coatShell, 0.56, 0.56, 24, 0.24, 1.05, pelt);
-  addFurSkirt(coatShell, 0.3, 0.5, 22, 0.24, 1.05, peltMid);
-  addFurSkirt(coatShell, 0.04, 0.44, 20, 0.22, 1.07, peltDeep);
-
-  addPatch(body, 0, 0.8, -0.26, 0.85, 0.4, 0.36, charcoal);
-  addPatch(body, 0, 0.42, -0.38, 0.62, 0.46, 0.24, furShade);
+  addShagBand(coatShell, 0.8, 0.51, 22, 0.24, 1.08, pelt, peltU, -0.02);
+  addShagBand(coatShell, 0.56, 0.56, 24, 0.24, 1.05, pelt, peltU);
+  addShagBand(coatShell, 0.3, 0.5, 22, 0.24, 1.05, peltMid, peltMidU);
+  addShagBand(coatShell, 0.04, 0.44, 20, 0.22, 1.07, peltDeep, peltDeepU);
 
   for (const [x, y, z, s, rx, rz] of [
     [-0.42, 0.88, -0.2, 0.15, 0.35, 0.45],
@@ -395,6 +441,22 @@ export function createFrostYeti(): THREE.Group {
     shard.scale.set(0.45, 1.6, 0.4);
     shard.castShadow = true;
     body.add(shard);
+  }
+
+  // Meltwater refrozen in the chest shag.
+  for (const [ix, iy, iz, il] of [
+    [-0.32, 0.12, 0.4, 0.16],
+    [0.02, 0.05, 0.46, 0.21],
+    [0.34, 0.14, 0.38, 0.13],
+    [-0.54, 0.34, 0.26, 0.12],
+    [0.56, 0.32, 0.28, 0.14],
+    [-0.16, -0.02, 0.38, 0.14],
+  ] as const) {
+    const icicle = new THREE.Mesh(new THREE.ConeGeometry(0.026, il, 5), ice);
+    icicle.rotation.x = Math.PI;
+    icicle.position.set(ix, iy - il / 2, iz);
+    icicle.castShadow = true;
+    body.add(icicle);
   }
 
   const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.32, 0.22, 12), furMid);
@@ -431,9 +493,10 @@ export function createFrostYeti(): THREE.Group {
     );
     upper.castShadow = true;
     arm.add(upper);
-    addFurSkirt(arm, 0.04, 0.265, 16, 0.22, 1.12, pelt);
-    addFurSkirt(arm, -0.14, 0.235, 15, 0.19, 1.08, peltMid);
-    addFurSkirt(arm, -0.38, 0.195, 14, 0.17, 1.1, peltDeep);
+    addShagBand(arm, 0.04, 0.265, 16, 0.22, 1.12, pelt, peltU);
+    addShagBand(arm, -0.14, 0.235, 15, 0.19, 1.08, pelt, peltU);
+    addRime(arm, 0, 0.08, -0.11, 0.16, 4, 0.05, ice, side + 2);
+    addShagBand(arm, -0.38, 0.195, 14, 0.17, 1.1, peltMid, peltMidU);
 
     const forearm = new THREE.Group();
     forearm.name = side < 0 ? 'yetiForearmL' : 'yetiForearmR';
@@ -457,8 +520,8 @@ export function createFrostYeti(): THREE.Group {
     );
     lower.castShadow = true;
     forearm.add(lower);
-    addFurSkirt(forearm, -0.14, 0.2, 14, 0.17, 1.08, peltMid);
-    addFurSkirt(forearm, -0.36, 0.172, 13, 0.16, 1.14, peltDeep);
+    addShagBand(forearm, -0.14, 0.2, 14, 0.17, 1.08, pelt, peltU);
+    addShagBand(forearm, -0.36, 0.172, 13, 0.16, 1.14, peltMid, peltMidU);
 
     // ── Paw ─────────────────────────────────────────────────────────────
     // Digits continue the forearm's downward line with a slight forward set,
@@ -480,21 +543,25 @@ export function createFrostYeti(): THREE.Group {
     hand.add(palmPad);
     // Sits at the wrist — any lower and the cuff swallows the knuckles and
     // the paw reads as a mitten.
-    addFurSkirt(hand, 0.02, 0.18, 13, 0.11, 1.18, peltDeep);
+    addShagBand(hand, 0.02, 0.18, 13, 0.11, 1.18, peltMid, peltMidU);
 
     for (let i = 0; i < 4; i++) {
-      const x = (i - 1.5) * 0.1;
+      const x = (i - 1.5) * 0.108;
       const reach = 1 - Math.abs(i - 1.5) * 0.1;
-      const knuckle = new THREE.Mesh(new THREE.SphereGeometry(0.058, 8, 6), fur);
-      knuckle.position.set(x, -0.17, 0.08);
+      const knuckle = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), fur);
+      knuckle.position.set(x, -0.165, 0.08);
       knuckle.castShadow = true;
       hand.add(knuckle);
-      const digit = new THREE.Mesh(new THREE.ConeGeometry(0.052, 0.14, 6), furMid);
+      const digit = new THREE.Mesh(new THREE.ConeGeometry(0.053, 0.17, 6), furMid);
       digit.rotation.x = Math.PI - 0.25;
-      digit.position.set(x, -0.24, 0.1);
+      digit.position.set(x, -0.245, 0.104);
       digit.castShadow = true;
       hand.add(digit);
-      addClaw(hand, x, -0.3, 0.115, 0.26 * reach, 0.032, claw, 0.3, x * 1.4);
+      const fingerPad = new THREE.Mesh(new THREE.SphereGeometry(0.029, 7, 5), hideDark);
+      fingerPad.scale.set(1.1, 1.25, 0.22);
+      fingerPad.position.set(x, -0.238, 0.138);
+      hand.add(fingerPad);
+      addClaw(hand, x, -0.3, 0.12, 0.185 * reach, 0.021, claw, 0.26, x * 1.5);
     }
 
     // Thumb rides the inside of the paw, claw turned in toward the body.
@@ -504,7 +571,7 @@ export function createFrostYeti(): THREE.Group {
     thumb.position.set(thumbX, -0.09, 0.04);
     thumb.castShadow = true;
     hand.add(thumb);
-    addClaw(hand, thumbX - side * 0.03, -0.16, 0.06, 0.2, 0.028, claw, 0.4, -side * 0.55);
+    addClaw(hand, thumbX - side * 0.03, -0.16, 0.06, 0.145, 0.019, claw, 0.38, -side * 0.55);
 
     forearm.add(hand);
     arm.add(forearm);
@@ -529,9 +596,17 @@ export function createFrostYeti(): THREE.Group {
   addPatch(head, 0, 0.2, -0.16, 0.42, 0.26, 0.34, furDeep);
 
   // Mane: a near-horizontal outer fringe behind a softer inner one.
-  addFurSkirt(head, 0.2, 0.27, 16, 0.22, 1.2, pelt, -0.08);
-  addFurSkirt(head, 0.1, 0.3, 18, 0.24, 1.3, pelt, -0.06);
-  addFurSkirt(head, -0.05, 0.31, 18, 0.24, 1.2, peltMid, -0.04);
+  addShagBand(head, 0.2, 0.27, 16, 0.22, 1.2, pelt, peltU, -0.08);
+  addShagBand(head, 0.1, 0.3, 18, 0.24, 1.3, pelt, peltU, -0.06);
+  addShagBand(head, -0.05, 0.31, 18, 0.24, 1.2, peltMid, peltMidU, -0.04);
+  // Muttonchops framing the muzzle, as on the sheet.
+  addShagBand(head, -0.16, 0.28, 16, 0.2, 1.3, pelt, peltU, 0.02);
+  addRime(head, 0, 0.19, -0.2, 0.18, 5, 0.038, ice, 3);
+
+  addShagBand(head, 0.28, 0.16, 10, 0.14, 1.1, pelt, peltU, -0.12);
+  addShagBand(head, 0.2, 0.2, 12, 0.16, 1.15, pelt, peltU, -0.14);
+  // Fringe breaking up the bare dome of the forehead.
+  addFurSkirt(head, 0.25, 0.2, 11, 0.12, 1.08, pelt, 0.06);
 
   const brow = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10), fur);
   brow.scale.set(1.25, 0.44, 0.6);
@@ -592,6 +667,13 @@ export function createFrostYeti(): THREE.Group {
   muzzle.position.set(0, -0.05, 0.28);
   muzzle.castShadow = true;
   head.add(muzzle);
+  for (const off of [0, 0.055]) {
+    const scar = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.16 - off * 0.4, 0.01), hideDark);
+    scar.position.set(-0.235 + off, 0.03 - off * 0.3, 0.15 + off * 0.35);
+    scar.rotation.set(0.3, -0.55, -0.6);
+    head.add(scar);
+  }
+
   const nose = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 8), noseMat);
   nose.scale.set(1.4, 0.85, 0.8);
   nose.position.set(0, 0.005, 0.43);
@@ -656,9 +738,9 @@ export function createFrostYeti(): THREE.Group {
     ear.rotation.z = s * 0.3;
     ear.castShadow = true;
     head.add(ear);
-    const inner = new THREE.Mesh(new THREE.SphereGeometry(0.034, 8, 6), hide);
-    inner.scale.set(0.75, 0.85, 0.35);
-    inner.position.set(s * 0.25, 0.245, -0.145);
+    const inner = new THREE.Mesh(new THREE.SphereGeometry(0.042, 8, 6), furDeep);
+    inner.scale.set(0.7, 0.85, 0.4);
+    inner.position.set(s * 0.245, 0.248, -0.075);
     head.add(inner);
   }
 
