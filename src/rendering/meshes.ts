@@ -818,38 +818,38 @@ export function createFrostYeti(): THREE.Group {
 
   // Amber eyes with a vertical slit pupil, set on the mask so they catch light.
   const makeEye = (sx: number) => {
-    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.068, 12, 10), hideDark);
-    socket.scale.set(1.1, 0.9, 0.6);
-    socket.position.set(sx, 0.04, 0.355);
+    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.078, 12, 10), hideDark);
+    socket.scale.set(1.15, 0.95, 0.62);
+    socket.position.set(sx, 0.05, 0.36);
     head.add(socket);
     const eye = new THREE.Mesh(
-      new THREE.SphereGeometry(0.044, 12, 10),
-      uniq(0xf0a838, { emissive: 0xc06800, emissiveIntensity: 0.55, roughness: 0.25 }),
+      new THREE.SphereGeometry(0.052, 12, 10),
+      uniq(0xf0a838, { emissive: 0xc06800, emissiveIntensity: 0.7, roughness: 0.25 }),
     );
-    eye.scale.set(0.92, 0.72, 0.7);
-    eye.position.set(sx, 0.028, 0.4);
+    eye.scale.set(0.95, 0.78, 0.72);
+    eye.position.set(sx, 0.042, 0.41);
     eye.name = 'yetiEye';
     head.add(eye);
-    const slit = new THREE.Mesh(new THREE.CapsuleGeometry(0.008, 0.036, 3, 6), uniq(0x140a04));
-    slit.position.set(sx, 0.04, 0.428);
+    const slit = new THREE.Mesh(new THREE.CapsuleGeometry(0.009, 0.042, 3, 6), uniq(0x140a04));
+    slit.position.set(sx, 0.054, 0.445);
     head.add(slit);
-    const eyeLight = new THREE.PointLight(0xff9900, 0.18, 1.2);
+    const eyeLight = new THREE.PointLight(0xff9900, 0.22, 1.2);
     eyeLight.name = 'yetiEyeLight';
-    eyeLight.position.set(sx, 0.05, 0.52);
+    eyeLight.position.set(sx, 0.06, 0.54);
     head.add(eyeLight);
   };
-  makeEye(-0.145);
-  makeEye(0.145);
+  makeEye(-0.15);
+  makeEye(0.15);
   // Heavy lids so the amber slits sit in a real socket, not on a blank mask.
   for (const sx of [-1, 1]) {
     const lid = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), hideDark);
     lid.scale.set(1.15, 0.32, 0.55);
-    lid.position.set(sx * 0.145, 0.072, 0.4);
+    lid.position.set(sx * 0.15, 0.088, 0.41);
     lid.rotation.x = -0.35;
     head.add(lid);
     const bag = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), hide);
     bag.scale.set(1.2, 0.35, 0.5);
-    bag.position.set(sx * 0.145, 0.002, 0.4);
+    bag.position.set(sx * 0.15, 0.008, 0.41);
     head.add(bag);
   }
 
@@ -1476,15 +1476,15 @@ export function createOrcScout(): THREE.Group {
   mouth.position.set(0, -0.095, 0.185);
   head.add(mouth);
 
-  // Tusks rise from the corners of the lower jaw, curving out past the lip
-  // so they frame the mouth instead of covering it.
+  // Tusks rise in front of the mouth, curving up so they read from the
+  // gameplay camera instead of hiding in the cheeks.
   for (const sx of [-1, 1]) {
-    const t = new THREE.Mesh(new THREE.ConeGeometry(0.034, 0.22, 7), tusk);
-    t.position.set(sx * 0.09, -0.128, 0.185);
-    t.rotation.set(0.28, 0, sx * 0.55);
+    const t = new THREE.Mesh(new THREE.ConeGeometry(0.032, 0.24, 7), tusk);
+    t.position.set(sx * 0.058, -0.1, 0.205);
+    t.rotation.set(0.62, 0, sx * 0.28);
     head.add(t);
-    const root = new THREE.Mesh(new THREE.SphereGeometry(0.026, 8, 6), tusk);
-    root.position.set(sx * 0.074, -0.145, 0.162);
+    const root = new THREE.Mesh(new THREE.SphereGeometry(0.024, 8, 6), tusk);
+    root.position.set(sx * 0.05, -0.132, 0.175);
     head.add(root);
   }
 
@@ -1562,9 +1562,9 @@ export function createOrcScout(): THREE.Group {
     // topknot rather than a bundle of upright pegs. They hug the cap closely —
     // stacked any higher the crown builds into a pine cone.
     const lock = new THREE.Mesh(new THREE.IcosahedronGeometry(0.07 * s, 0), i % 3 === 0 ? hairLit : hair);
-    lock.position.set(x, y - 0.012, z);
-    lock.rotation.set(-0.45 + z * 1.4, x * 1.8, -x * 1.2);
-    lock.scale.set(1.1, 0.42, 1.25);
+    lock.position.set(x, y + 0.02, z);
+    lock.rotation.set(-0.55 + z * 1.2, x * 1.8, -x * 1.2);
+    lock.scale.set(0.95, 0.85, 1.15);
     head.add(lock);
   });
 
@@ -1576,17 +1576,17 @@ export function createOrcScout(): THREE.Group {
   // Shaft along −Y so it follows the hanging / punching arm. Local +Y was
   // cancelling a forward swing and leaving the tip vertical through the thrust.
   spear.position.set(0.02, -0.02, 0.03);
-  spear.rotation.set(-0.48, 0.08, 0.08);
-  spear.userData.rest = { x: 0.02, y: -0.02, z: 0.03, rx: -0.48, ry: 0.08, rz: 0.08 };
+  spear.rotation.set(-0.88, 0.08, 0.08);
+  spear.userData.rest = { x: 0.02, y: -0.02, z: 0.03, rx: -0.88, ry: 0.08, rz: 0.08 };
   const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.03, 2.05, 6), wood);
   shaft.position.y = -0.95;
   addPart(shaft, spear);
   const binding = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.04, 0.1, 6), leatherDark);
   binding.position.y = -1.8;
   spear.add(binding);
-  const tip = new THREE.Mesh(new THREE.OctahedronGeometry(0.13, 0), metal);
-  tip.scale.set(0.4, 1.85, 0.28);
-  tip.position.y = -2.1;
+  const tip = new THREE.Mesh(new THREE.OctahedronGeometry(0.16, 0), metal);
+  tip.scale.set(0.42, 2.05, 0.3);
+  tip.position.y = -2.12;
   addPart(tip, spear);
   const ridge = new THREE.Mesh(
     new THREE.BoxGeometry(0.018, 0.34, 0.085),

@@ -862,22 +862,24 @@ export function animateYetiAttack(yeti: THREE.Group, progress: number): void {
     hit = 1 - smooth((p - 0.62) / 0.38);
   }
   const rest = 1 - coil - hit;
-  const lean = rest * 0 + coil * -0.28 + hit * 0.58;
+  // Arms are parented to the body now, so a big lean would fold the slam into
+  // the dirt. Keep a chest crash, not a face-plant.
+  const lean = rest * 0 + coil * -0.22 + hit * 0.28;
   const roar = coil * 0.65 + hit * 0.85;
 
   // Rest matches the hunched hang. Coil: both claws overhead. Hit: throw
   // the arms forward of the chest (−X ≈ −1.6 is a punch, not a hang).
   rot(
     get(yeti, 'yetiArmR'),
-    rest * -0.42 + coil * -2.25 + hit * -1.65,
-    rest * 0.04 + coil * -0.48 + hit * 0.42,
-    rest * 0.4 + coil * 0.85 + hit * 0.2,
+    rest * -0.42 + coil * -2.25 + hit * -1.85,
+    rest * 0.04 + coil * -0.48 + hit * 0.55,
+    rest * 0.4 + coil * 0.85 + hit * 0.22,
   );
   rot(
     get(yeti, 'yetiArmL'),
-    rest * -0.42 + coil * -2.05 + hit * -1.48,
-    rest * -0.04 + coil * 0.4 + hit * -0.38,
-    rest * -0.4 + coil * -0.78 + hit * -0.18,
+    rest * -0.42 + coil * -2.05 + hit * -1.7,
+    rest * -0.04 + coil * 0.4 + hit * -0.5,
+    rest * -0.4 + coil * -0.78 + hit * -0.2,
   );
   rot(get(yeti, 'yetiForearmR'), rest * -0.48 + coil * -1.25 + hit * -0.18, 0.1, 0.06);
   rot(get(yeti, 'yetiForearmL'), rest * -0.48 + coil * -1.1 + hit * -0.16, -0.1, -0.06);
@@ -922,31 +924,32 @@ export function animateOrcAttack(orc: THREE.Group, progress: number): void {
     hit = 1 - smooth((p - 0.58) / 0.42);
   }
   const rest = 1 - pull - hit;
-  const lean = rest * 0.04 + pull * -0.22 + hit * 0.52;
+  // Arms ride the body, so a 0.5 lean used to compound into a ground-stab.
+  const lean = rest * 0.04 + pull * -0.2 + hit * 0.14;
 
-  // Shaft is −Y of the fist. Pull lays the tip up-forward; hit zeros the
-  // extra so the point rides the punching arm at the camera.
+  // Shaft is −Y of the fist. Pull keeps the coil's horizontal tip; hit
+  // aligns the point with a near-horizontal punch at the camera.
   applySpearHeld(get(orc, 'orcSpear'), {
-    rx: pull * -0.85 + hit * 0.48,
-    z: pull * -0.04 + hit * 0.06,
+    rx: pull * -0.45 + hit * 0.85,
+    z: pull * -0.04 + hit * 0.04,
     y: pull * 0.02,
     ry: hit * 0.02,
   });
 
   rot(
     get(orc, 'orcArmR'),
-    rest * -0.32 + pull * 0.85 + hit * -1.55,
-    rest * 0.06 + pull * 0.18 + hit * 0.08,
-    rest * 0.18 + pull * 0.28 + hit * 0.1,
+    rest * -0.32 + pull * 0.85 + hit * -1.95,
+    rest * 0.06 + pull * 0.18 + hit * 0.1,
+    rest * 0.18 + pull * 0.28 + hit * 0.12,
   );
-  rot(get(orc, 'orcForearmR'), rest * -0.42 + pull * -1.2 + hit * -0.06, -0.08, 0.05);
+  rot(get(orc, 'orcForearmR'), rest * -0.42 + pull * -1.2 + hit * -0.04, -0.08, 0.05);
   rot(
     get(orc, 'orcArmL'),
-    rest * -0.1 + pull * 0.35 + hit * -1.05,
-    rest * 0.02 + pull * -0.12 + hit * 0.42,
-    rest * -0.18 + pull * -0.1 + hit * -0.08,
+    rest * -0.1 + pull * 0.35 + hit * -1.15,
+    rest * 0.02 + pull * -0.12 + hit * 0.48,
+    rest * -0.18 + pull * -0.1 + hit * -0.1,
   );
-  rot(get(orc, 'orcForearmL'), rest * -0.28 + pull * -0.45 + hit * -0.5, 0.1, -0.05);
+  rot(get(orc, 'orcForearmL'), rest * -0.28 + pull * -0.45 + hit * -0.45, 0.1, -0.05);
 
   const head = get(orc, 'orcHead');
   if (head) {
