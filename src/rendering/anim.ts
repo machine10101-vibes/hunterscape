@@ -177,8 +177,8 @@ export function resetPlayerPose(player: THREE.Group): void {
     torso.position.z = 0;
     torso.scale.set(1, 1, 1);
   }
-  setHandGrip(get(player, 'handR'), 0.98);
-  setHandGrip(get(player, 'handL'), 0.88);
+  setHandGrip(get(player, 'handR'), isToolVisible(player, 'tool_sword') ? 0.96 : 0.22);
+  setHandGrip(get(player, 'handL'), 0.22);
   poseEquippedTool(player);
   player.rotation.z = 0;
   player.rotation.x = 0;
@@ -190,53 +190,49 @@ export function resetPlayerPose(player: THREE.Group): void {
  * on a faster one, and the head look is two detuned sines — overlapping periods
  * are what stop a procedural idle reading as a metronome.
  */
-export function animatePlayerIdle(player: THREE.Group, t: number): void {
+export function animatePlayerIdle(player: THREE.Group, t: number, ready = false): void {
   if (isToolVisible(player, 'tool_sword')) {
-    animateSwordGuard(player, t);
+    if (ready) animateSwordGuard(player, t);
+    else animateSwordCarry(player, t);
     return;
   }
 
   const breath = Math.sin(t * 1.35) * 0.018;
-  const shift = Math.sin(t * 0.55) * 0.032;
-  const drift = Math.sin(t * 0.37 + 1.1) * 0.024;
+  const shift = Math.sin(t * 0.55) * 0.018;
+  const drift = Math.sin(t * 0.37 + 1.1) * 0.012;
   const look = Math.sin(t * 0.28) * 0.08 + Math.sin(t * 0.11) * 0.04;
   const hips = get(player, 'playerHips');
   const torso = get(player, 'playerTorso');
-  const tool = get(player, 'toolRoot');
 
   if (hips) {
-    hips.rotation.y = shift * 0.18;
-    hips.rotation.z = shift * 0.22;
-    hips.position.x = shift * 0.22;
+    hips.rotation.set(0, shift * 0.12, shift * 0.1);
+    hips.position.set(shift * 0.08, 0, 0);
   }
   if (torso) {
-    torso.rotation.x = 0.02 + breath * 0.7;
-    torso.rotation.y = shift * 0.22;
-    torso.rotation.z = shift * 0.1 - drift * 0.1;
-    torso.position.x = shift * 0.14;
-    torso.scale.set(1 + breath * 0.01, 1 + breath * 0.016, 1 + breath * 0.008);
+    torso.rotation.set(0.015 + breath * 0.55, shift * 0.1, shift * 0.04 - drift * 0.06);
+    torso.position.x = 0;
+    torso.position.z = 0;
+    torso.scale.set(1 + breath * 0.008, 1 + breath * 0.014, 1 + breath * 0.006);
   }
-  rot(get(player, 'playerHead'), -0.05 + breath * 0.32, look, -shift * 0.08);
-  rot(get(player, 'clavL'), 0.02, 0, -0.02 + shift * 0.015);
-  rot(get(player, 'clavR'), 0.02, 0, 0.02 - shift * 0.015);
-  // Spear hand: the shaft is rigid in the fist, so all the life comes from the
-  // shoulder and the wrist letting the pole rock a little.
-  rot(get(player, 'armL'), 0.12 + breath * 0.08, 0.03, -0.05 + drift * 0.2);
-  rot(get(player, 'forearmL'), -0.26 - drift * 0.3, 0.04, 0.02);
-  rot(get(player, 'handL'), 0.04 + drift * 0.4, 0.06, -0.06 - drift * 0.5);
-  rot(get(player, 'armR'), 0.1 - breath * 0.08, -0.03, 0.05 - drift * 0.12);
-  rot(get(player, 'forearmR'), -0.2 + drift * 0.18, -0.04, 0);
-  rot(get(player, 'handR'), 0.06, -0.05, -0.05);
-  rot(get(player, 'legL'), 0.06 + shift * 0.1, 0, 0.035);
-  rot(get(player, 'legR'), -0.04 - shift * 0.08, 0, -0.035);
-  rot(get(player, 'shinL'), knee(0.16 + Math.max(0, shift) * 0.12), 0, 0);
-  rot(get(player, 'shinR'), knee(0.2 + Math.max(0, -shift) * 0.1), 0, 0);
-  rot(get(player, 'footL'), 0.04, 0, 0);
-  rot(get(player, 'footR'), 0.06, 0, 0);
-  setHandGrip(get(player, 'handL'), 0.86 + drift * 0.6);
-  setHandGrip(get(player, 'handR'), 0.34 + breath * 2);
-  if (tool && tool.visible) poseEquippedTool(player);
-  setLocomotionY(player, breath * 0.025);
+  rot(get(player, 'playerHead'), -0.04 + breath * 0.28, look, -shift * 0.06);
+  rot(get(player, 'clavL'), 0.02, 0, -0.02);
+  rot(get(player, 'clavR'), 0.02, 0, 0.02);
+  // Arms hang, they do not stay cocked as if mid-stride.
+  rot(get(player, 'armL'), 0.06 + breath * 0.05, 0.02, -0.04 + drift * 0.08);
+  rot(get(player, 'forearmL'), -0.12 + drift * 0.06, 0.02, 0);
+  rot(get(player, 'handL'), 0.04, 0.04, 0.02);
+  rot(get(player, 'armR'), 0.06 - breath * 0.05, -0.02, 0.04 - drift * 0.08);
+  rot(get(player, 'forearmR'), -0.12 - drift * 0.06, -0.02, 0);
+  rot(get(player, 'handR'), 0.04, -0.04, -0.02);
+  rot(get(player, 'legL'), 0.02 + shift * 0.04, 0, 0.02);
+  rot(get(player, 'legR'), -0.01 - shift * 0.04, 0, -0.02);
+  rot(get(player, 'shinL'), knee(0.06 + Math.max(0, shift) * 0.04), 0, 0);
+  rot(get(player, 'shinR'), knee(0.08 + Math.max(0, -shift) * 0.04), 0, 0);
+  rot(get(player, 'footL'), 0.02, 0, 0);
+  rot(get(player, 'footR'), 0.03, 0, 0);
+  setHandGrip(get(player, 'handL'), 0.2);
+  setHandGrip(get(player, 'handR'), 0.2);
+  setLocomotionY(player, breath * 0.02);
 }
 
 /**
@@ -267,6 +263,48 @@ const SWORD_GUARD: BodyPose = {
   gripL: 0.3,
   lift: 0.02,
 };
+
+/**
+ * Overworld sword idle. A lowered carry — blade along the right hip — so the
+ * hunter does not stand in a combat crouch just because a weapon is equipped.
+ */
+function animateSwordCarry(player: THREE.Group, t: number): void {
+  const breath = Math.sin(t * 1.35) * 0.016;
+  const sway = Math.sin(t * 0.48) * 0.012;
+  const hips = get(player, 'playerHips');
+  const torso = get(player, 'playerTorso');
+  if (hips) {
+    hips.rotation.set(0.01, -0.06 + sway, 0.02);
+    hips.position.set(0.015, 0, 0);
+  }
+  if (torso) {
+    torso.rotation.set(0.04 + breath * 0.45, -0.1 + sway * 0.4, 0.02);
+    torso.position.x = 0;
+    torso.position.z = 0;
+    torso.scale.set(1 + breath * 0.006, 1 + breath * 0.01, 1);
+  }
+  rot(get(player, 'playerHead'), -0.02 + breath * 0.2, 0.1, -0.02);
+  rot(get(player, 'clavL'), 0.02, 0.04, 0.04);
+  rot(get(player, 'clavR'), 0.06, -0.06, -0.06);
+  rot(get(player, 'armL'), 0.08 + breath * 0.05, 0.06, 0.08);
+  rot(get(player, 'forearmL'), -0.18, 0.06, 0.04);
+  rot(get(player, 'handL'), 0.06, 0.04, 0.04);
+  // Right arm hangs with the elbow slightly bent; wrist pronation keeps the
+  // welded blade along the hip instead of sticking out sideways.
+  rot(get(player, 'armR'), 0.18 + sway * 0.4, 0.1, -0.28);
+  rot(get(player, 'forearmR'), -0.55 - breath * 0.3, -0.08, 0.04);
+  rot(get(player, 'handR'), 0.22, -1.15, -0.28);
+  rot(get(player, 'legL'), -0.04, 0.03, 0.03);
+  rot(get(player, 'legR'), 0.03, -0.02, -0.03);
+  rot(get(player, 'shinL'), knee(0.1), 0, 0);
+  rot(get(player, 'shinR'), knee(0.08), 0, 0);
+  rot(get(player, 'footL'), 0.03, 0.04, 0);
+  rot(get(player, 'footR'), 0.02, -0.03, 0);
+  setHandGrip(get(player, 'handR'), 0.96);
+  setHandGrip(get(player, 'handL'), 0.22);
+  poseEquippedTool(player);
+  setLocomotionY(player, breath * 0.018);
+}
 
 /** One-handed guard with breathing and a slow settle on the blade. */
 function animateSwordGuard(player: THREE.Group, t: number): void {
@@ -327,7 +365,6 @@ export function animatePlayerWalk(
   const phase = t * freq;
   const stride = mix(0.3, 0.72, gait) * blend;
   const sword = isToolVisible(player, 'tool_sword');
-  const spearHeld = !!get(player, 'idleSpear')?.visible && !sword;
 
   const hipL = Math.sin(phase);
   const hipR = Math.sin(phase + Math.PI);
@@ -387,28 +424,16 @@ export function animatePlayerWalk(
   rot(get(player, 'clavR'), -hipR * shoulderTwist * blend, 0, 0.04);
 
   if (sword) {
-    // Blade stays in guard while moving; only the off arm swings.
-    const bounce = Math.max(0, hipR) * mix(0.12, 0.3, run);
-    rot(get(player, 'armL'), -hipL * mix(0.5, 0.95, run) * blend + 0.2, 0.12, -0.1);
-    rot(get(player, 'forearmL'), mix(-0.55, -1.3, run) - Math.max(0, hipL) * 0.24, 0.1, 0.04);
-    rot(get(player, 'handL'), 0.1, 0.06, 0.08);
-    rot(get(player, 'armR'), 0.5 + bounce * 0.4, -0.26, 0.12);
-    rot(get(player, 'forearmR'), -1.4 - bounce, 0.18, 0.08);
-    rot(get(player, 'handR'), 0.08 + bounce * 0.3, -1.46, 0.18);
-    setHandGrip(get(player, 'handR'), 0.97);
-    setHandGrip(get(player, 'handL'), 0.3);
-  } else if (spearHeld) {
-    // Spear rides on the shoulder line; the shaft is rigid in the left fist so
-    // the bob comes from the shoulder, not from sliding the weapon.
-    const carry = Math.max(0, hipL) * mix(0.1, 0.26, run);
-    rot(get(player, 'armL'), 0.14 - hipL * 0.1 * blend - run * 0.12, 0.06, -0.06);
-    rot(get(player, 'forearmL'), mix(-0.24, -0.7, run) - carry, 0.04, 0.02);
-    rot(get(player, 'handL'), 0.04 + carry * 0.4, 0.06, -0.06);
-    rot(get(player, 'armR'), -hipR * mix(0.62, 1.15, run) * stride * 1.5 + 0.1, -0.05, 0.06);
-    rot(get(player, 'forearmR'), mix(-0.34, -1.42, run) - Math.max(0, hipR) * mix(0.45, 0.2, run), -0.04, 0);
-    rot(get(player, 'handR'), -hipR * 0.12, 0, -0.04);
-    setHandGrip(get(player, 'handL'), 0.9);
-    setHandGrip(get(player, 'handR'), mix(0.3, 0.8, run));
+    // Blade stays in a lowered carry while moving; only the off arm swings.
+    const bounce = Math.max(0, hipR) * mix(0.08, 0.22, run);
+    rot(get(player, 'armL'), -hipL * mix(0.55, 1.05, run) * blend + 0.1, 0.06, -0.06);
+    rot(get(player, 'forearmL'), mix(-0.28, -1.35, run) - Math.max(0, hipL) * 0.2, 0.04, 0);
+    rot(get(player, 'handL'), 0.06, 0.04, 0.04);
+    rot(get(player, 'armR'), 0.22 + bounce * 0.35, 0.08, -0.22);
+    rot(get(player, 'forearmR'), -0.62 - bounce * 0.4, -0.06, 0.04);
+    rot(get(player, 'handR'), 0.18 + bounce * 0.2, -1.18, -0.26);
+    setHandGrip(get(player, 'handR'), 0.96);
+    setHandGrip(get(player, 'handL'), 0.22);
   } else {
     // Free arms: long and pendular at a walk, folded and pumping at a run.
     const swing = mix(0.72, 1.35, run) * stride * 1.35;

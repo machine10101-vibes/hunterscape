@@ -39,7 +39,13 @@ function addOutline(target: THREE.Mesh, scale = 1.08, color = 0x0a1208): void {
   target.add(outline);
 }
 
-export { createPlayerMesh, setPlayerTool } from './player';
+export {
+  createHatchetTool,
+  createPickaxeTool,
+  createPlayerMesh,
+  createSwordTool,
+  setPlayerTool,
+} from './player';
 
 
 export function createTree(seed = 0): THREE.Group {

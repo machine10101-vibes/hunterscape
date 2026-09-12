@@ -54,6 +54,7 @@ import { loadSave, writeSave } from './Persistence';
 import {
   ITEM_META,
   levelFromXp,
+  type EquipSlot,
   type SaveData,
   type SkillId,
 } from './types';
@@ -208,6 +209,7 @@ export class Game {
     this.setupReflectionEnv();
     this.studio = new ModelStudio(canvas);
     this.studio.setEnvironment(this.scene.environment);
+    this.hud.setEnvironment(this.scene.environment);
     this.scene.add(createSkyDome(70));
     this.ground = createGround(48);
     this.scene.add(this.ground);
@@ -217,6 +219,8 @@ export class Game {
     this.player = createPlayerMesh();
     this.player.position.set(this.save.x, groundHeight(this.save.x, this.save.z), this.save.z);
     this.scene.add(this.player);
+    this.syncHeldTool();
+    animatePlayerIdle(this.player, 0);
 
     const app = document.getElementById('app') ?? document.body;
     this.vfx = new VFX(this.scene, this.camera, app);
@@ -238,12 +242,14 @@ export class Game {
     this.bindInput(canvas);
     this.hud.onAction = (a) => this.handleAction(a);
     this.hud.onInventoryClick = (i) => this.handleInvClick(i);
+    this.hud.onGearSlotClick = (slot) => this.unequipSlot(slot);
 
     this.refreshUI();
     this.hud.chat('Welcome to Thornrest Camp in the Whisperwood.', 'system');
     this.hud.chat('Tap the ground to walk. Chop trees, mine rocks, or spar with the training dummy.', 'system');
     this.hud.chat('A Frost Yeti stalks the north-east clearing — keep your distance until you are ready.', 'combat');
     this.hud.chat('An Orc Scout prowls the south-west trail — spear ready, leather and tooth to loot.', 'combat');
+    this.hud.chat('Open Gear (C) to inspect your hero and equip or unequip items.', 'system');
     this.hud.chat('Your progress is saved in this browser.', 'system');
 
     window.addEventListener('resize', () => this.onResize());
@@ -571,6 +577,9 @@ export class Game {
         const panel = document.getElementById('skills-panel');
         if (panel) panel.hidden = !panel.hidden;
       }
+      if (e.key.toLowerCase() === 'c') {
+        this.hud.setGearOpen(!this.hud.isGearOpen());
+      }
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.key.toLowerCase()));
   }
@@ -639,16 +648,28 @@ export class Game {
       return;
     }
     if (obj.kind === 'tree') {
-      if (!this.hasItem('bronze_hatchet') && !this.save.equipped.hatchet) {
-        this.hud.chat('You need a hatchet to chop trees.', 'system');
+      if (!this.save.equipped.hatchet) {
+        this.hud.chat(
+          this.hasItem('bronze_hatchet')
+            ? 'Equip your hatchet from the Gear window first.'
+            : 'You need a hatchet to chop trees.',
+          'system',
+        );
+        if (this.hasItem('bronze_hatchet')) this.hud.setGearOpen(true);
         return;
       }
       this.approachThenGather(obj, 2.4, 'Chopping Whisperwood…');
       return;
     }
     if (obj.kind === 'rock') {
-      if (!this.hasItem('bronze_pickaxe') && !this.save.equipped.pickaxe) {
-        this.hud.chat('You need a pickaxe to mine rocks.', 'system');
+      if (!this.save.equipped.pickaxe) {
+        this.hud.chat(
+          this.hasItem('bronze_pickaxe')
+            ? 'Equip your pickaxe from the Gear window first.'
+            : 'You need a pickaxe to mine rocks.',
+          'system',
+        );
+        if (this.hasItem('bronze_pickaxe')) this.hud.setGearOpen(true);
         return;
       }
       this.approachThenGather(obj, 2.6, `Mining ${obj.meta?.ore === 'tin' ? 'tin' : 'copper'}…`);
@@ -674,6 +695,11 @@ export class Game {
   }
 
   private beginCombat(obj: WorldObject, chat: string): void {
+    if (!this.save.equipped.weapon) {
+      this.hud.chat('Equip a weapon from the Gear window first.', 'system');
+      this.hud.setGearOpen(true);
+      return;
+    }
     this.hud.chat(chat, 'combat');
     this.pendingGather = null;
     this.pendingCombat = false;
@@ -696,6 +722,11 @@ export class Game {
 
   /** Walk into soft range before locking into combat (avoids instant out-of-range cancel). */
   private approachThenCombat(obj: WorldObject, chat: string): void {
+    if (!this.save.equipped.weapon) {
+      this.hud.chat('Equip a weapon from the Gear window first.', 'system');
+      this.hud.setGearOpen(true);
+      return;
+    }
     const range = this.monsterAttackRange(obj);
     const dist = this.distTo(obj);
     if (dist > range * 0.92) {
@@ -749,7 +780,7 @@ export class Game {
     x = Math.max(-lim, Math.min(lim, x));
     z = Math.max(-lim, Math.min(lim, z));
     this.activity = { type: 'move', tx: x, tz: z };
-    setPlayerTool(this.player, null);
+    this.syncHeldTool();
     this.moveMarker.position.set(x, groundHeight(x, z) + 0.06, z);
     this.moveMarker.visible = true;
     this.hud.hideProgress();
@@ -759,6 +790,11 @@ export class Game {
   private handleAction(action: string): void {
     switch (action) {
       case 'attack': {
+        if (!this.save.equipped.weapon) {
+          this.hud.chat('Equip a weapon from the Gear window first.', 'system');
+          this.hud.setGearOpen(true);
+          return;
+        }
         const target = this.nearestCombatTarget();
         if (!target) {
           this.hud.chat('No enemies nearby to attack.', 'system');
@@ -865,8 +901,66 @@ export class Game {
     const item = this.save.inventory[index];
     if (!item) return;
     const meta = ITEM_META[item.id];
+    if (meta?.slot) {
+      this.equipFromInventory(index);
+      return;
+    }
     this.hud.chat(`${meta?.name ?? item.id}${item.qty > 1 ? ` ×${item.qty}` : ''}`, 'system');
     if (item.id === 'camp_rations') this.eatFood();
+  }
+
+  private heldTool(): 'hatchet' | 'pickaxe' | 'sword' | null {
+    if (this.activity.type === 'combat' || this.combatAbortT > 0) {
+      return this.save.equipped.weapon ? 'sword' : null;
+    }
+    if (this.activity.type === 'gather') {
+      const kind = this.activity.target.kind;
+      if (kind === 'tree') return this.save.equipped.hatchet ? 'hatchet' : null;
+      if (kind === 'rock') return this.save.equipped.pickaxe ? 'pickaxe' : null;
+    }
+    return this.save.equipped.weapon ? 'sword' : null;
+  }
+
+  private syncHeldTool(): void {
+    setPlayerTool(this.player, this.heldTool());
+  }
+
+  private equipFromInventory(index: number): void {
+    const item = this.save.inventory[index];
+    if (!item) return;
+    const meta = ITEM_META[item.id];
+    if (!meta?.slot) return;
+    const prev = this.save.equipped[meta.slot];
+    this.save.inventory.splice(index, 1);
+    if (prev) this.addItem(prev, 1);
+    this.save.equipped[meta.slot] = item.id;
+    this.syncHeldTool();
+    this.hud.setGearOpen(true);
+    this.hud.chat(`You equip the ${meta.name}.`, 'system');
+    this.refreshUI();
+    this.hud.setEquipment(this.save, `Equipped ${meta.name}`);
+    this.hud.showSlotPreview(meta.slot, this.save);
+    this.persist();
+  }
+
+  private unequipSlot(slot: EquipSlot): void {
+    const id = this.save.equipped[slot];
+    if (!id) {
+      this.hud.inspectGear(`${slot[0].toUpperCase()}${slot.slice(1)} slot is empty`);
+      return;
+    }
+    if (this.save.inventory.length >= 28) {
+      this.hud.chat('Inventory full — cannot unequip.', 'system');
+      return;
+    }
+    this.save.equipped[slot] = null;
+    this.addItem(id, 1);
+    this.syncHeldTool();
+    const meta = ITEM_META[id];
+    this.hud.setEquipment(this.save, `Unequipped ${meta?.name ?? id}`);
+    this.hud.chat(`You unequip the ${meta?.name ?? id}.`, 'system');
+    this.refreshUI();
+    this.persist();
   }
 
   private distTo(o: WorldObject): number {
@@ -1113,6 +1207,8 @@ export class Game {
       }
     }
 
+    this.syncHeldTool();
+
     if (this.activity.type === 'move') {
       const { tx, tz } = this.activity;
       const dx = tx - this.player.position.x;
@@ -1173,12 +1269,12 @@ export class Game {
       const act = this.activity;
       if (act.target.depleted) {
         this.activity = { type: 'idle' };
-        setPlayerTool(this.player, null);
+        this.syncHeldTool();
         resetPlayerPose(this.player);
         this.hud.hideProgress();
       } else if (this.distTo(act.target) > GATHER_RANGE + 0.35) {
         this.activity = { type: 'idle' };
-        setPlayerTool(this.player, null);
+        this.syncHeldTool();
         resetPlayerPose(this.player);
         this.hud.hideProgress();
         this.hud.chat('You move too far away.', 'system');
@@ -1199,7 +1295,7 @@ export class Game {
         if (act.elapsed >= act.duration) {
           this.completeGather(act.target);
           this.activity = { type: 'idle' };
-          setPlayerTool(this.player, null);
+          this.syncHeldTool();
           resetPlayerPose(this.player);
           this.hud.hideProgress();
         }
@@ -1210,7 +1306,7 @@ export class Game {
       this.hud.showTarget(this.combatName(target), Math.max(0, target.hp) / target.maxHp);
       if (target.hp <= 0 || target.depleted) {
         this.activity = { type: 'idle' };
-        setPlayerTool(this.player, null);
+        this.syncHeldTool();
         resetPlayerPose(this.player);
         this.hud.hideTarget();
         this.combatCamPull = 0;
@@ -1300,7 +1396,7 @@ export class Game {
           } else {
             act.cooldown -= dt;
             // Idle combat stance breath while waiting
-            animatePlayerIdle(this.player, this.animTime);
+            animatePlayerIdle(this.player, this.animTime, true);
             if (act.cooldown <= 0 && this.distTo(target) <= softLeash + 0.2) {
               act.swingT = 0.001;
               act.swingDur = PLAYER_ATTACK_DURATION;
@@ -1312,7 +1408,7 @@ export class Game {
         }
       }
     } else {
-      setPlayerTool(this.player, null);
+      this.syncHeldTool();
       // Residual foot plants after stop, then idle breath
       if (this.stoppingSteps > 0) {
         this.stoppingSteps -= dt;
@@ -1338,7 +1434,7 @@ export class Game {
       // Ease out of swing pose instead of snapping
       animatePlayerIdle(this.player, this.animTime);
       if (this.combatAbortT <= 0) {
-        setPlayerTool(this.player, null);
+        this.syncHeldTool();
         resetPlayerPose(this.player);
       }
     }
@@ -1455,7 +1551,7 @@ export class Game {
     this.hud.chat('The training dummy collapses! It will be repaired shortly.', 'combat');
     this.grantXp('defence', 15);
     this.activity = { type: 'idle' };
-    setPlayerTool(this.player, null);
+    this.syncHeldTool();
     resetPlayerPose(this.player);
     this.hud.hideTarget();
     this.combatCamPull = 0;
@@ -1485,7 +1581,7 @@ export class Game {
       }
     }
     this.activity = { type: 'idle' };
-    setPlayerTool(this.player, null);
+    this.syncHeldTool();
     this.hud.hideTarget();
     this.refreshUI();
     this.persist();
@@ -1516,7 +1612,7 @@ export class Game {
       }
     }
     this.activity = { type: 'idle' };
-    setPlayerTool(this.player, null);
+    this.syncHeldTool();
     this.hud.hideTarget();
     this.refreshUI();
     this.persist();
@@ -1600,7 +1696,7 @@ export class Game {
       yeti.mesh.position.z += (YETI_HOME.z - yeti.mesh.position.z) * Math.min(1, dt * 0.9);
       if (this.activity.type === 'combat' && this.activity.target === yeti) {
         this.activity = { type: 'idle' };
-        setPlayerTool(this.player, null);
+        this.syncHeldTool();
         resetPlayerPose(this.player);
         this.hud.hideTarget();
       }
@@ -1671,7 +1767,7 @@ export class Game {
       this.player.position.set(0, 0, 2);
       this.yetiAggroed = false;
       this.activity = { type: 'idle' };
-      setPlayerTool(this.player, null);
+      this.syncHeldTool();
       this.hud.hideTarget();
       this.hud.chat('You fall! You wake by the Thornrest campfire, battered but alive.', 'combat');
       yeti.mesh.position.set(YETI_HOME.x, 0, YETI_HOME.z);
@@ -1744,7 +1840,7 @@ export class Game {
       orc.mesh.position.z += (ORC_HOME.z - orc.mesh.position.z) * Math.min(1, dt * 1.1);
       if (this.activity.type === 'combat' && this.activity.target === orc) {
         this.activity = { type: 'idle' };
-        setPlayerTool(this.player, null);
+        this.syncHeldTool();
         resetPlayerPose(this.player);
         this.hud.hideTarget();
       }
@@ -1814,7 +1910,7 @@ export class Game {
       this.orcAggroed = false;
       this.yetiAggroed = false;
       this.activity = { type: 'idle' };
-      setPlayerTool(this.player, null);
+      this.syncHeldTool();
       this.hud.hideTarget();
       this.hud.chat('You fall! You wake by the Thornrest campfire, battered but alive.', 'combat');
       orc.mesh.position.set(ORC_HOME.x, 0, ORC_HOME.z);
@@ -1948,6 +2044,7 @@ export class Game {
 
   private refreshUI(): void {
     this.hud.setInventory(this.save.inventory);
+    this.hud.setEquipment(this.save);
     this.hud.setSkills(this.save);
     this.hud.setOrbs(this.save.hp, this.save.maxHp, this.save.focus, this.save.stamina);
   }

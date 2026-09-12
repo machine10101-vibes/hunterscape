@@ -474,8 +474,6 @@ export function createPlayerMesh(): THREE.Group {
     emissiveIntensity: 0.38,
     envMapIntensity: 1.55,
   });
-  const wood = mat(0x6a4824, { roughness: 0.72, clearcoat: 0.12, clearcoatRoughness: 0.6, envMapIntensity: 0.4 });
-
   const shadow = new THREE.Mesh(
     new THREE.CircleGeometry(0.38, 24),
     new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.38, depthWrite: false }),
@@ -710,7 +708,9 @@ export function createPlayerMesh(): THREE.Group {
     wristFur.position.set(0, -0.22, 0.01);
     forearm.add(wristFur);
 
-    const hand = makeHand(skin, leather, leatherDark, side < 0 ? 'pole' : 'fist');
+    // Both hands start open. Pole tilt used to be baked into the left grip so
+    // the hunter always looked like he was carrying a spear, even empty-handed.
+    const hand = makeHand(skin, leather, leatherDark, 'open');
     hand.name = side < 0 ? 'handL' : 'handR';
     hand.position.set(0, -0.28, 0.02);
     forearm.add(hand);
@@ -883,16 +883,6 @@ export function createPlayerMesh(): THREE.Group {
   head.add(fringe);
   torso.add(head);
 
-  const idleSpear = createIdleSpear(wood, leatherDark, metal);
-  idleSpear.name = 'idleSpear';
-  const armL = torso.getObjectByName('armL') as THREE.Group;
-  const handL = armL.getObjectByName('handL') as THREE.Group;
-  const gripL = handL.getObjectByName('grip') as THREE.Group;
-  // Shaft runs along the grip's +X, offset so the leather wrap sits in the fist.
-  idleSpear.position.set(GRIP_POINT.x - 0.16, GRIP_POINT.y, GRIP_POINT.z);
-  idleSpear.rotation.set(0, 0, -Math.PI / 2);
-  gripL.add(idleSpear);
-
   const toolRoot = new THREE.Group();
   toolRoot.name = 'toolRoot';
   toolRoot.visible = false;
@@ -916,56 +906,6 @@ export function createPlayerMesh(): THREE.Group {
   toolRoot.add(sword);
 
   return g;
-}
-
-function createIdleSpear(
-  wood: THREE.MeshPhysicalMaterial,
-  leatherDark: THREE.MeshPhysicalMaterial,
-  metal: THREE.MeshPhysicalMaterial,
-): THREE.Group {
-  const idleSpear = new THREE.Group();
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.026, 1.92, 6), wood);
-  shaft.position.y = 0.58;
-  shaft.castShadow = true;
-  idleSpear.add(shaft);
-  const wrap = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.03, 0.14, 6), leatherDark);
-  wrap.position.y = 0.16;
-  idleSpear.add(wrap);
-  const binding = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.032, 0.08, 6), leatherDark);
-  binding.position.y = 1.38;
-  idleSpear.add(binding);
-  const tipCore = new THREE.Mesh(new THREE.OctahedronGeometry(0.12, 0), metal);
-  tipCore.scale.set(0.38, 1.85, 0.26);
-  tipCore.position.y = 1.64;
-  tipCore.castShadow = true;
-  idleSpear.add(tipCore);
-  const ridge = new THREE.Mesh(
-    new THREE.BoxGeometry(0.016, 0.34, 0.08),
-    mat(0xf2f6fa, { metalness: 0.94, roughness: 0.12, clearcoat: 0.45 }),
-  );
-  ridge.position.y = 1.64;
-  idleSpear.add(ridge);
-  const tipCollar = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.032, 0.08, 6), metal);
-  tipCollar.position.y = 1.42;
-  idleSpear.add(tipCollar);
-  for (const sx of [-1, 1]) {
-    const barb = new THREE.Mesh(new THREE.ConeGeometry(0.036, 0.14, 4), metal);
-    barb.position.set(sx * 0.055, 1.52, 0);
-    barb.rotation.z = sx * 1.12;
-    idleSpear.add(barb);
-  }
-  const tipEdge = new THREE.Mesh(
-    new THREE.ConeGeometry(0.048, 0.18, 4),
-    mat(0xf4f8fc, { metalness: 0.9, roughness: 0.12, clearcoat: 0.5 }),
-  );
-  tipEdge.name = 'spearTip';
-  tipEdge.position.y = 1.86;
-  idleSpear.add(tipEdge);
-  const butt = new THREE.Mesh(new THREE.ConeGeometry(0.026, 0.1, 4), metal);
-  butt.rotation.x = Math.PI;
-  butt.position.y = -0.42;
-  idleSpear.add(butt);
-  return idleSpear;
 }
 
 /** Steel that reads as a forged edge rather than a flat grey slab. */
@@ -1007,7 +947,7 @@ function makeHaft(len: number, topR: number, buttR: number): THREE.Group {
   return g;
 }
 
-function createHatchetTool(): THREE.Group {
+export function createHatchetTool(): THREE.Group {
   const g = new THREE.Group();
   // Origin sits a thumb's width up the haft, where the fist actually closes.
   const haft = makeHaft(0.46, 0.021, 0.03);
@@ -1075,7 +1015,7 @@ function createHatchetTool(): THREE.Group {
   return g;
 }
 
-function createPickaxeTool(): THREE.Group {
+export function createPickaxeTool(): THREE.Group {
   const g = new THREE.Group();
   const haft = makeHaft(0.52, 0.021, 0.03);
   haft.position.y = -0.07;
@@ -1124,7 +1064,7 @@ function createPickaxeTool(): THREE.Group {
   return g;
 }
 
-function createSwordTool(): THREE.Group {
+export function createSwordTool(): THREE.Group {
   const g = new THREE.Group();
   const gold = mat(0xd8b458, { metalness: 0.78, roughness: 0.26, clearcoat: 0.4, envMapIntensity: 1.2 });
 
@@ -1232,7 +1172,5 @@ export function setPlayerTool(player: THREE.Group, tool: 'hatchet' | 'pickaxe' |
     const t = root.getObjectByName(name);
     if (t) t.visible = name === `tool_${tool}`;
   }
-  const spear = player.getObjectByName('idleSpear');
-  if (spear) spear.visible = tool === null;
   poseToolRoot(root, tool);
 }
