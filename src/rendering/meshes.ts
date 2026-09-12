@@ -1245,11 +1245,11 @@ export function createOrcScout(): THREE.Group {
   addPart(torso, g, 1.07);
   torso.name = 'orcBody';
 
-  // Two pec plates so the vest is a chest, not a single crate strapped on.
+  // Wide, flat pec plates — keep them low and broad so they do not read as a bust.
   for (const sx of [-1, 1]) {
-    const pec = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), leatherMid);
-    pec.scale.set(1.15, 0.85, 0.55);
-    pec.position.set(sx * 0.12, 1.24, 0.18);
+    const pec = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10), leatherMid);
+    pec.scale.set(1.25, 0.52, 0.48);
+    pec.position.set(sx * 0.13, 1.26, 0.17);
     addPart(pec, g);
   }
   const sternum = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.22, 0.04), leatherDark);
@@ -1377,6 +1377,7 @@ export function createOrcScout(): THREE.Group {
     addFurBand(forearm, side * 0.0, 0.02, 0.01, 0.094, 0.017, 0);
 
     const hand = new THREE.Group();
+    hand.name = side < 0 ? 'orcHandL' : 'orcHandR';
     hand.position.set(side * 0.06, -0.28, 0.02);
     const palm = new THREE.Mesh(new THREE.SphereGeometry(0.062, 10, 8), skin);
     palm.scale.set(0.85, 1, 0.95);
@@ -1483,8 +1484,9 @@ export function createOrcScout(): THREE.Group {
   }
 
   // War paint: a dark bar across the eyes and a red slash on the cheek.
-  const warBar = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.028, 0.02), paint);
-  warBar.position.set(0, 0.028, 0.168);
+  // Paint sits on the brow ridge, not over the pupils.
+  const warBar = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.022, 0.016), paint);
+  warBar.position.set(0, 0.078, 0.162);
   head.add(warBar);
   const scar = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.09, 0.012), paintRed);
   scar.position.set(-0.055, 0.01, 0.175);
@@ -1568,10 +1570,10 @@ export function createOrcScout(): THREE.Group {
   const spear = new THREE.Group();
   spear.name = 'orcSpear';
   // Seated in the closed fist: the shaft runs up through the curled fingers.
-  // Fist sits on the forearm chain at about (0.14, -0.48, 0.03) from the shoulder.
-  spear.position.set(0.15, -0.5, 0.07);
-  spear.rotation.set(0.16, 0, 0.06);
-  spear.userData.rest = { x: 0.15, y: -0.5, z: 0.07, rx: 0.16, ry: 0, rz: 0.06 };
+  // Welded into the right fist so forearm fold cannot leave the shaft floating.
+  spear.position.set(0.01, -0.045, 0.05);
+  spear.rotation.set(0.18, 0.04, 0.1);
+  spear.userData.rest = { x: 0.01, y: -0.045, z: 0.05, rx: 0.18, ry: 0.04, rz: 0.1 };
   const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.03, 2.05, 6), wood);
   shaft.position.y = 1.05;
   addPart(shaft, spear);
@@ -1607,7 +1609,8 @@ export function createOrcScout(): THREE.Group {
   butt.rotation.x = Math.PI;
   butt.position.y = 0.02;
   spear.add(butt);
-  armR.add(spear);
+  const handR = armR.getObjectByName('orcHandR');
+  (handR ?? armR).add(spear);
 
   // Hit volume
   const hit = new THREE.Mesh(

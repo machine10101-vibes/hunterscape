@@ -54,12 +54,17 @@ const SETS = {
   monsters: [
     { name: 'yeti-idle', o: { model: 'yeti', pose: 'idle', t: 1.0, az: 0.6, dist: 6.5, look: 1.6 } },
     { name: 'yeti-walk', o: { model: 'yeti', pose: 'walk', t: 0.5, az: 0.6, dist: 6.5, look: 1.6 } },
+    { name: 'yeti-walk-b', o: { model: 'yeti', pose: 'walk', t: 1.05, az: 1.4, dist: 6.5, look: 1.6 } },
+    { name: 'yeti-coil', o: { model: 'yeti', pose: 'attack', t: 0.32, az: 0.6, dist: 6.5, look: 1.6 } },
     { name: 'yeti-attack', o: { model: 'yeti', pose: 'attack', t: 0.55, az: 0.6, dist: 6.5, look: 1.6 } },
     { name: 'yeti-face', o: { model: 'yeti', pose: 'idle', t: 1.0, az: 0.3, dist: 2.2, look: 2.3, fov: 34 } },
     { name: 'orc-idle', o: { model: 'orc', pose: 'idle', t: 1.0, az: 0.6, dist: 5.0, look: 1.2 } },
     { name: 'orc-walk', o: { model: 'orc', pose: 'walk', t: 0.5, az: 0.6, dist: 5.0, look: 1.2 } },
-    { name: 'orc-attack', o: { model: 'orc', pose: 'attack', t: 0.5, az: 0.6, dist: 5.0, look: 1.2 } },
+    { name: 'orc-walk-b', o: { model: 'orc', pose: 'walk', t: 0.85, az: 1.4, dist: 5.0, look: 1.2 } },
+    { name: 'orc-coil', o: { model: 'orc', pose: 'attack', t: 0.3, az: 0.6, dist: 5.0, look: 1.2 } },
+    { name: 'orc-attack', o: { model: 'orc', pose: 'attack', t: 0.52, az: 0.6, dist: 5.0, look: 1.2 } },
     { name: 'orc-face', o: { model: 'orc', pose: 'idle', t: 1.0, az: 0.3, dist: 1.8, look: 1.75, fov: 34 } },
+    { name: 'orc-grip', o: { model: 'orc', pose: 'idle', t: 1.0, az: 1.2, dist: 1.4, look: 1.15, fov: 32 } },
   ],
 };
 
