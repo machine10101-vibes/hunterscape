@@ -22,13 +22,13 @@ type SpearRest = { x: number; y: number; z: number; rx: number; ry: number; rz: 
 /** Keep a hand-parented spear on its authored rest pose, plus a local offset. */
 function applySpearHeld(
   spear: THREE.Object3D | undefined,
-  extra: { x?: number; y?: number; z?: number; rx?: number } = {},
+  extra: { x?: number; y?: number; z?: number; rx?: number; ry?: number } = {},
 ): void {
   if (!spear) return;
   const r = spear.userData.rest as SpearRest | undefined;
   if (!r) return;
   spear.position.set(r.x + (extra.x ?? 0), r.y + (extra.y ?? 0), r.z + (extra.z ?? 0));
-  spear.rotation.set(r.rx + (extra.rx ?? 0), r.ry, r.rz);
+  spear.rotation.set(r.rx + (extra.rx ?? 0), r.ry + (extra.ry ?? 0), r.rz);
 }
 
 function setLocomotionY(player: THREE.Group, y: number): void {
@@ -850,8 +850,6 @@ export function turnTowardYaw(current: number, target: number, rate: number, dt:
  */
 export function animateYetiAttack(yeti: THREE.Group, progress: number): void {
   const p = Math.max(0, Math.min(1, progress));
-  // Three authored poses — rest / coil / hit — so the connect frame is not
-  // the midpoint of a raise-and-drop that passes through hang.
   let coil = 0;
   let hit = 0;
   if (p < 0.42) {
@@ -864,45 +862,46 @@ export function animateYetiAttack(yeti: THREE.Group, progress: number): void {
     hit = 1 - smooth((p - 0.62) / 0.38);
   }
   const rest = 1 - coil - hit;
-  const lean = rest * 0 + coil * -0.2 + hit * 0.48;
-  const roar = coil * 0.5 + hit * 0.75;
+  const lean = rest * 0 + coil * -0.28 + hit * 0.58;
+  const roar = coil * 0.65 + hit * 0.85;
 
+  // Rest matches the hunched hang. Coil: both claws overhead. Hit: throw
+  // the arms forward of the chest (−X ≈ −1.6 is a punch, not a hang).
   rot(
     get(yeti, 'yetiArmR'),
-    rest * -0.22 + coil * -2.05 + hit * -0.95,
-    rest * 0.04 + coil * -0.4 + hit * 0.7,
-    rest * 0.28 + coil * 0.72 + hit * 0.22,
+    rest * -0.42 + coil * -2.25 + hit * -1.65,
+    rest * 0.04 + coil * -0.48 + hit * 0.42,
+    rest * 0.4 + coil * 0.85 + hit * 0.2,
   );
   rot(
     get(yeti, 'yetiArmL'),
-    rest * -0.22 + coil * -1.85 + hit * -0.8,
-    rest * -0.04 + coil * 0.32 + hit * -0.55,
-    rest * -0.28 + coil * -0.65 + hit * -0.18,
+    rest * -0.42 + coil * -2.05 + hit * -1.48,
+    rest * -0.04 + coil * 0.4 + hit * -0.38,
+    rest * -0.4 + coil * -0.78 + hit * -0.18,
   );
-  rot(get(yeti, 'yetiForearmR'), rest * -0.38 + coil * -1.15 + hit * -0.18, 0.08, 0.05);
-  rot(get(yeti, 'yetiForearmL'), rest * -0.38 + coil * -1.0 + hit * -0.16, -0.08, -0.05);
+  rot(get(yeti, 'yetiForearmR'), rest * -0.48 + coil * -1.25 + hit * -0.18, 0.1, 0.06);
+  rot(get(yeti, 'yetiForearmL'), rest * -0.48 + coil * -1.1 + hit * -0.16, -0.1, -0.06);
 
   const head = get(yeti, 'yetiHead');
   if (head) {
-    head.rotation.x = -0.15 - roar * 0.55 + hit * 0.1;
-    head.rotation.y = hit * 0.16;
-    head.rotation.z = 0;
+    head.rotation.x = -0.28 - roar * 0.45 + hit * 0.18;
+    head.rotation.y = hit * 0.2;
+    head.rotation.z = coil * 0.06;
   }
   const body = get(yeti, 'yetiBody');
   if (body) {
-    body.rotation.x = 0.2 + lean;
-    body.rotation.y = hit * 0.18 - coil * 0.08;
-    body.rotation.z = hit * 0.05;
+    body.rotation.x = 0.32 + lean;
+    body.rotation.y = hit * 0.22 - coil * 0.1;
+    body.rotation.z = hit * 0.08;
   }
 
-  // Weight shifts onto the back foot in the coil, then a stomp through the hit.
-  rot(get(yeti, 'yetiLegL'), rest * 0.04 + coil * 0.08 + hit * -0.42, 0, 0.04);
-  rot(get(yeti, 'yetiLegR'), rest * 0.04 + coil * 0.4 + hit * 0.1, 0, -0.04);
-  rot(get(yeti, 'yetiShinL'), knee(0.12 + coil * 0.16 + hit * 0.32), 0, 0);
-  rot(get(yeti, 'yetiShinR'), knee(0.14 + coil * 0.48 + hit * 0.1), 0, 0);
-  rot(get(yeti, 'yetiFootL'), coil * 0.08 + hit * -0.14, 0, 0);
-  rot(get(yeti, 'yetiFootR'), coil * 0.16 + hit * -0.06, 0, 0);
-  setLocomotionY(yeti, hit * 0.07 + coil * 0.03);
+  rot(get(yeti, 'yetiLegL'), rest * 0.06 + coil * 0.1 + hit * -0.52, 0, 0.05);
+  rot(get(yeti, 'yetiLegR'), rest * 0.06 + coil * 0.48 + hit * 0.14, 0, -0.05);
+  rot(get(yeti, 'yetiShinL'), knee(0.14 + coil * 0.18 + hit * 0.4), 0, 0);
+  rot(get(yeti, 'yetiShinR'), knee(0.16 + coil * 0.55 + hit * 0.12), 0, 0);
+  rot(get(yeti, 'yetiFootL'), coil * 0.1 + hit * -0.16, 0, 0);
+  rot(get(yeti, 'yetiFootR'), coil * 0.18 + hit * -0.06, 0, 0);
+  setLocomotionY(yeti, hit * 0.09 + coil * 0.04);
 }
 
 /**
@@ -923,29 +922,31 @@ export function animateOrcAttack(orc: THREE.Group, progress: number): void {
     hit = 1 - smooth((p - 0.58) / 0.42);
   }
   const rest = 1 - pull - hit;
-  const lean = rest * 0.04 + pull * -0.16 + hit * 0.42;
+  const lean = rest * 0.04 + pull * -0.22 + hit * 0.52;
 
-  // Tip the point into the player on the hit; do not spin the shaft sideways.
+  // Shaft is −Y of the fist. Pull lays the tip up-forward; hit zeros the
+  // extra so the point rides the punching arm at the camera.
   applySpearHeld(get(orc, 'orcSpear'), {
-    rx: pull * 0.06 + hit * 0.42,
-    z: pull * -0.04 + hit * 0.05,
+    rx: pull * -0.85 + hit * 0.48,
+    z: pull * -0.04 + hit * 0.06,
     y: pull * 0.02,
+    ry: hit * 0.02,
   });
 
   rot(
     get(orc, 'orcArmR'),
-    rest * -0.2 + pull * 0.72 + hit * -0.95,
-    rest * 0.05 + pull * 0.16 + hit * 0.08,
-    rest * 0.16 + pull * 0.22 + hit * 0.1,
+    rest * -0.32 + pull * 0.85 + hit * -1.55,
+    rest * 0.06 + pull * 0.18 + hit * 0.08,
+    rest * 0.18 + pull * 0.28 + hit * 0.1,
   );
-  rot(get(orc, 'orcForearmR'), rest * -0.32 + pull * -1.05 + hit * -0.12, -0.06, 0.04);
+  rot(get(orc, 'orcForearmR'), rest * -0.42 + pull * -1.2 + hit * -0.06, -0.08, 0.05);
   rot(
     get(orc, 'orcArmL'),
-    rest * -0.08 + pull * 0.4 + hit * -0.55,
-    rest * 0 + pull * -0.12 + hit * 0.04,
+    rest * -0.1 + pull * 0.35 + hit * -1.05,
+    rest * 0.02 + pull * -0.12 + hit * 0.42,
     rest * -0.18 + pull * -0.1 + hit * -0.08,
   );
-  rot(get(orc, 'orcForearmL'), rest * -0.28 + pull * -0.5 + hit * -0.22, 0.08, -0.04);
+  rot(get(orc, 'orcForearmL'), rest * -0.28 + pull * -0.45 + hit * -0.5, 0.1, -0.05);
 
   const head = get(orc, 'orcHead');
   if (head) {
@@ -960,10 +961,10 @@ export function animateOrcAttack(orc: THREE.Group, progress: number): void {
     body.rotation.z = 0;
   }
 
-  rot(get(orc, 'orcLegL'), rest * 0 + pull * 0.06 + hit * -0.55, 0, 0.03);
-  rot(get(orc, 'orcLegR'), rest * 0 + pull * 0.5 + hit * 0.22, 0, -0.03);
-  rot(get(orc, 'orcShinL'), knee(0.1 + pull * 0.14 + hit * 0.36), 0, 0);
-  rot(get(orc, 'orcShinR'), knee(0.14 + pull * 0.48 + hit * 0.12), 0, 0);
+  rot(get(orc, 'orcLegL'), rest * 0 + pull * 0.08 + hit * -0.68, 0, 0.04);
+  rot(get(orc, 'orcLegR'), rest * 0 + pull * 0.58 + hit * 0.28, 0, -0.04);
+  rot(get(orc, 'orcShinL'), knee(0.1 + pull * 0.16 + hit * 0.42), 0, 0);
+  rot(get(orc, 'orcShinR'), knee(0.14 + pull * 0.55 + hit * 0.14), 0, 0);
   rot(get(orc, 'orcFootL'), hit * -0.14, 0, 0);
   rot(get(orc, 'orcFootR'), pull * 0.12, 0, 0);
   setLocomotionY(orc, Math.abs(lean) * 0.05 + hit * 0.03);
@@ -983,27 +984,27 @@ export function animateYetiWalk(yeti: THREE.Group, phase: number, moving: boolea
     const drift = Math.sin(t * 0.31 + 1.2) * 0.012;
     const look = Math.sin(t * 0.22) * 0.07 + Math.sin(t * 0.09) * 0.035;
 
-    rot(get(yeti, 'yetiArmR'), -0.2 + breath * 0.35 + shift * 0.4, 0.04, 0.26);
-    rot(get(yeti, 'yetiArmL'), -0.2 - breath * 0.25 - shift * 0.4, -0.04, -0.26);
-    rot(get(yeti, 'yetiForearmR'), -0.4 - breath * 0.15, 0.05, 0.04);
-    rot(get(yeti, 'yetiForearmL'), -0.4 + breath * 0.1, -0.05, -0.04);
-    rot(get(yeti, 'yetiLegL'), 0.04 + shift * 0.35, 0, 0.03);
-    rot(get(yeti, 'yetiLegR'), 0.04 - shift * 0.35, 0, -0.03);
-    rot(get(yeti, 'yetiShinL'), knee(0.1 + Math.max(0, shift) * 0.08), 0, 0);
-    rot(get(yeti, 'yetiShinR'), knee(0.1 + Math.max(0, -shift) * 0.08), 0, 0);
-    rot(get(yeti, 'yetiFootL'), -0.04, 0, 0);
-    rot(get(yeti, 'yetiFootR'), -0.04, 0, 0);
+    rot(get(yeti, 'yetiArmR'), -0.42 + breath * 0.3 + shift * 0.35, 0.05, 0.4);
+    rot(get(yeti, 'yetiArmL'), -0.42 - breath * 0.22 - shift * 0.35, -0.05, -0.4);
+    rot(get(yeti, 'yetiForearmR'), -0.48 - breath * 0.12, 0.05, 0.04);
+    rot(get(yeti, 'yetiForearmL'), -0.48 + breath * 0.1, -0.05, -0.04);
+    rot(get(yeti, 'yetiLegL'), 0.06 + shift * 0.32, 0, 0.04);
+    rot(get(yeti, 'yetiLegR'), 0.06 - shift * 0.32, 0, -0.04);
+    rot(get(yeti, 'yetiShinL'), knee(0.12 + Math.max(0, shift) * 0.1), 0, 0);
+    rot(get(yeti, 'yetiShinR'), knee(0.12 + Math.max(0, -shift) * 0.1), 0, 0);
+    rot(get(yeti, 'yetiFootL'), -0.05, 0, 0);
+    rot(get(yeti, 'yetiFootR'), -0.05, 0, 0);
     const head = get(yeti, 'yetiHead');
     if (head) {
-      head.rotation.x = -0.14 + breath * 0.35;
+      head.rotation.x = -0.28 + breath * 0.28;
       head.rotation.y = look;
-      head.rotation.z = drift * 0.4;
+      head.rotation.z = drift * 0.35;
     }
     const body = get(yeti, 'yetiBody');
     if (body) {
-      body.rotation.x = 0.2 + breath * 0.12;
-      body.rotation.y = shift * 0.35;
-      body.rotation.z = shift * 0.2;
+      body.rotation.x = 0.32 + breath * 0.1;
+      body.rotation.y = shift * 0.3;
+      body.rotation.z = shift * 0.18;
     }
     setLocomotionY(yeti, Math.abs(breath) * 0.35);
     return;
@@ -1020,43 +1021,42 @@ export function animateYetiWalk(yeti: THREE.Group, phase: number, moving: boolea
   const reachL = Math.max(0, -hipL) * (1 - plantedL);
   const reachR = Math.max(0, -hipR) * (1 - plantedR);
   const bob = Math.cos(phase * 2);
-  const stride = 0.58 * blend;
-  const lift = Math.max(0, -bob) * 0.045 * blend;
+  const stride = 0.64 * blend;
+  const lift = Math.max(0, -bob) * 0.055 * blend;
 
-  rot(get(yeti, 'yetiLegL'), hipL * stride - passingL * 0.28, 0, 0.04);
-  rot(get(yeti, 'yetiLegR'), hipR * stride - passingR * 0.28, 0, -0.04);
+  rot(get(yeti, 'yetiLegL'), hipL * stride - passingL * 0.34, 0, 0.05);
+  rot(get(yeti, 'yetiLegR'), hipR * stride - passingR * 0.34, 0, -0.05);
   rot(
     get(yeti, 'yetiShinL'),
-    knee(0.14 + passingL * 0.72 + tuckL * 0.35 + reachL * 0.16 + plantedL * 0.12),
+    knee(0.16 + passingL * 0.85 + tuckL * 0.4 + reachL * 0.18 + plantedL * 0.14),
     0,
     0,
   );
   rot(
     get(yeti, 'yetiShinR'),
-    knee(0.14 + passingR * 0.72 + tuckR * 0.35 + reachR * 0.16 + plantedR * 0.12),
+    knee(0.16 + passingR * 0.85 + tuckR * 0.4 + reachR * 0.18 + plantedR * 0.14),
     0,
     0,
   );
-  rot(get(yeti, 'yetiFootL'), -passingL * 0.22 + plantedL * Math.max(0, hipL) * 0.2, 0, 0);
-  rot(get(yeti, 'yetiFootR'), -passingR * 0.22 + plantedR * Math.max(0, hipR) * 0.2, 0, 0);
+  rot(get(yeti, 'yetiFootL'), -passingL * 0.26 + plantedL * Math.max(0, hipL) * 0.24, 0, 0);
+  rot(get(yeti, 'yetiFootR'), -passingR * 0.26 + plantedR * Math.max(0, hipR) * 0.24, 0, 0);
 
-  // Long pendular arms, opposite the hips, elbows folding on the forward swing.
-  rot(get(yeti, 'yetiArmL'), -0.2 - hipL * 0.55 * blend, 0.05, -0.26);
-  rot(get(yeti, 'yetiArmR'), -0.2 - hipR * 0.55 * blend, -0.05, 0.26);
-  rot(get(yeti, 'yetiForearmL'), -0.38 - Math.max(0, hipL) * 0.45, 0.06, -0.04);
-  rot(get(yeti, 'yetiForearmR'), -0.38 - Math.max(0, hipR) * 0.45, -0.06, 0.04);
+  rot(get(yeti, 'yetiArmL'), -0.42 - hipL * 0.72 * blend, 0.06, -0.4);
+  rot(get(yeti, 'yetiArmR'), -0.42 - hipR * 0.72 * blend, -0.06, 0.4);
+  rot(get(yeti, 'yetiForearmL'), -0.48 - Math.max(0, hipL) * 0.55, 0.06, -0.04);
+  rot(get(yeti, 'yetiForearmR'), -0.48 - Math.max(0, hipR) * 0.55, -0.06, 0.04);
 
   const body = get(yeti, 'yetiBody');
   if (body) {
-    body.rotation.x = 0.22 + lift * 0.8;
-    body.rotation.y = -hipL * 0.07 * blend;
-    body.rotation.z = hipL * 0.035 * blend;
+    body.rotation.x = 0.34 + lift * 0.9;
+    body.rotation.y = -hipL * 0.1 * blend;
+    body.rotation.z = hipL * 0.05 * blend;
   }
   const head = get(yeti, 'yetiHead');
   if (head) {
-    head.rotation.x = -0.16 - lift * 0.6;
-    head.rotation.y = hipL * 0.045 * blend;
-    head.rotation.z = -hipL * 0.02 * blend;
+    head.rotation.x = -0.3 - lift * 0.55;
+    head.rotation.y = hipL * 0.055 * blend;
+    head.rotation.z = -hipL * 0.025 * blend;
   }
   setLocomotionY(yeti, lift);
 }
@@ -1074,10 +1074,10 @@ export function animateOrcWalk(orc: THREE.Group, phase: number, moving: boolean,
     const shift = Math.sin(t * 0.62) * 0.016;
     const look = Math.sin(t * 0.27) * 0.06 + Math.sin(t * 0.11) * 0.03;
 
-    rot(get(orc, 'orcArmL'), 0.04 + breath * 0.5, 0.04, -0.16);
-    rot(get(orc, 'orcArmR'), -0.2 + breath * 0.25, 0.05, 0.16);
-    rot(get(orc, 'orcForearmL'), -0.28 + breath * 0.12, 0.04, -0.04);
-    rot(get(orc, 'orcForearmR'), -0.32 - breath * 0.08, -0.04, 0.04);
+    rot(get(orc, 'orcArmL'), 0.02 + breath * 0.45, 0.05, -0.18);
+    rot(get(orc, 'orcArmR'), -0.32 + breath * 0.2, 0.08, 0.2);
+    rot(get(orc, 'orcForearmL'), -0.3 + breath * 0.1, 0.04, -0.04);
+    rot(get(orc, 'orcForearmR'), -0.42 - breath * 0.08, -0.05, 0.05);
     applySpearHeld(spear);
     rot(get(orc, 'orcLegL'), shift * 0.25, 0, 0.02);
     rot(get(orc, 'orcLegR'), -shift * 0.25, 0, -0.02);
@@ -1112,11 +1112,11 @@ export function animateOrcWalk(orc: THREE.Group, phase: number, moving: boolean,
   const reachL = Math.max(0, -hipL) * (1 - plantedL);
   const reachR = Math.max(0, -hipR) * (1 - plantedR);
   const bob = Math.cos(phase * 2);
-  const stride = 0.48 * blend;
-  const lift = Math.max(0, -bob) * 0.032 * blend;
+  const stride = 0.56 * blend;
+  const lift = Math.max(0, -bob) * 0.04 * blend;
 
-  rot(get(orc, 'orcLegL'), hipL * stride - passingL * 0.38, 0, 0.03);
-  rot(get(orc, 'orcLegR'), hipR * stride - passingR * 0.38, 0, -0.03);
+  rot(get(orc, 'orcLegL'), hipL * stride - passingL * 0.45, 0, 0.04);
+  rot(get(orc, 'orcLegR'), hipR * stride - passingR * 0.45, 0, -0.04);
   rot(
     get(orc, 'orcShinL'),
     knee(0.1 + passingL * 0.85 + tuckL * 0.32 + reachL * 0.14 + plantedL * 0.1),
@@ -1133,11 +1133,11 @@ export function animateOrcWalk(orc: THREE.Group, phase: number, moving: boolean,
   rot(get(orc, 'orcFootR'), -passingR * 0.28 + plantedR * Math.max(0, hipR) * 0.22, 0, 0);
 
   // Free left arm pumps; spear arm stays ready with a small bounce.
-  rot(get(orc, 'orcArmL'), -hipL * 0.62 * blend + 0.06, 0.04, -0.15);
-  rot(get(orc, 'orcForearmL'), -0.28 - Math.max(0, hipL) * 0.4, 0.05, -0.03);
-  const bounce = Math.max(0, hipR) * 0.12 * blend;
-  rot(get(orc, 'orcArmR'), -0.22 - bounce * 0.35, 0.06, 0.15);
-  rot(get(orc, 'orcForearmR'), -0.32 - bounce * 0.25, -0.04, 0.04);
+  rot(get(orc, 'orcArmL'), -hipL * 0.78 * blend + 0.04, 0.05, -0.18);
+  rot(get(orc, 'orcForearmL'), -0.3 - Math.max(0, hipL) * 0.5, 0.05, -0.03);
+  const bounce = Math.max(0, hipR) * 0.16 * blend;
+  rot(get(orc, 'orcArmR'), -0.34 - bounce * 0.4, 0.08, 0.18);
+  rot(get(orc, 'orcForearmR'), -0.42 - bounce * 0.3, -0.05, 0.05);
   applySpearHeld(spear, { rx: -hipR * 0.03 * blend, y: lift * 0.4 });
 
   const body = get(orc, 'orcBody');
