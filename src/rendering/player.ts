@@ -493,23 +493,66 @@ export function createPlayerMesh(): THREE.Group {
     hip.position.set(side * 0.16, 0.94, 0);
 
     const hipBall = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 12), cloth);
+    hipBall.scale.set(1.04, 1, 1.02);
     addPart(hipBall, hip);
 
-    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.26, 6, 14), cloth);
-    thigh.position.set(0, -0.18, 0);
+    // Thigh tapers from the hip to the knee; the quad sits forward and the
+    // hamstring behind so the leg has a front and a back.
+    const thigh = new THREE.Mesh(
+      latheBody(
+        [
+          [0.096, -0.04],
+          [0.1, -0.14],
+          [0.092, -0.26],
+          [0.08, -0.36],
+          [0.07, -0.42],
+        ],
+        14,
+      ),
+      cloth,
+    );
     addPart(thigh, hip);
+    const quad = new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 9), cloth);
+    quad.scale.set(1, 1.7, 0.85);
+    quad.position.set(0, -0.2, 0.04);
+    addPart(quad, hip);
+    const ham = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 9), clothDark);
+    ham.scale.set(1, 1.6, 0.8);
+    ham.position.set(0, -0.18, -0.04);
+    addPart(ham, hip);
 
     const shin = new THREE.Group();
     shin.name = side < 0 ? 'shinL' : 'shinR';
     shin.position.set(0, -0.44, 0);
 
-    const knee = new THREE.Mesh(new THREE.SphereGeometry(0.086, 14, 12), cloth);
+    const knee = new THREE.Mesh(new THREE.SphereGeometry(0.076, 14, 12), cloth);
+    knee.scale.set(1, 0.95, 1);
     addPart(knee, shin);
+    const kneecap = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 8), cloth);
+    kneecap.scale.set(1.1, 1.1, 0.7);
+    kneecap.position.set(0, -0.01, 0.062);
+    addPart(kneecap, shin);
 
-    // Trousers stop above the boot cuff.
-    const calf = new THREE.Mesh(new THREE.CapsuleGeometry(0.076, 0.1, 5, 14), clothDark);
-    calf.position.set(0, -0.09, -0.024);
+    // Trousers stop above the boot cuff. The shin narrows toward the ankle and
+    // the calf swells behind it.
+    const calf = new THREE.Mesh(
+      latheBody(
+        [
+          [0.07, -0.02],
+          [0.072, -0.08],
+          [0.064, -0.14],
+          [0.058, -0.17],
+        ],
+        14,
+      ),
+      clothDark,
+    );
+    calf.position.set(0, 0, -0.012);
     addPart(calf, shin);
+    const calfMuscle = new THREE.Mesh(new THREE.SphereGeometry(0.056, 12, 9), clothDark);
+    calfMuscle.scale.set(1.05, 1.5, 0.9);
+    calfMuscle.position.set(0, -0.09, -0.04);
+    addPart(calfMuscle, shin);
 
     // Short boot shaft — two fur rings live on this, not on the ankle.
     const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.098, 0.1, 14), leather);
@@ -565,21 +608,25 @@ export function createPlayerMesh(): THREE.Group {
 
   const pelvis = new THREE.Mesh(latheBody([[0.2, -0.1], [0.24, -0.02], [0.22, 0.1]], 16), leather);
   pelvis.position.y = 0.92;
+  pelvis.scale.set(1, 1, 0.86);
   addPart(pelvis, hips);
 
   for (const [z, ry] of [
-    [0.22, 0],
-    [-0.22, Math.PI],
+    [0.195, 0],
+    [-0.19, Math.PI],
   ] as const) {
+    // Tassets lean in toward the thighs so they drape rather than stand off
+    // the belt like planks.
     const flap = triangleTasset(0.26, 0.2, 0.038, leatherDark);
     flap.position.set(0, 0.86, z);
-    flap.rotation.y = ry;
+    flap.rotation.set(Math.sign(z) * 0.28, ry, 0);
     hips.add(flap);
   }
   for (const sx of [-1, 1]) {
     const flap = triangleTasset(0.18, 0.18, 0.032, leatherMid);
     flap.position.set(sx * 0.24, 0.86, 0);
-    flap.rotation.y = sx * Math.PI * 0.5;
+    flap.rotation.order = 'ZYX';
+    flap.rotation.set(0, sx * Math.PI * 0.5, -sx * 0.24);
     hips.add(flap);
   }
 
@@ -588,78 +635,104 @@ export function createPlayerMesh(): THREE.Group {
   torso.position.y = 1.18;
   g.add(torso);
 
+  // The chest is a flattened lathe — wider across the shoulders than it is
+  // deep — tapering to the waist. The old barrel was as wide as the shoulder
+  // line, so the upper arms hung *inside* it and vanished from the game camera.
   const vest = new THREE.Mesh(
     latheBody(
       [
-        [0.2, -0.3],
-        [0.24, -0.18],
-        [0.27, -0.02],
-        [0.28, 0.12],
-        [0.25, 0.24],
-        [0.16, 0.32],
+        [0.205, -0.3],
+        [0.215, -0.2],
+        [0.23, -0.06],
+        [0.245, 0.1],
+        [0.235, 0.22],
+        [0.15, 0.32],
       ],
-      12,
+      14,
     ),
     leather,
   );
+  vest.scale.set(1.08, 1, 0.88);
   addPart(vest, torso);
 
-  const pecs = new THREE.Mesh(new THREE.SphereGeometry(0.145, 14, 12), leatherMid);
-  pecs.scale.set(1.28, 0.68, 0.52);
-  pecs.position.set(0, 0.08, 0.11);
-  addPart(pecs, torso);
+  // Lats: the back flares below the shoulder blades and pulls in at the waist.
+  const back = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 12), leather);
+  back.scale.set(1.2, 0.95, 0.5);
+  back.position.set(0, 0.06, -0.1);
+  addPart(back, torso);
 
-  const belt = new THREE.Mesh(new THREE.TorusGeometry(0.23, 0.032, 10, 18), leatherDark);
+  // Chest and abdomen in the same leather as the vest: form, not decals.
+  for (const sx of [-1, 1]) {
+    const pec = new THREE.Mesh(new THREE.SphereGeometry(0.085, 14, 12), leather);
+    pec.scale.set(1.2, 0.72, 0.5);
+    pec.position.set(sx * 0.1, 0.1, 0.16);
+    addPart(pec, torso);
+  }
+  const abs = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), leather);
+  abs.scale.set(1.1, 1.0, 0.36);
+  abs.position.set(0, -0.14, 0.16);
+  addPart(abs, torso);
+
+  const belt = new THREE.Mesh(new THREE.TorusGeometry(0.225, 0.03, 10, 18), leatherDark);
   belt.rotation.x = Math.PI / 2;
+  belt.scale.set(1.04, 1, 0.9);
   belt.position.y = -0.26;
   torso.add(belt);
   const beltBuckle = squareBuckle(0.1, 0.028, 0.042, metalBright);
-  beltBuckle.position.set(0, -0.26, 0.24);
+  beltBuckle.position.set(0, -0.26, 0.225);
   torso.add(beltBuckle);
 
+  // Straps lean in toward the waist so they follow the vest's taper instead of
+  // standing off it like planks.
   const makeStrap = (rotZ: number, z: number) => {
-    const strap = new THREE.Mesh(new THREE.BoxGeometry(0.078, 0.56, 0.045), leatherDark);
+    const strap = new THREE.Mesh(new THREE.BoxGeometry(0.078, 0.56, 0.06), leatherDark);
     strap.position.set(0, 0.02, z);
-    strap.rotation.z = rotZ;
+    strap.rotation.set(Math.sign(z) * 0.09, 0, rotZ);
     strap.castShadow = true;
     torso.add(strap);
   };
-  makeStrap(0.55, 0.24);
-  makeStrap(-0.55, 0.24);
-  makeStrap(0.55, -0.2);
-  makeStrap(-0.55, -0.2);
+  makeStrap(0.5, 0.18);
+  makeStrap(-0.5, 0.18);
+  makeStrap(0.5, -0.175);
+  makeStrap(-0.5, -0.175);
 
   const bucklePad = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.03), leatherDark);
-  bucklePad.position.set(0, 0.05, 0.215);
+  bucklePad.position.set(0, 0.05, 0.205);
   torso.add(bucklePad);
   const chestBuckle = squareBuckle(0.14, 0.038, 0.058, metalBright);
   chestBuckle.name = 'chestBuckle';
-  chestBuckle.position.set(0, 0.05, 0.255);
+  chestBuckle.position.set(0, 0.05, 0.24);
   torso.add(chestBuckle);
 
+  // Shoulder root: clavicle pivot at ±0.2, humerus head another 0.11 out, so
+  // the arm hangs clear of the ribcage (vest half-width is 0.265 at its widest).
+  const SHOULDER_X = 0.31;
   for (const sx of [-1, 1]) {
+    // Trapezius slope from the neck down onto the shoulder.
+    const trap = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 9), skin);
+    trap.scale.set(1.35, 0.5, 0.7);
+    trap.rotation.z = sx * 0.42;
+    trap.position.set(sx * 0.17, 0.24, -0.01);
+    addPart(trap, torso);
+    // Leather pauldron sits over the joint but stays with the torso.
     const pad = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), leatherMid);
-    pad.scale.set(1.15, 0.55, 1.05);
-    pad.position.set(sx * 0.24, 0.16, 0.01);
-    pad.rotation.z = sx * -0.32;
+    pad.scale.set(1.2, 0.5, 1.05);
+    pad.position.set(sx * (SHOULDER_X - 0.03), 0.18, 0.005);
+    pad.rotation.z = sx * -0.34;
     addPart(pad, torso);
-    const deltoid = new THREE.Mesh(new THREE.SphereGeometry(0.094, 14, 11), skin);
-    deltoid.scale.set(1.08, 0.98, 1.0);
-    deltoid.position.set(sx * 0.25, 0.1, -0.008);
-    addPart(deltoid, torso);
     // Studded leather cap: breaks up the bare shoulder ball in silhouette.
     const cap = new THREE.Mesh(
-      new THREE.SphereGeometry(0.102, 12, 9, 0, Math.PI * 2, 0, Math.PI * 0.56),
+      new THREE.SphereGeometry(0.108, 12, 9, 0, Math.PI * 2, 0, Math.PI * 0.5),
       leatherMid,
     );
-    cap.scale.set(1.06, 0.92, 1.02);
-    cap.rotation.z = sx * -0.36;
-    cap.position.set(sx * 0.248, 0.114, -0.006);
+    cap.scale.set(1.06, 0.9, 1.02);
+    cap.rotation.z = sx * -0.38;
+    cap.position.set(sx * (SHOULDER_X - 0.01), 0.13, -0.004);
     addPart(cap, torso);
     for (let i = 0; i < 3; i++) {
       const stud = new THREE.Mesh(new THREE.SphereGeometry(0.011, 6, 5), metalBright);
       const a = -0.5 + i * 0.5;
-      stud.position.set(sx * (0.248 + Math.cos(a) * 0.02), 0.166, Math.sin(a) * 0.078);
+      stud.position.set(sx * (SHOULDER_X + Math.cos(a) * 0.02), 0.19, Math.sin(a) * 0.08);
       torso.add(stud);
     }
   }
@@ -671,42 +744,88 @@ export function createPlayerMesh(): THREE.Group {
   addPart(collarBase, torso);
   addFurCuff(torso, 0, 0.29, 0.01, 0.18, 8, 0.042, fur, furDark);
 
-  const neck = new THREE.Mesh(new THREE.CapsuleGeometry(0.068, 0.08, 6, 14), skin);
-  neck.position.set(0, 0.34, 0.01);
+  const neck = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.1, 6, 14), skin);
+  neck.position.set(0, 0.35, 0.012);
   addPart(neck, torso);
+  // Sternocleidomastoid ridges: the neck reads as muscle, not a peg.
+  for (const sx of [-1, 1]) {
+    const cord = new THREE.Mesh(new THREE.CapsuleGeometry(0.02, 0.09, 4, 8), skinDark);
+    cord.position.set(sx * 0.045, 0.34, 0.058);
+    cord.rotation.set(-0.18, 0, sx * 0.3);
+    addPart(cord, torso);
+  }
 
   const makeArm = (side: number) => {
     const clav = new THREE.Group();
     clav.name = side < 0 ? 'clavL' : 'clavR';
-    clav.position.set(side * 0.18, 0.14, 0);
+    clav.position.set(side * 0.2, 0.14, 0);
 
     const arm = new THREE.Group();
     arm.name = side < 0 ? 'armL' : 'armR';
-    arm.position.set(side * 0.07, 0, 0);
+    arm.position.set(side * (SHOULDER_X - 0.2), 0, 0);
 
-    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.072, 0.2, 4, 10), skin);
-    upper.position.set(0, -0.08, 0);
+    // Deltoid lives on the arm so the shoulder mass swings with the humerus
+    // instead of the arm sliding under a fixed ball.
+    const deltoid = new THREE.Mesh(new THREE.SphereGeometry(0.086, 14, 11), skin);
+    deltoid.scale.set(1.04, 1.02, 1.0);
+    deltoid.position.set(side * 0.004, -0.01, -0.004);
+    addPart(deltoid, arm);
+
+    // Tapered humerus: thick at the deltoid, narrowing above the elbow.
+    const upper = new THREE.Mesh(
+      latheBody(
+        [
+          [0.07, -0.02],
+          [0.076, -0.1],
+          [0.07, -0.19],
+          [0.058, -0.29],
+          [0.05, -0.33],
+        ],
+        12,
+      ),
+      skin,
+    );
     addPart(upper, arm);
+    // One soft bicep swell on the front; separate muscle balls read as lumps.
+    const bicep = new THREE.Mesh(new THREE.SphereGeometry(0.058, 12, 9), skin);
+    bicep.scale.set(1.0, 1.6, 0.8);
+    bicep.position.set(side * -0.004, -0.15, 0.024);
+    addPart(bicep, arm);
 
     const forearm = new THREE.Group();
     forearm.name = side < 0 ? 'forearmL' : 'forearmR';
     forearm.position.set(0, -0.34, 0);
 
-    const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.068, 8, 6), skin);
+    const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 9), skin);
+    elbow.scale.set(1, 0.95, 1.05);
     addPart(elbow, forearm);
 
-    const gauntlet = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.16, 4, 10), leather);
-    gauntlet.position.set(0, -0.14, 0.01);
+    // Gauntlet: wide at the elbow cuff, drawn in at the wrist.
+    const gauntlet = new THREE.Mesh(
+      latheBody(
+        [
+          [0.062, -0.03],
+          [0.072, -0.08],
+          [0.068, -0.15],
+          [0.058, -0.22],
+          [0.05, -0.27],
+        ],
+        12,
+      ),
+      leather,
+    );
+    gauntlet.position.set(0, 0, 0.008);
     addPart(gauntlet, forearm);
-    addCrissCross(forearm, -0.06, -0.2, 0.074, leatherDark, 0.01);
-    const elbowFur = new THREE.Mesh(new THREE.TorusGeometry(0.072, 0.02, 6, 10), fur);
+    addCrissCross(forearm, -0.07, -0.21, 0.066, leatherDark, 0.008);
+    const elbowFur = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.022, 6, 10), fur);
     elbowFur.rotation.x = Math.PI / 2;
-    elbowFur.position.set(0, -0.02, 0.01);
+    elbowFur.position.set(0, -0.045, 0.008);
     forearm.add(elbowFur);
-    const wristFur = new THREE.Mesh(new THREE.TorusGeometry(0.068, 0.018, 6, 10), furDark);
-    wristFur.rotation.x = Math.PI / 2;
-    wristFur.position.set(0, -0.22, 0.01);
-    forearm.add(wristFur);
+    addFurCuff(forearm, 0, -0.04, 0.008, 0.066, 6, 0.024, fur, furDark);
+    const wristBand = new THREE.Mesh(new THREE.TorusGeometry(0.052, 0.014, 6, 10), leatherDark);
+    wristBand.rotation.x = Math.PI / 2;
+    wristBand.position.set(0, -0.25, 0.008);
+    forearm.add(wristBand);
 
     // Both hands start open. Pole tilt used to be baked into the left grip so
     // the hunter always looked like he was carrying a spear, even empty-handed.
@@ -725,130 +844,128 @@ export function createPlayerMesh(): THREE.Group {
   const head = new THREE.Group();
   head.name = 'playerHead';
   head.position.set(0, 0.5, 0.015);
+  // Slightly under six heads tall reads as a grown man rather than a doll.
+  head.scale.setScalar(0.93);
 
   const hairShade = mat(0x3b2b1f, { roughness: 0.95, sheen: 0.18, sheenColor: new THREE.Color(0x53402c) });
 
+  // Cranium sits slightly back; a flatter face mask carries the features so
+  // they stand proud of the surface instead of sinking into one big sphere.
   const skull = new THREE.Mesh(new THREE.SphereGeometry(0.163, 22, 18), skin);
-  skull.scale.set(0.95, 1.07, 0.94);
+  skull.scale.set(0.95, 1.07, 0.9);
+  skull.position.z = -0.012;
   addPart(skull, head);
+  const faceMask = new THREE.Mesh(new THREE.SphereGeometry(0.13, 18, 14), skin);
+  faceMask.scale.set(1.0, 1.12, 0.55);
+  faceMask.position.set(0, -0.01, 0.07);
+  addPart(faceMask, head);
 
-  // Brow shelf and cheekbones give the face structure that a single sphere cannot.
-  const browRidge = new THREE.Mesh(new THREE.SphereGeometry(0.112, 16, 12), skin);
-  browRidge.scale.set(1.1, 0.3, 0.5);
-  browRidge.position.set(0, 0.05, 0.068);
+  // Brow shelf overhangs the eyes and throws them into shadow.
+  const browRidge = new THREE.Mesh(new THREE.CapsuleGeometry(0.022, 0.1, 5, 12), skin);
+  browRidge.rotation.z = Math.PI / 2;
+  browRidge.scale.set(1, 1, 0.8);
+  browRidge.position.set(0, 0.05, 0.132);
   addPart(browRidge, head);
-
   const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.114, 16, 13), skinDark);
-  jaw.scale.set(1.04, 0.74, 0.95);
-  jaw.position.set(0, -0.093, 0.04);
+  jaw.scale.set(1.02, 0.74, 0.9);
+  jaw.position.set(0, -0.093, 0.03);
   addPart(jaw, head);
 
-  const chin = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 8), skinDark);
-  chin.scale.set(1.2, 0.9, 1.12);
-  chin.position.set(0, -0.15, 0.105);
-  head.add(chin);
-
-  for (const sx of [-1, 1]) {
-    const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.044, 12, 9), skin);
-    cheek.scale.set(0.8, 0.6, 0.5);
-    cheek.position.set(sx * 0.088, -0.026, 0.076);
-    head.add(cheek);
-  }
-
-  // Short beard: a jaw-hugging mass plus a moustache, not a flat decal.
-  const beard = new THREE.Mesh(new THREE.SphereGeometry(0.113, 14, 11), hairShade);
-  beard.scale.set(1.03, 0.74, 0.92);
-  beard.position.set(0, -0.112, 0.03);
+  // Short beard wraps the whole jaw and chin; it is the lowest surface on the
+  // face so no bare skin ball pokes through it.
+  const beard = new THREE.Mesh(new THREE.SphereGeometry(0.114, 16, 13), hairShade);
+  beard.scale.set(1.06, 0.78, 1.02);
+  beard.position.set(0, -0.11, 0.046);
   addPart(beard, head);
-  const beardFront = new THREE.Mesh(new THREE.SphereGeometry(0.056, 10, 8), hairShade);
-  beardFront.scale.set(1.12, 0.9, 0.82);
-  beardFront.position.set(0, -0.146, 0.082);
+  const beardFront = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 9), hairShade);
+  beardFront.scale.set(1.15, 0.95, 0.9);
+  beardFront.position.set(0, -0.15, 0.095);
   head.add(beardFront);
   for (const sx of [-1, 1]) {
-    const chop = new THREE.Mesh(new THREE.CapsuleGeometry(0.016, 0.062, 4, 8), hairShade);
-    chop.position.set(sx * 0.128, -0.03, 0.006);
-    chop.rotation.z = sx * 0.16;
+    // Sideburn: a flat patch hugging the skull, not a pill stuck to the cheek.
+    const chop = new THREE.Mesh(new THREE.SphereGeometry(0.024, 8, 6), hairShade);
+    chop.scale.set(0.3, 1.7, 0.7);
+    chop.position.set(sx * 0.147, -0.024, -0.012);
+    chop.rotation.z = sx * 0.12;
     head.add(chop);
-    const tache = new THREE.Mesh(new THREE.CapsuleGeometry(0.0105, 0.026, 3, 8), hairShade);
+    const tache = new THREE.Mesh(new THREE.CapsuleGeometry(0.011, 0.028, 3, 8), hairShade);
     tache.rotation.z = Math.PI / 2;
-    tache.rotation.y = sx * 0.3;
-    tache.position.set(sx * 0.019, -0.069, 0.133);
+    tache.rotation.y = sx * 0.35;
+    tache.position.set(sx * 0.02, -0.074, 0.164);
     head.add(tache);
   }
 
-  const nose = new THREE.Mesh(
-    latheBody(
-      [
-        [0.005, 0.046],
-        [0.013, 0.016],
-        [0.021, -0.01],
-        [0.025, -0.03],
-        [0.013, -0.044],
-      ],
-      10,
-    ),
-    skin,
-  );
-  nose.rotation.x = 0.3;
-  nose.position.set(0, -0.006, 0.152);
-  addPart(nose, head);
-  const bridge = new THREE.Mesh(new THREE.CapsuleGeometry(0.013, 0.05, 4, 8), skin);
-  bridge.rotation.x = 0.2;
-  bridge.position.set(0, 0.018, 0.14);
-  head.add(bridge);
+  // Nose: bridge, rounded tip and alar wings in one skin tone. A tilted lathe
+  // read as a blade from the front.
+  const bridge = new THREE.Mesh(new THREE.CapsuleGeometry(0.013, 0.034, 4, 10), skin);
+  bridge.rotation.x = -0.3;
+  bridge.position.set(0, 0.008, 0.15);
+  addPart(bridge, head);
+  const noseTip = new THREE.Mesh(new THREE.SphereGeometry(0.023, 12, 10), skin);
+  noseTip.scale.set(1.0, 0.9, 0.95);
+  noseTip.position.set(0, -0.03, 0.165);
+  addPart(noseTip, head);
   for (const sx of [-1, 1]) {
-    const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.0105, 8, 6), skinDark);
-    nostril.scale.set(1, 0.8, 0.9);
-    nostril.position.set(sx * 0.02, -0.05, 0.148);
+    const wing = new THREE.Mesh(new THREE.SphereGeometry(0.015, 10, 8), skin);
+    wing.scale.set(1, 0.85, 0.9);
+    wing.position.set(sx * 0.022, -0.038, 0.152);
+    head.add(wing);
+    const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.0055, 8, 6), skinDark);
+    nostril.position.set(sx * 0.012, -0.047, 0.166);
     head.add(nostril);
   }
 
   for (const sx of [-1, 1]) {
-    const brow = new THREE.Mesh(new THREE.CapsuleGeometry(0.0105, 0.046, 3, 8), hairShade);
-    brow.rotation.z = Math.PI / 2 + sx * -0.2;
-    brow.rotation.x = -0.25;
-    brow.position.set(sx * 0.052, 0.064, 0.134);
+    const brow = new THREE.Mesh(new THREE.CapsuleGeometry(0.011, 0.05, 3, 8), hairShade);
+    brow.rotation.z = Math.PI / 2 + sx * -0.18;
+    brow.rotation.x = -0.3;
+    brow.position.set(sx * 0.052, 0.066, 0.146);
     head.add(brow);
 
-    // Eye: a small dark socket with a recessed ball, so it does not read as a
-    // pasted-on white disc at gameplay distance.
-    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.029, 12, 9), skinDark);
-    socket.scale.set(1.15, 0.9, 0.62);
-    socket.position.set(sx * 0.053, 0.014, 0.114);
-    head.add(socket);
-    const eyeball = new THREE.Mesh(new THREE.SphereGeometry(0.0182, 14, 11), mat(0xcabdae, { roughness: 0.32 }));
-    eyeball.position.set(sx * 0.053, 0.014, 0.126);
+    // Eye: white ball set into the mask under the brow, iris and pupil on its
+    // front, and an upper lid so it does not stare.
+    const eyeball = new THREE.Mesh(new THREE.SphereGeometry(0.021, 14, 11), mat(0xe6dccd, { roughness: 0.3 }));
+    eyeball.position.set(sx * 0.051, 0.018, 0.128);
     head.add(eyeball);
     const iris = new THREE.Mesh(
-      new THREE.SphereGeometry(0.0108, 10, 8),
+      new THREE.SphereGeometry(0.0122, 10, 8),
       mat(0x4a3a22, { roughness: 0.3, clearcoat: 0.6, clearcoatRoughness: 0.1 }),
     );
-    iris.position.set(sx * 0.053, 0.014, 0.143);
+    iris.position.set(sx * 0.051, 0.018, 0.1445);
     head.add(iris);
-    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.005, 8, 6), mat(0x0a0806, { roughness: 0.25 }));
-    pupil.position.set(sx * 0.053, 0.014, 0.15);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.0058, 8, 6), mat(0x0a0806, { roughness: 0.25 }));
+    pupil.position.set(sx * 0.051, 0.018, 0.153);
     head.add(pupil);
-    // Upper lid keeps the eye from staring.
-    const lid = new THREE.Mesh(new THREE.SphereGeometry(0.0208, 12, 9, 0, Math.PI * 2, 0, Math.PI * 0.52), skin);
-    lid.scale.set(1.08, 1, 0.9);
-    lid.rotation.x = -0.42;
-    lid.position.set(sx * 0.053, 0.019, 0.124);
+    const lid = new THREE.Mesh(new THREE.SphereGeometry(0.024, 12, 9, 0, Math.PI * 2, 0, Math.PI * 0.5), skin);
+    lid.scale.set(1.06, 1, 0.92);
+    lid.rotation.x = -0.5;
+    lid.position.set(sx * 0.051, 0.024, 0.126);
     head.add(lid);
+    const lowerLid = new THREE.Mesh(new THREE.SphereGeometry(0.023, 12, 9, 0, Math.PI * 2, Math.PI * 0.62, Math.PI * 0.38), skinDark);
+    lowerLid.scale.set(1.06, 1, 0.9);
+    lowerLid.rotation.x = 0.35;
+    lowerLid.position.set(sx * 0.051, 0.014, 0.126);
+    head.add(lowerLid);
 
-    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.028, 10, 8), skin);
-    ear.scale.set(0.34, 1.05, 0.6);
-    ear.position.set(sx * 0.152, 0.006, -0.004);
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), skin);
+    ear.scale.set(0.36, 1.05, 0.62);
+    ear.position.set(sx * 0.15, 0.006, -0.012);
     head.add(ear);
-    const lobe = new THREE.Mesh(new THREE.SphereGeometry(0.013, 8, 6), skinDark);
-    lobe.scale.set(0.45, 0.85, 0.65);
-    lobe.position.set(sx * 0.152, -0.024, -0.002);
+    const lobe = new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 6), skin);
+    lobe.scale.set(0.4, 0.8, 0.65);
+    lobe.position.set(sx * 0.149, -0.026, -0.01);
     head.add(lobe);
   }
 
-  const mouth = new THREE.Mesh(new THREE.CapsuleGeometry(0.008, 0.034, 3, 8), mat(0x5c3026, { roughness: 0.55 }));
-  mouth.rotation.z = Math.PI / 2;
-  mouth.position.set(0, -0.105, 0.142);
-  head.add(mouth);
+  // Lips: a thin dark parting with a fuller lower lip beneath the moustache.
+  const lipLine = new THREE.Mesh(new THREE.CapsuleGeometry(0.0045, 0.04, 3, 8), mat(0x4a241c, { roughness: 0.6 }));
+  lipLine.rotation.z = Math.PI / 2;
+  lipLine.position.set(0, -0.098, 0.163);
+  head.add(lipLine);
+  const lowerLip = new THREE.Mesh(new THREE.CapsuleGeometry(0.0075, 0.03, 3, 8), skinDark);
+  lowerLip.rotation.z = Math.PI / 2;
+  lowerLip.position.set(0, -0.109, 0.161);
+  head.add(lowerLip);
 
   // Hair: one swept cap with a few broad locks. Small round lumps read as
   // gravel at gameplay distance, so the locks are flattened and aligned.

@@ -216,13 +216,15 @@ export function animatePlayerIdle(player: THREE.Group, t: number, ready = false)
   rot(get(player, 'playerHead'), -0.04 + breath * 0.28, look, -shift * 0.06);
   rot(get(player, 'clavL'), 0.02, 0, -0.02);
   rot(get(player, 'clavR'), 0.02, 0, 0.02);
-  // Arms hang, they do not stay cocked as if mid-stride.
-  rot(get(player, 'armL'), 0.06 + breath * 0.05, 0.02, -0.04 + drift * 0.08);
-  rot(get(player, 'forearmL'), -0.12 + drift * 0.06, 0.02, 0);
-  rot(get(player, 'handL'), 0.04, 0.04, 0.02);
-  rot(get(player, 'armR'), 0.06 - breath * 0.05, -0.02, 0.04 - drift * 0.08);
-  rot(get(player, 'forearmR'), -0.12 - drift * 0.06, -0.02, 0);
-  rot(get(player, 'handR'), 0.04, -0.04, -0.02);
+  // Arms hang a little away from the ribs with a soft elbow, the way a relaxed
+  // arm actually rests. Dead straight and glued to the side reads as a mannequin
+  // and, from the game camera, disappears behind the shoulder.
+  rot(get(player, 'armL'), 0.08 + breath * 0.05, 0.06, -0.13 + drift * 0.08);
+  rot(get(player, 'forearmL'), -0.24 + drift * 0.06, 0.08, -0.03);
+  rot(get(player, 'handL'), 0.06, 0.06, 0.02);
+  rot(get(player, 'armR'), 0.08 - breath * 0.05, -0.06, 0.13 - drift * 0.08);
+  rot(get(player, 'forearmR'), -0.24 - drift * 0.06, -0.08, 0.03);
+  rot(get(player, 'handR'), 0.06, -0.06, -0.02);
   rot(get(player, 'legL'), 0.02 + shift * 0.04, 0, 0.02);
   rot(get(player, 'legR'), -0.01 - shift * 0.04, 0, -0.02);
   rot(get(player, 'shinL'), knee(0.06 + Math.max(0, shift) * 0.04), 0, 0);
@@ -395,10 +397,10 @@ export function animatePlayerWalk(
     // Free arms: long and pendular at a walk, folded and pumping at a run.
     const swing = mix(0.72, 1.35, run) * stride * 1.35;
     const fold = mix(0, 1, run);
-    rot(get(player, 'armL'), -hipL * swing + mix(0.08, 0.3, run), 0.04 + fold * 0.16, -0.06 - fold * 0.06);
-    rot(get(player, 'armR'), -hipR * swing + mix(0.08, 0.3, run), -0.04 - fold * 0.16, 0.06 + fold * 0.06);
-    rot(get(player, 'forearmL'), mix(-0.35 - Math.max(0, hipL) * 0.4, -1.52 - Math.max(0, -hipL) * 0.35, run), 0, 0);
-    rot(get(player, 'forearmR'), mix(-0.35 - Math.max(0, hipR) * 0.4, -1.52 - Math.max(0, -hipR) * 0.35, run), 0, 0);
+    rot(get(player, 'armL'), -hipL * swing + mix(0.08, 0.3, run), 0.04 + fold * 0.16, -0.12 - fold * 0.04);
+    rot(get(player, 'armR'), -hipR * swing + mix(0.08, 0.3, run), -0.04 - fold * 0.16, 0.12 + fold * 0.04);
+    rot(get(player, 'forearmL'), mix(-0.35 - Math.max(0, hipL) * 0.4, -1.52 - Math.max(0, -hipL) * 0.35, run), 0.06, 0);
+    rot(get(player, 'forearmR'), mix(-0.35 - Math.max(0, hipR) * 0.4, -1.52 - Math.max(0, -hipR) * 0.35, run), -0.06, 0);
     rot(get(player, 'handL'), -hipL * 0.12, 0.04, 0.04 + fold * 0.2);
     rot(get(player, 'handR'), -hipR * 0.12, -0.04, -0.04 - fold * 0.2);
     // Hands close into loose running fists as the pace picks up.

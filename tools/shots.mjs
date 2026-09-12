@@ -11,6 +11,10 @@ const DEFAULT = [
   { name: 'face', o: { pose: 'idle', t: 1.2, az: 0.35, el: 1.62, dist: 0.75, focus: 'playerHead', fov: 34 } },
   { name: 'face-side', o: { pose: 'idle', t: 1.2, az: 1.2, el: 1.6, dist: 0.75, focus: 'playerHead', fov: 34 } },
   { name: 'idle-side', o: { pose: 'idle', t: 1.2, az: 1.55 } },
+  { name: 'idle-back', o: { pose: 'idle', t: 1.2, az: Math.PI } },
+  // Same elevation as the in-game follow camera (offset 0, 8.7, 7.15).
+  { name: 'idle-gamecam', o: { pose: 'idle', t: 1.2, az: 0.0, el: 0.69 } },
+  { name: 'sword-gamecam', o: { pose: 'sword', t: 1.0, az: 0.0, el: 0.69 } },
   { name: 'spear-grip', o: { pose: 'idle', t: 1.2, az: 0.9, dist: 0.62, focus: 'handL', fov: 32 } },
   { name: 'walk-a', o: { pose: 'walk', t: 0.4, speed: 0.45, az: 0.7 } },
   { name: 'walk-b', o: { pose: 'walk', t: 0.72, speed: 0.45, az: 0.7 } },
