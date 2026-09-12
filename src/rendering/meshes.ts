@@ -512,13 +512,28 @@ export function createFrostYeti(): THREE.Group {
     }
   };
 
-  /** Short, blunt, slightly hooked claw. */
+  /** Short, blunt, slightly hooked claw with a frost-glass tip. */
+  const frost = uniq(0xb8e8ff, { roughness: 0.22, metalness: 0.35, emissive: 0x4aa8c8, emissiveIntensity: 0.18 });
   const addClaw = (parent: THREE.Object3D, x: number, y: number, z: number, len: number, rad: number) => {
     const c = new THREE.Mesh(new THREE.ConeGeometry(rad, len, 6), claw);
     c.rotation.x = Math.PI / 2 + 0.45;
     c.position.set(x, y, z);
     c.castShadow = true;
     parent.add(c);
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(rad * 0.55, len * 0.42, 5), frost);
+    tip.rotation.x = Math.PI / 2 + 0.45;
+    tip.position.set(x, y - 0.01, z + len * 0.38);
+    parent.add(tip);
+  };
+
+  /** Small ice shard grown out of the fur — octahedron, not a hanging cone. */
+  const addIce = (parent: THREE.Object3D, x: number, y: number, z: number, s: number, rx = 0.2, rz = 0.15) => {
+    const shard = new THREE.Mesh(new THREE.OctahedronGeometry(s, 0), frost);
+    shard.position.set(x, y, z);
+    shard.rotation.set(rx, 0.4, rz);
+    shard.scale.set(0.55, 1.6, 0.45);
+    shard.castShadow = true;
+    parent.add(shard);
   };
 
   // Contact shadow
@@ -602,6 +617,29 @@ export function createFrostYeti(): THREE.Group {
   belly.scale.set(1.1, 1.0, 0.55);
   g.add(belly);
 
+  // Charcoal-blue stripes — the markings that say "frost beast" instead of
+  // "white gorilla". Laid along the pecs and ribs so they read at distance.
+  const stripe = uniq(0x2a3848, { roughness: 0.96 });
+  for (const [x, y, z, len, rad, rz] of [
+    [-0.22, 1.46, 0.46, 0.42, 0.055, 0.28],
+    [0.22, 1.46, 0.46, 0.42, 0.055, -0.28],
+    [-0.12, 1.18, 0.5, 0.3, 0.042, 0.15],
+    [0.12, 1.18, 0.5, 0.3, 0.042, -0.15],
+    [0.0, 1.58, 0.42, 0.26, 0.05, 0.0],
+  ] as const) {
+    const band = new THREE.Mesh(new THREE.CapsuleGeometry(rad, len, 4, 8), stripe);
+    band.position.set(x, y, z);
+    band.rotation.z = rz;
+    g.add(band);
+  }
+
+  // Ice grown into the shoulder ruff and spine — crystals, not icicles.
+  addIce(g, -0.52, 1.88, -0.18, 0.14, 0.4, 0.35);
+  addIce(g, 0.52, 1.88, -0.18, 0.14, 0.4, -0.35);
+  addIce(g, 0, 1.98, -0.32, 0.16, 0.15, 0);
+  addIce(g, -0.28, 1.7, -0.38, 0.11, 0.5, 0.2);
+  addIce(g, 0.28, 1.7, -0.38, 0.11, 0.5, -0.2);
+
   // Shoulder / head ruff — a few pointed clumps, parented to the body so they
   // never read as extra floating arms.
   const makeManeClump = (parent: THREE.Object3D, x: number, y: number, z: number, s: number, matUse = fur) => {
@@ -638,24 +676,25 @@ export function createFrostYeti(): THREE.Group {
     arm.rotation.z = side * 0.28;
     arm.rotation.x = -0.22;
 
-    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.38, 6, 12), fur);
+    // Long simian upper arm — a yeti reaches past its knees.
+    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.48, 6, 12), fur);
     upper.position.set(0, -0.22, 0);
     upper.castShadow = true;
     arm.add(upper);
     addShag(arm, 0, -0.02, 0, 0.215, 13, 0.072, 0.6);
-    addShag(arm, 0, -0.4, 0, 0.205, 12, 0.062, 0.45, furShade, furDeep);
+    addShag(arm, 0, -0.48, 0, 0.205, 12, 0.062, 0.45, furShade, furDeep);
 
     const forearm = new THREE.Group();
-    forearm.position.set(0, -0.46, 0);
+    forearm.position.set(0, -0.56, 0);
     forearm.rotation.x = -0.38;
-    const forearmMesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.32, 6, 12), furBlue);
+    const forearmMesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.38, 6, 12), furBlue);
     forearmMesh.position.set(0, -0.2, 0);
     forearmMesh.castShadow = true;
     forearm.add(forearmMesh);
     addShag(forearm, 0, -0.3, 0, 0.175, 12, 0.055, 0.4, furShade, furDeep);
 
     const hand = new THREE.Group();
-    hand.position.set(0, -0.4, 0.05);
+    hand.position.set(0, -0.48, 0.05);
     const palm = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), fur);
     palm.scale.set(1, 0.85, 0.95);
     palm.castShadow = true;
@@ -670,7 +709,7 @@ export function createFrostYeti(): THREE.Group {
       knuckle.position.set(x, -0.05, 0.14);
       knuckle.scale.set(1, 0.9, 1.2);
       hand.add(knuckle);
-      addClaw(hand, x, -0.06, 0.22, 0.12, 0.026);
+      addClaw(hand, x, -0.06, 0.22, 0.16, 0.028);
     }
     const thumbBase = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), fur);
     thumbBase.position.set(side * 0.13, -0.01, 0.06);
@@ -791,6 +830,9 @@ export function createFrostYeti(): THREE.Group {
   makeFang(0.082, -0.16, true);
   makeFang(-0.07, -0.245, false);
   makeFang(0.07, -0.245, false);
+  addIce(head, -0.16, 0.22, 0.12, 0.045, 0.6, 0.3);
+  addIce(head, 0.16, 0.22, 0.12, 0.045, 0.6, -0.3);
+  addIce(head, 0, 0.34, -0.06, 0.055, 0.2, 0);
 
   for (let i = 0; i < 5; i++) {
     const t = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.028, 0.022), fangMat);
@@ -979,8 +1021,10 @@ export function createOrcScout(): THREE.Group {
       ...opts,
     });
 
-  const skin = uniq(0x8fa056, { roughness: 0.82 });
-  const skinDark = uniq(0x5e7038, { roughness: 0.88 });
+  const skin = uniq(0x7a9844, { roughness: 0.82 });
+  const skinDark = uniq(0x4a6428, { roughness: 0.88 });
+  const paint = uniq(0x2a1c10, { roughness: 0.92 });
+  const paintRed = uniq(0x6a2218, { roughness: 0.88 });
   const hair = uniq(0x2a2730, { roughness: 0.96 });
   const hairLit = uniq(0x3c3844, { roughness: 0.94 });
   const leather = uniq(0x6b4526, { roughness: 0.82 });
@@ -1120,12 +1164,27 @@ export function createOrcScout(): THREE.Group {
   chestPlate.position.set(0, 1.2, 0.14);
   addPart(chestPlate, g);
 
-  // Bare upper arms / shoulders peek (olive skin)
+  // Bare upper arms / shoulders peek (olive skin). Left pauldron marks him
+  // as a scout — one shoulder armoured, the spear arm free.
   for (const sx of [-1, 1]) {
-    const deltoid = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 10), skin);
+    const deltoid = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), skin);
     deltoid.position.set(sx * 0.34, 1.38, 0);
-    deltoid.scale.set(0.9, 0.85, 1);
+    deltoid.scale.set(0.95, 0.9, 1.05);
     addPart(deltoid, g);
+  }
+  const pauldron = new THREE.Mesh(
+    new THREE.SphereGeometry(0.14, 12, 9, 0, Math.PI * 2, 0, Math.PI * 0.58),
+    leatherMid,
+  );
+  pauldron.scale.set(1.15, 0.85, 1.1);
+  pauldron.rotation.z = 0.4;
+  pauldron.position.set(-0.36, 1.42, 0.02);
+  addPart(pauldron, g, 1.04);
+  for (let i = 0; i < 3; i++) {
+    const stud = new THREE.Mesh(new THREE.SphereGeometry(0.016, 6, 5), metal);
+    const a = -0.4 + i * 0.4;
+    stud.position.set(-0.36 + Math.cos(a) * 0.02, 1.5, Math.sin(a) * 0.08);
+    g.add(stud);
   }
 
   const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.09, 10), leatherDark);
@@ -1193,10 +1252,14 @@ export function createOrcScout(): THREE.Group {
   const makeArm = (side: number) => {
     const arm = new THREE.Group();
     arm.name = side < 0 ? 'orcArmL' : 'orcArmR';
-    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.22, 5, 12), skin);
+    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.105, 0.24, 5, 12), skin);
     upper.position.set(0, 0, 0);
     upper.rotation.z = side * 0.22;
     addPart(upper, arm);
+    const armBar = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.16, 0.04), paint);
+    armBar.position.set(side * -0.02, 0.02, 0.09);
+    armBar.rotation.z = side * 0.22;
+    arm.add(armBar);
 
     // The bracer tapers with the forearm; a straight sleeve at the same radius
     // as the elbow reads as a bucket strapped to the wrist.
@@ -1260,8 +1323,8 @@ export function createOrcScout(): THREE.Group {
 
   // Brow sits high enough to shade the eyes without swallowing them.
   const brow = new THREE.Mesh(new THREE.SphereGeometry(0.15, 14, 10), skin);
-  brow.scale.set(1.04, 0.34, 0.58);
-  brow.position.set(0, 0.098, 0.088);
+  brow.scale.set(1.08, 0.4, 0.62);
+  brow.position.set(0, 0.105, 0.092);
   addPart(brow, head);
   for (const sx of [-1, 1]) {
     const ridge = new THREE.Mesh(new THREE.CapsuleGeometry(0.016, 0.055, 3, 8), skinDark);
@@ -1305,13 +1368,31 @@ export function createOrcScout(): THREE.Group {
   mouth.position.set(0, -0.095, 0.185);
   head.add(mouth);
 
-  // Tusks rise from the corners of the lower jaw. They frame the face; sized
-  // any bigger they hide it entirely.
+  // Tusks rise from the corners of the lower jaw, curving out past the lip
+  // so they frame the mouth instead of covering it.
   for (const sx of [-1, 1]) {
-    const t = new THREE.Mesh(new THREE.ConeGeometry(0.024, 0.115, 7), tusk);
-    t.position.set(sx * 0.092, -0.065, 0.155);
-    t.rotation.set(-0.3, 0, sx * -0.26);
+    const t = new THREE.Mesh(new THREE.ConeGeometry(0.026, 0.14, 7), tusk);
+    t.position.set(sx * 0.078, -0.118, 0.168);
+    t.rotation.set(0.15, 0, sx * 0.38);
     head.add(t);
+    const root = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 6), tusk);
+    root.position.set(sx * 0.07, -0.132, 0.155);
+    head.add(root);
+  }
+
+  // War paint: a dark bar across the eyes and a red slash on the cheek.
+  const warBar = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.028, 0.02), paint);
+  warBar.position.set(0, 0.028, 0.168);
+  head.add(warBar);
+  const scar = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.09, 0.012), paintRed);
+  scar.position.set(-0.055, 0.01, 0.175);
+  scar.rotation.z = 0.55;
+  head.add(scar);
+  for (const sx of [-1, 1]) {
+    const cheekBar = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.07, 0.012), paint);
+    cheekBar.position.set(sx * 0.11, -0.05, 0.132);
+    cheekBar.rotation.z = sx * -0.2;
+    head.add(cheekBar);
   }
 
   // Eyes: pale sclera with a dark iris, sunk under the brow but still catching
@@ -1327,7 +1408,7 @@ export function createOrcScout(): THREE.Group {
     head.add(sclera);
     const iris = new THREE.Mesh(
       new THREE.SphereGeometry(0.014, 8, 6),
-      uniq(0x8a4a20, { emissive: 0x501c04, emissiveIntensity: 0.35, roughness: 0.35 }),
+      uniq(0xc45a18, { emissive: 0x802808, emissiveIntensity: 0.45, roughness: 0.32 }),
     );
     iris.position.set(sx * 0.074, 0.022, 0.163);
     head.add(iris);

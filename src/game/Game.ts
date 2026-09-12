@@ -103,6 +103,9 @@ const YETI_AGGRO_RADIUS = 5.8;
 const ORC_ATTACK_RANGE = 2.15;
 const ORC_AGGRO_RADIUS = 5.4;
 const MOVE_SPEED = 4.2;
+/** Follow-camera zoom. 1 is the authored framing; higher is farther out. */
+const CAM_ZOOM_MIN = 0.7;
+const CAM_ZOOM_MAX = 2.45;
 const MOVE_ACCEL = 9.5;
 const MOVE_DECEL = 12.0;
 const SAVE_EVERY = 3;
@@ -145,6 +148,8 @@ export class Game {
   private saveTimer = 0;
   private keys = new Set<string>();
   private camOffset = new THREE.Vector3(0, 8.7, 7.15);
+  private camZoom = 1;
+  private camZoomTarget = 1;
   private camLook = new THREE.Vector3();
   private dummyTarget: WorldObject | null = null;
   private yetiTarget: WorldObject | null = null;
@@ -256,6 +261,7 @@ export class Game {
     this.hud.chat('A Frost Yeti stalks the north-east clearing — keep your distance until you are ready.', 'combat');
     this.hud.chat('An Orc Scout prowls the south-west trail — spear ready, leather and tooth to loot.', 'combat');
     this.hud.chat('Open Gear (C) to inspect your hero and equip or unequip items.', 'system');
+    this.hud.chat('Scroll the wheel or use + / − to zoom the camera.', 'system');
     this.hud.chat('Your progress is saved in this browser.', 'system');
 
     window.addEventListener('resize', () => this.onResize());
@@ -571,6 +577,19 @@ export class Game {
     };
     canvas.addEventListener('pointerdown', onPointer);
 
+    window.addEventListener(
+      'wheel',
+      (e) => {
+        if (this.studio.isOpen()) return;
+        const el = e.target as HTMLElement | null;
+        if (el?.closest('#gear-panel, #inventory, #skills-panel, #chat, #studio')) return;
+        e.preventDefault();
+        // Wheel down / pinch-out → zoom out (see more of the wood).
+        this.nudgeZoom(Math.sign(e.deltaY) || 1, 0.11);
+      },
+      { passive: false },
+    );
+
     window.addEventListener('keydown', (e) => {
       if (this.studio.isOpen()) return;
       this.keys.add(e.key.toLowerCase());
@@ -579,6 +598,8 @@ export class Game {
       if (e.key === '3') this.handleAction('mine');
       if (e.key === '4') this.handleAction('eat');
       if (e.key === '5') this.handleAction('examine');
+      if (e.key === '-' || e.key === '_') this.nudgeZoom(1, 0.16);
+      if (e.key === '=' || e.key === '+') this.nudgeZoom(-1, 0.16);
       if (e.key.toLowerCase() === 'k') {
         const panel = document.getElementById('skills-panel');
         if (panel) panel.hidden = !panel.hidden;
@@ -1966,12 +1987,20 @@ export class Game {
     if (this.moveMarker.visible) this.sitOnGround(this.moveMarker, 0.06);
   }
 
+  private nudgeZoom(dir: number, step = 0.12): void {
+    const next = this.camZoomTarget * Math.exp(dir * step);
+    this.camZoomTarget = Math.min(CAM_ZOOM_MAX, Math.max(CAM_ZOOM_MIN, next));
+  }
+
   private updateCamera(dt: number): void {
     // Combat framing: lift + slight pull-back so pine canopy doesn't bury telegraphs
     const pull = Math.min(1, this.combatCamPull);
+    const ease = 1 - Math.exp(-10 * dt);
+    this.camZoom += (this.camZoomTarget - this.camZoom) * ease;
+    const z = this.camZoom;
     const ox = this.camOffset.x;
-    const oy = this.camOffset.y + pull * 1.55;
-    const oz = this.camOffset.z + pull * 0.85;
+    const oy = this.camOffset.y * z + pull * 1.55;
+    const oz = this.camOffset.z * z + pull * 0.85;
     const desired = this.camSmooth;
     desired.set(
       this.player.position.x + ox,
