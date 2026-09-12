@@ -33,6 +33,9 @@ import {
   animatePlayerIdle,
   animatePlayerWalk,
   animateYetiAttack,
+  PoseSmoother,
+  walkFrequency,
+  walkStepLength,
   animateYetiWalk,
   ORC_ATTACK_CONNECT_END,
   ORC_ATTACK_CONNECT_START,
@@ -171,6 +174,9 @@ export class Game {
   private moveSpeedCur = 0;
   private moveBlend = 0;
   private stoppingSteps = 0;
+  /** Gait phase in radians; advanced from ground speed so feet do not skate. */
+  private gaitPhase = 0;
+  private poseSmoother = new PoseSmoother();
   private lastMoveDir = new THREE.Vector3(0, 0, 1);
   /** Target hit-react timers (mesh uuid → remaining) */
   private hitReacts: { mesh: THREE.Object3D; t: number; inten: number }[] = [];
@@ -1262,7 +1268,14 @@ export class Game {
         const turnRate = Math.abs(yawDelta) > 1.2 ? 7 : 11;
         this.faceToward(tx, tz, dt, turnRate);
         const speedNorm = Math.min(1.05, 0.45 + (this.moveSpeedCur / MOVE_SPEED) * 0.55);
-        animatePlayerWalk(this.player, this.animTime, speedNorm, this.moveBlend);
+        // Cadence follows ground speed (π per step); the floor keeps the legs
+        // moving through the first accelerating frames.
+        const cadence = Math.max(
+          walkFrequency(speedNorm) * 0.5,
+          (Math.PI * this.moveSpeedCur) / walkStepLength(speedNorm),
+        );
+        this.gaitPhase += cadence * dt;
+        animatePlayerWalk(this.player, this.gaitPhase, speedNorm, this.moveBlend);
         this.save.stamina = Math.max(0, this.save.stamina - dt * 2);
       }
     } else if (this.activity.type === 'gather') {
@@ -1413,7 +1426,8 @@ export class Game {
       if (this.stoppingSteps > 0) {
         this.stoppingSteps -= dt;
         this.moveBlend = Math.max(0, this.moveBlend - dt * 3.5);
-        animatePlayerWalk(this.player, this.animTime, 0.4, Math.max(0.15, this.moveBlend));
+        this.gaitPhase += 4.5 * dt;
+        animatePlayerWalk(this.player, this.gaitPhase, 0.4, Math.max(0.15, this.moveBlend));
       } else {
         this.moveBlend = Math.max(0, this.moveBlend - dt * 5);
         this.moveSpeedCur = 0;
@@ -1438,6 +1452,7 @@ export class Game {
         resetPlayerPose(this.player);
       }
     }
+    this.poseSmoother.apply(this.player, dt, this.activity.type === 'combat' ? 26 : 18);
     this.snapMoversToGround();
     tickTerrainFoliage(this.animTime);
     this.updateCamera(dt);

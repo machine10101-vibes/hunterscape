@@ -21,6 +21,7 @@ const DEFAULT = [
   { name: 'run-a', o: { pose: 'walk', t: 0.35, speed: 1.0, az: 0.7 } },
   { name: 'run-b', o: { pose: 'walk', t: 0.56, speed: 1.0, az: 0.7 } },
   { name: 'sword-guard', o: { pose: 'sword', t: 1.0, az: 0.8 } },
+  { name: 'sword-walk', o: { pose: 'sword-walk', t: 0.4, speed: 1.0, az: 0.7 } },
   { name: 'sword-grip', o: { pose: 'sword', t: 1.0, az: 1.4, dist: 0.62, focus: 'handR', fov: 32 } },
   { name: 'slash-0', o: { pose: 'slash', t: 0.0, az: 0.8 } },
   { name: 'slash-36', o: { pose: 'slash', t: 0.36, az: 0.8 } },
@@ -36,8 +37,17 @@ const DEFAULT = [
   { name: 'mine-grip', o: { pose: 'mine', t: 0.6, az: 1.2, dist: 0.62, focus: 'handR', fov: 32 } },
 ];
 
+// One gait cycle sampled at eight phases, side-on, at run and walk speeds.
+const GAIT = [];
+for (let i = 0; i < 8; i++) {
+  const ph = (i / 8) * Math.PI * 2;
+  GAIT.push({ name: `run-${i}`, o: { pose: 'walk', t: ph / 7.2, speed: 1.0, az: 1.55, el: 1.35 } });
+  GAIT.push({ name: `walk-${i}`, o: { pose: 'walk', t: ph / 3.4, speed: 0.3, az: 1.55, el: 1.35 } });
+}
+
 const SETS = {
   default: DEFAULT,
+  gait: GAIT,
   monsters: [
     { name: 'yeti-idle', o: { model: 'yeti', pose: 'idle', t: 1.0, az: 0.6, dist: 6.5, look: 1.6 } },
     { name: 'yeti-walk', o: { model: 'yeti', pose: 'walk', t: 0.5, az: 0.6, dist: 6.5, look: 1.6 } },

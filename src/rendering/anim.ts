@@ -150,6 +150,48 @@ function applyBodyPose(player: THREE.Group, pose: BodyPose): void {
   setLocomotionY(player, pose.lift ?? 0);
 }
 
+const SMOOTHED_JOINTS = [
+  'playerHips', 'playerTorso', 'playerHead',
+  'clavL', 'clavR', 'armL', 'armR', 'forearmL', 'forearmR', 'handL', 'handR',
+  'legL', 'legR', 'shinL', 'shinR', 'footL', 'footR',
+];
+
+/**
+ * Exponential low-pass over the joint rotations, run after whichever clip
+ * posed the body this frame. The clips are authored independently, so the
+ * hand-offs between them — walk to idle, idle to guard, swing back to guard —
+ * used to land as one-frame snaps. This turns each into a short ease without
+ * touching the clips themselves. Wrist and finger curl are left alone.
+ */
+export class PoseSmoother {
+  private prev = new Map<string, THREE.Euler>();
+
+  reset(): void {
+    this.prev.clear();
+  }
+
+  /** `rate` is 1/τ in seconds; 18 gives a ~55 ms ease. */
+  apply(player: THREE.Group, dt: number, rate = 18): void {
+    const k = 1 - Math.exp(-rate * Math.max(0, dt));
+    for (const name of SMOOTHED_JOINTS) {
+      const o = get(player, name);
+      if (!o) continue;
+      const p = this.prev.get(name);
+      if (!p) {
+        this.prev.set(name, o.rotation.clone());
+        continue;
+      }
+      o.rotation.set(
+        p.x + (o.rotation.x - p.x) * k,
+        p.y + (o.rotation.y - p.y) * k,
+        p.z + (o.rotation.z - p.z) * k,
+      );
+      p.copy(o.rotation);
+    }
+    poseEquippedTool(player);
+  }
+}
+
 /** Reset player limb poses to rest (keep world rotation.y). */
 export function resetPlayerPose(player: THREE.Group): void {
   resetLimb(get(player, 'playerHips'));
@@ -248,12 +290,16 @@ const SWORD_GUARD: BodyPose = {
   playerHead: [-0.04, 0.18, -0.04],
   clavR: [0.1, -0.12, -0.1],
   clavL: [0.04, 0.08, 0.08],
-  armR: [-0.35, 0.14, -0.47],
-  forearmR: [-2.12, -0.06, 0.06],
-  handR: [0.5, -1.12, -0.45],
-  armL: [0.26, 0.2, 0.34],
-  forearmL: [-0.95, 0.16, 0.1],
-  handL: [0.14, 0.1, 0.1],
+  // Sword arm hangs beside the hip with the elbow out and the forearm level;
+  // the blade crosses up and forward. Solved against the sword's own tip
+  // (hand ≈ (0.42, 1.05, 0.32), tip ≈ (0.04, 1.6, 0.83)).
+  armR: [-0.075, 0.32, 0.533],
+  forearmR: [-1.887, -0.185, 0.06],
+  handR: [0.622, -1.425, -0.209],
+  // Off hand comes forward as a guard rather than hanging behind the hip.
+  armL: [-0.7, 0.15, -0.3],
+  forearmL: [-1.15, 0.1, 0],
+  handL: [0.1, 0.2, 0.1],
   legL: [-0.22, 0.06, 0.05],
   shinL: [0.3, 0, 0],
   footL: [0.06, 0.1, 0],
@@ -310,19 +356,46 @@ function animateSwordGuard(player: THREE.Group, t: number): void {
  * flight phase, locks the elbows near 90°, drives the knees much higher and
  * lands on the forefoot instead of the heel.
  */
+/** Hip-to-sole length of the hunter rig, used to tie cadence to ground speed. */
+const LEG_LENGTH = 0.94;
+/** Hip swing amplitude at full run. Longer strides keep the cadence human at 4.2 u/s. */
+const RUN_STRIDE = 0.82;
+
+function gaitOf(speedNorm: number): number {
+  return smooth((Math.max(0.25, speedNorm) - 0.3) / 0.68);
+}
+
+/** Nominal cadence in rad/s for a gait, for callers with no ground speed. */
+export function walkFrequency(speedNorm: number): number {
+  return mix(3.4, 7.2, gaitOf(speedNorm));
+}
+
+/**
+ * Ground covered per step (half a cycle) at this gait, in world units. The
+ * caller advances the phase by π·speed/step per second so the planted foot
+ * stays put instead of skating.
+ */
+export function walkStepLength(speedNorm: number): number {
+  const stride = mix(0.3, RUN_STRIDE, gaitOf(speedNorm));
+  return 2 * LEG_LENGTH * Math.sin(stride) * 0.92;
+}
+
+/**
+ * `phase` is the gait phase in radians, owned by the caller. Deriving it from
+ * wall time × a speed-dependent frequency made the legs spin through dozens of
+ * cycles every time the speed ramped, because t was already large.
+ */
 export function animatePlayerWalk(
   player: THREE.Group,
-  t: number,
+  phase: number,
   speedNorm = 0.85,
   moveBlend = 1,
 ): void {
   const blend = Math.max(0, Math.min(1, moveBlend));
   const sn = Math.max(0.25, speedNorm);
-  const gait = smooth((sn - 0.3) / 0.68);
+  const gait = gaitOf(sn);
   const run = smooth((sn - 0.62) / 0.4);
-  const freq = mix(3.4, 7.2, gait);
-  const phase = t * freq;
-  const stride = mix(0.3, 0.72, gait) * blend;
+  const stride = mix(0.3, RUN_STRIDE, gait) * blend;
   const sword = isToolVisible(player, 'tool_sword');
 
   const hipL = Math.sin(phase);
@@ -388,14 +461,16 @@ export function animatePlayerWalk(
     rot(get(player, 'armL'), -hipL * mix(0.55, 1.05, run) * blend + 0.1, 0.06, -0.06);
     rot(get(player, 'forearmL'), mix(-0.28, -1.35, run) - Math.max(0, hipL) * 0.2, 0.04, 0);
     rot(get(player, 'handL'), 0.06, 0.04, 0.04);
-    rot(get(player, 'armR'), 0.22 + bounce * 0.35, 0.08, -0.22);
+    rot(get(player, 'armR'), 0.22 + bounce * 0.35, 0.08, 0.14);
     rot(get(player, 'forearmR'), -0.62 - bounce * 0.4, -0.06, 0.04);
     rot(get(player, 'handR'), 0.18 + bounce * 0.2, -1.18, -0.26);
     setHandGrip(get(player, 'handR'), 0.96);
     setHandGrip(get(player, 'handL'), 0.22);
   } else {
     // Free arms: long and pendular at a walk, folded and pumping at a run.
-    const swing = mix(0.72, 1.35, run) * stride * 1.35;
+    // Shoulders swing about as far as the hips at a walk and a little less
+    // than the hips at a run, where the elbows are folded.
+    const swing = stride * mix(1.0, 0.85, run);
     const fold = mix(0, 1, run);
     rot(get(player, 'armL'), -hipL * swing + mix(0.08, 0.3, run), 0.04 + fold * 0.16, -0.12 - fold * 0.04);
     rot(get(player, 'armR'), -hipR * swing + mix(0.08, 0.3, run), -0.04 - fold * 0.16, 0.12 + fold * 0.04);

@@ -8,6 +8,7 @@ import {
   animateOrcWalk,
   animateYetiAttack,
   animateYetiWalk,
+  walkFrequency,
 } from '../src/rendering/anim';
 import { createFrostYeti, createOrcScout, createPlayerMesh, setPlayerTool } from '../src/rendering/meshes';
 import { poseEquippedTool } from '../src/rendering/player';
@@ -82,13 +83,13 @@ function frame(opts: {
       animatePlayerIdle(m, o.t);
     } else if (o.pose === 'walk') {
       setPlayerTool(m, null);
-      animatePlayerWalk(m, o.t, o.speed, 1);
+      animatePlayerWalk(m, o.t * walkFrequency(o.speed), o.speed, 1);
     } else if (o.pose === 'sword') {
       setPlayerTool(m, 'sword');
       animatePlayerIdle(m, o.t);
     } else if (o.pose === 'sword-walk') {
       setPlayerTool(m, 'sword');
-      animatePlayerWalk(m, o.t, o.speed, 1);
+      animatePlayerWalk(m, o.t * walkFrequency(o.speed), o.speed, 1);
     } else if (o.pose === 'slash') {
       setPlayerTool(m, 'sword');
       animatePlayerAttack(m, o.t);
@@ -145,8 +146,21 @@ function setRaw(pose: Pose, tool: string | null) {
   m.updateMatrixWorld(true);
 }
 
+/**
+ * Marker lookup that ignores hidden subtrees. Every tool carries a `toolEdge`
+ * and `toolHeel`, and `getObjectByName` would return the first one it meets —
+ * the invisible hatchet's — regardless of which weapon is actually equipped.
+ */
+function findVisible(name: string): THREE.Object3D | undefined {
+  let found: THREE.Object3D | undefined;
+  subject!.traverseVisible((o) => {
+    if (!found && o.name === name) found = o;
+  });
+  return found;
+}
+
 function worldOf(name: string): THREE.Vector3 {
-  const o = subject!.getObjectByName(name);
+  const o = findVisible(name);
   return o ? o.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3();
 }
 
@@ -220,7 +234,7 @@ function probe(names: string[]) {
   m.updateMatrixWorld(true);
   const out: Record<string, number[]> = {};
   for (const n of names) {
-    const o = m.getObjectByName(n);
+    const o = findVisible(n);
     if (!o) continue;
     const p = o.getWorldPosition(new THREE.Vector3());
     out[n] = [+p.x.toFixed(3), +p.y.toFixed(3), +p.z.toFixed(3)];

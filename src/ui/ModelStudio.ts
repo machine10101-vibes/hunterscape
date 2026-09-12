@@ -10,6 +10,7 @@ import {
   animateYetiWalk,
   ORC_ATTACK_DURATION,
   PLAYER_ATTACK_DURATION,
+  walkFrequency,
   YETI_ATTACK_DURATION,
 } from '../rendering/anim';
 import {
@@ -479,7 +480,7 @@ export class ModelStudio {
     }
     if (pose === 'walk') {
       setPlayerTool(mesh, null);
-      animatePlayerWalk(mesh, this.animT, 0.9, 1);
+      animatePlayerWalk(mesh, this.animT * walkFrequency(0.9), 0.9, 1);
       return;
     }
     if (pose === 'sword') {
@@ -489,7 +490,7 @@ export class ModelStudio {
     }
     if (pose === 'sword-walk') {
       setPlayerTool(mesh, 'sword');
-      animatePlayerWalk(mesh, this.animT, 0.9, 1);
+      animatePlayerWalk(mesh, this.animT * walkFrequency(0.9), 0.9, 1);
       return;
     }
     if (pose === 'slash') {
