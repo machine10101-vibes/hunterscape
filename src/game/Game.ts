@@ -1103,7 +1103,7 @@ export class Game {
     const forge = this.objects.find((o) => o.kind === 'forge');
     if (!forge) return;
     const dist = this.distTo(forge);
-    if (dist > 2.1) {
+    if (dist > 8.5) {
       const dx = forge.mesh.position.x - this.player.position.x;
       const dz = forge.mesh.position.z - this.player.position.z;
       const n = Math.hypot(dx, dz) || 1;

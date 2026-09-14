@@ -106,42 +106,42 @@ function rimIce(parent: THREE.Object3D, y: number, count: number, radius: number
 /** Right-hand origin: fist closes around y ≈ 0, blade runs +Y. */
 export function createFrostSword(): THREE.Group {
   const g = new THREE.Group();
-  const grip = wrapHaft(0.16, 0.02);
+  const grip = wrapHaft(0.16, 0.024);
   grip.position.y = -0.02;
   g.add(grip);
-  const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), pal.amber());
+  const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.034, 10, 8), pal.amber());
   pommel.name = 'toolHeel';
   pommel.position.y = -0.1;
   add(g, pommel);
 
   // Quillons are two hooked claws, the same shape as the yeti's hands.
   for (const sx of [-1, 1]) {
-    const q = clawHook(0.16, 0.018, 0.15);
+    const q = clawHook(0.2, 0.022, 0.15);
     q.rotation.z = sx * 1.35;
-    q.position.set(sx * 0.02, 0.08, 0);
+    q.position.set(sx * 0.03, 0.08, 0);
     g.add(q);
   }
-  const fur = furTuft(0.04);
+  const fur = furTuft(0.05);
   fur.position.set(0, 0.09, 0);
   g.add(fur);
 
-  const spine = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.52, 0.016), pal.bone());
+  const spine = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.54, 0.03), pal.bone());
   spine.position.y = 0.38;
   add(g, spine);
   for (let i = 0; i < 5; i++) {
     const t = i / 4;
-    const claw = new THREE.Mesh(new THREE.ConeGeometry(0.036 - t * 0.014, 0.15 - t * 0.02, 6), pal.claw());
+    const claw = new THREE.Mesh(new THREE.ConeGeometry(0.05 - t * 0.016, 0.16 - t * 0.018, 6), pal.claw());
     claw.rotation.z = Math.PI;
-    claw.position.set(0.016, 0.2 + i * 0.1, 0);
-    claw.rotation.x = 0.12;
+    claw.position.set(0.022, 0.2 + i * 0.1, 0);
+    claw.rotation.x = 0.1;
     add(g, claw);
-    const ice = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.1, 0.028), pal.ice());
-    ice.position.set(-0.008, 0.2 + i * 0.1, 0);
+    const ice = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.11, 0.04), pal.ice());
+    ice.position.set(-0.012, 0.2 + i * 0.1, 0);
     g.add(ice);
   }
-  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.12, 6), pal.claw());
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.032, 0.14, 6), pal.claw());
   tip.name = 'toolEdge';
-  tip.position.y = 0.74;
+  tip.position.y = 0.76;
   add(g, tip);
   return g;
 }
@@ -182,96 +182,103 @@ export function createFrostHammer(): THREE.Group {
 
 export function createFrostSpear(): THREE.Group {
   const g = new THREE.Group();
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.02, 0.95, 8), pal.bone());
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.034, 0.98, 8), pal.bone());
   shaft.position.y = 0.28;
   add(g, shaft);
   for (let i = 0; i < 4; i++) {
-    const band = new THREE.Mesh(new THREE.TorusGeometry(0.022, 0.005, 5, 10), pal.wrap());
+    const band = new THREE.Mesh(new THREE.TorusGeometry(0.036, 0.007, 5, 10), pal.wrap());
     band.rotation.x = Math.PI / 2;
     band.position.y = -0.04 + i * 0.03;
     g.add(band);
   }
-  const fur = furTuft(0.04);
-  fur.position.y = 0.08;
+  const fur = furTuft(0.055);
+  fur.position.y = 0.1;
   g.add(fur);
-  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.028, 0.2, 6), pal.claw());
+  const collar = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), pal.ice());
+  collar.scale.set(1, 0.7, 1);
+  collar.position.y = 0.72;
+  add(g, collar);
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.048, 0.26, 6), pal.claw());
   tip.name = 'toolEdge';
-  tip.position.y = 0.86;
+  tip.position.y = 0.9;
   add(g, tip);
-  const fang = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.12, 6), phys(0xf2ead6, { roughness: 0.32, flatShading: false }));
-  fang.position.y = 0.78;
-  fang.position.x = 0.012;
-  fang.rotation.z = 0.25;
+  const fang = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.18, 6), phys(0xf2ead6, { roughness: 0.32, flatShading: false }));
+  fang.position.set(0.02, 0.82, 0);
+  fang.rotation.z = 0.28;
   add(g, fang);
   for (const sx of [-1, 1]) {
-    const barb = clawHook(0.1, 0.012, 0.4);
-    barb.rotation.z = sx * 1.1;
-    barb.position.set(sx * 0.01, 0.7, 0);
+    const barb = clawHook(0.16, 0.018, 0.4);
+    barb.rotation.z = sx * 1.15;
+    barb.position.set(sx * 0.02, 0.7, 0);
     g.add(barb);
   }
-  const heel = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 6), pal.boneDark());
+  const heel = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 6), pal.boneDark());
   heel.name = 'toolHeel';
-  heel.position.y = -0.2;
+  heel.position.y = -0.22;
   add(g, heel);
   return g;
 }
 
 export function createFrostBow(): THREE.Group {
   const g = new THREE.Group();
-  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.02, 0.12, 8), pal.hide());
+  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.03, 0.14, 8), pal.hide());
   add(g, grip);
-  const wrap = furTuft(0.032);
+  const wrap = furTuft(0.045);
   g.add(wrap);
 
   for (const sy of [-1, 1]) {
     const limb = new THREE.Group();
-    limb.position.y = sy * 0.06;
+    limb.position.y = sy * 0.07;
     for (let i = 0; i < 5; i++) {
       const t = i / 4;
       const bone = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.016 - t * 0.006, 0.014 - t * 0.005, 0.1, 6),
+        new THREE.CylinderGeometry(0.026 - t * 0.008, 0.022 - t * 0.007, 0.12, 6),
         pal.bone(),
       );
-      bone.position.y = sy * (0.05 + i * 0.085);
-      bone.position.z = -t * 0.05;
-      bone.rotation.x = sy * t * 0.45;
+      bone.position.y = sy * (0.06 + i * 0.1);
+      bone.position.z = -t * 0.08;
+      bone.rotation.x = sy * t * 0.5;
       add(limb, bone);
     }
-    const nock = new THREE.Mesh(new THREE.OctahedronGeometry(0.018, 0), pal.ice());
-    nock.position.set(0, sy * 0.48, -0.2);
+    const nock = new THREE.Mesh(new THREE.OctahedronGeometry(0.03, 0), pal.ice());
+    nock.position.set(0, sy * 0.56, -0.32);
     add(limb, nock);
     g.add(limb);
   }
 
-  const string = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.96, 5), pal.claw());
-  string.position.set(0, 0, -0.2);
+  const string = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 1.12, 5), pal.claw());
+  string.position.set(0, 0, -0.32);
   g.add(string);
-  const claw = clawHook(0.1, 0.012, 0.2);
-  claw.position.set(0, 0, 0.02);
+  const claw = clawHook(0.14, 0.016, 0.2);
+  claw.position.set(0, 0, 0.03);
   g.add(claw);
   return g;
 }
 
 export function createFrostShield(): THREE.Group {
   const g = new THREE.Group();
-  const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.21, 0.04, 12), pal.hide());
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.28, 0.055, 12), pal.hide());
   disc.rotation.x = Math.PI / 2;
   add(g, disc);
-  const boss = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), pal.ice());
+  const pelt = new THREE.Mesh(new THREE.SphereGeometry(0.24, 10, 8), pal.fur());
+  pelt.scale.set(1, 1, 0.28);
+  pelt.position.z = 0.02;
+  add(g, pelt);
+  const boss = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), pal.ice());
   boss.scale.set(1, 1, 0.55);
-  boss.position.z = 0.03;
+  boss.position.z = 0.04;
   add(g, boss);
-  const knuckle = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), pal.hideDark());
-  knuckle.position.z = 0.055;
+  const knuckle = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), pal.hideDark());
+  knuckle.position.z = 0.07;
   add(g, knuckle);
-  for (let i = 0; i < 10; i++) {
-    const a = (i / 10) * Math.PI * 2;
-    const tuft = furTuft(0.04);
-    tuft.position.set(Math.cos(a) * 0.19, Math.sin(a) * 0.19, 0);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const tuft = furTuft(0.055);
+    tuft.position.set(Math.cos(a) * 0.24, Math.sin(a) * 0.24, 0);
     tuft.rotation.z = a;
     g.add(tuft);
-    const spike = clawHook(0.1, 0.014, 1.15);
-    spike.position.set(Math.cos(a) * 0.21, Math.sin(a) * 0.21, 0.01);
+    const spike = clawHook(0.16, 0.018, 1.15);
+    spike.position.set(Math.cos(a) * 0.27, Math.sin(a) * 0.27, 0.02);
     spike.rotation.z = a + Math.PI / 2;
     g.add(spike);
   }
@@ -280,85 +287,116 @@ export function createFrostShield(): THREE.Group {
 
 export function createFrostChest(): THREE.Group {
   const g = new THREE.Group();
-  const vest = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 10), pal.hide());
-  vest.scale.set(1.15, 1.05, 0.72);
-  vest.position.y = 0.02;
+  // Pale hide shell sits over the hunter's leather vest.
+  const vest = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), pal.hide());
+  vest.scale.set(1.28, 1.18, 0.86);
+  vest.position.y = 0.0;
   add(g, vest);
-  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), pal.hideDark());
-  belly.scale.set(1.1, 0.9, 0.55);
-  belly.position.set(0, -0.12, 0.08);
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), pal.hideDark());
+  belly.scale.set(1.15, 0.95, 0.62);
+  belly.position.set(0, -0.14, 0.1);
   add(g, belly);
-  const mantle = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10), pal.fur());
-  mantle.scale.set(1.55, 0.55, 1.05);
-  mantle.position.set(0, 0.2, -0.02);
+
+  // White pelt mantle — the silhouette that reads from the high camera.
+  const mantle = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), pal.fur());
+  mantle.scale.set(1.85, 0.52, 1.25);
+  mantle.position.set(0, 0.22, 0.0);
   add(g, mantle);
+  const cape = new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 8), pal.fur());
+  cape.scale.set(1.15, 1.45, 0.42);
+  cape.position.set(0, -0.02, -0.2);
+  add(g, cape);
+  const waist = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.04, 6, 12), pal.furMid());
+  waist.rotation.x = Math.PI / 2;
+  waist.scale.set(1.15, 0.9, 1);
+  waist.position.y = -0.24;
+  g.add(waist);
+
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2;
+    const tuft = furTuft(0.055);
+    tuft.position.set(Math.cos(a) * 0.3, 0.2 + Math.sin(a * 2) * 0.03, Math.sin(a) * 0.16);
+    tuft.rotation.y = a;
+    g.add(tuft);
+  }
+
   for (const sx of [-1, 1]) {
-    const pad = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), pal.furMid());
-    pad.scale.set(1.15, 0.7, 1);
-    pad.position.set(sx * 0.22, 0.18, 0.02);
+    const pad = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), pal.fur());
+    pad.scale.set(1.25, 0.75, 1.1);
+    pad.position.set(sx * 0.28, 0.2, 0.04);
     add(g, pad);
-    const shard = new THREE.Mesh(new THREE.OctahedronGeometry(0.07, 0), pal.ice());
-    shard.position.set(sx * 0.24, 0.26, -0.04);
-    shard.scale.set(0.45, 1.6, 0.4);
+    const shard = new THREE.Mesh(new THREE.OctahedronGeometry(0.09, 0), pal.ice());
+    shard.position.set(sx * 0.3, 0.32, -0.02);
+    shard.scale.set(0.45, 1.8, 0.4);
     add(g, shard);
-    const clasp = clawHook(0.1, 0.014, 0.5);
-    clasp.position.set(sx * 0.1, -0.02, 0.16);
-    clasp.rotation.z = sx * 0.4;
+    const clasp = clawHook(0.14, 0.018, 0.45);
+    clasp.position.set(sx * 0.1, -0.02, 0.2);
+    clasp.rotation.z = sx * 0.45;
     g.add(clasp);
   }
-  const gem = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 6), pal.amber());
-  gem.position.set(0, 0.04, 0.18);
+  const gem = new THREE.Mesh(new THREE.SphereGeometry(0.036, 8, 6), pal.amber());
+  gem.position.set(0, 0.04, 0.22);
   add(g, gem);
   return g;
 }
 
 export function createFrostGreave(): THREE.Group {
   const g = new THREE.Group();
-  const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.24, 10), pal.fur());
-  plate.position.y = -0.1;
+  const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.095, 0.3, 10), pal.fur());
+  plate.position.y = -0.12;
   add(g, plate);
-  const cuff = new THREE.Mesh(new THREE.TorusGeometry(0.092, 0.024, 6, 10), pal.furMid());
+  const cuff = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.03, 6, 10), pal.furMid());
   cuff.rotation.x = Math.PI / 2;
-  cuff.position.y = 0.0;
+  cuff.position.y = 0.02;
   g.add(cuff);
   for (let i = 0; i < 3; i++) {
-    const ridge = clawHook(0.08, 0.01, 0.2);
-    ridge.position.set(0, -0.04 - i * 0.05, 0.07);
+    const ridge = clawHook(0.1, 0.014, 0.2);
+    ridge.position.set(0, -0.04 - i * 0.06, 0.09);
     g.add(ridge);
   }
-  const ice = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.12, 0.02), pal.ice());
-  ice.position.set(0, -0.1, 0.075);
+  const ice = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.16, 0.03), pal.ice());
+  ice.position.set(0, -0.12, 0.095);
   g.add(ice);
   return g;
 }
 
 export function createFrostLeg(): THREE.Group {
   const g = new THREE.Group();
-  const chap = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.085, 0.36, 10), pal.fur());
-  chap.position.y = -0.18;
+  const chap = new THREE.Mesh(new THREE.CylinderGeometry(0.145, 0.1, 0.44, 10), pal.fur());
+  chap.position.y = -0.2;
   add(g, chap);
-  const hide = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.22, 0.04), pal.hide());
-  hide.position.set(0, -0.16, 0.08);
+  const hide = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.26, 0.05), pal.hide());
+  hide.position.set(0, -0.18, 0.1);
   add(g, hide);
-  const tuft = furTuft(0.05);
-  tuft.position.set(0, -0.02, 0.04);
-  g.add(tuft);
+  for (const [x, y, z] of [
+    [0.1, -0.06, 0.04],
+    [-0.1, -0.1, 0.02],
+    [0.0, -0.02, 0.08],
+  ] as const) {
+    const tuft = furTuft(0.06);
+    tuft.position.set(x, y, z);
+    g.add(tuft);
+  }
   return g;
 }
 
 export function createFrostBoot(): THREE.Group {
   const g = new THREE.Group();
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.078, 0.1, 10), pal.fur());
-  shaft.position.y = 0.02;
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.095, 0.14, 10), pal.fur());
+  shaft.position.y = 0.04;
   add(g, shaft);
-  const toe = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), pal.hide());
-  toe.scale.set(1.1, 0.55, 1.45);
-  toe.position.set(0, -0.04, 0.08);
+  const cuff = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.028, 6, 10), pal.furMid());
+  cuff.rotation.x = Math.PI / 2;
+  cuff.position.y = 0.1;
+  g.add(cuff);
+  const toe = new THREE.Mesh(new THREE.SphereGeometry(0.085, 10, 8), pal.hide());
+  toe.scale.set(1.15, 0.58, 1.7);
+  toe.position.set(0, -0.03, 0.1);
   add(g, toe);
   for (let i = 0; i < 3; i++) {
-    const x = (i - 1) * 0.032;
-    const c = clawHook(0.08, 0.01, 1.15);
-    c.position.set(x, -0.04, 0.16);
+    const x = (i - 1) * 0.038;
+    const c = clawHook(0.12, 0.014, 1.15);
+    c.position.set(x, -0.03, 0.2);
     g.add(c);
   }
   return g;
@@ -449,6 +487,14 @@ export function createForge(): THREE.Group {
   workClaw.position.set(0.72, 0.66, 0.08);
   workClaw.rotation.z = 0.9;
   g.add(workClaw);
+  const fang = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.16, 6), pal.bone());
+  fang.position.set(0.58, 0.62, 0.16);
+  fang.rotation.z = 0.8;
+  add(g, fang);
+  const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.024, 0.28, 6), pal.boneDark());
+  bone.position.set(-0.52, 0.42, 0.28);
+  bone.rotation.z = 1.1;
+  add(g, bone);
 
   const hit = new THREE.Mesh(
     new THREE.CylinderGeometry(0.95, 1.05, 1.4, 10),
@@ -514,8 +560,8 @@ export function attachYetiWear(player: THREE.Group): void {
     const chest = createFrostChest();
     chest.name = 'wear_chest';
     chest.visible = false;
-    chest.position.set(0, 0.04, 0.04);
-    chest.scale.setScalar(1.15);
+    chest.position.set(0, 0.0, 0.02);
+    chest.scale.setScalar(1.05);
     torso.add(chest);
   }
 
@@ -524,9 +570,9 @@ export function attachYetiWear(player: THREE.Group): void {
     const shield = createFrostShield();
     shield.name = 'wear_shield';
     shield.visible = false;
-    shield.position.set(-0.16, -0.12, 0.04);
-    shield.rotation.set(0.2, -1.2, 0.15);
-    shield.scale.setScalar(1.05);
+    shield.position.set(-0.2, -0.1, 0.06);
+    shield.rotation.set(0.15, -1.15, 0.2);
+    shield.scale.setScalar(1.15);
     armL.add(shield);
   }
 
@@ -537,7 +583,7 @@ export function attachYetiWear(player: THREE.Group): void {
       wrap.name = side < 0 ? 'wear_legL' : 'wear_legR';
       wrap.visible = false;
       wrap.position.set(0, -0.02, 0);
-      wrap.scale.setScalar(1.12);
+      wrap.scale.setScalar(1.08);
       leg.add(wrap);
     }
     const shin = player.getObjectByName(side < 0 ? 'shinL' : 'shinR');
@@ -545,8 +591,8 @@ export function attachYetiWear(player: THREE.Group): void {
       const greave = createFrostGreave();
       greave.name = side < 0 ? 'wear_greaveL' : 'wear_greaveR';
       greave.visible = false;
-      greave.position.set(0, -0.06, 0.02);
-      greave.scale.setScalar(1.2);
+      greave.position.set(0, -0.04, 0.02);
+      greave.scale.setScalar(1.12);
       shin.add(greave);
     }
     const foot = player.getObjectByName(side < 0 ? 'footL' : 'footR');
@@ -554,11 +600,17 @@ export function attachYetiWear(player: THREE.Group): void {
       const boot = createFrostBoot();
       boot.name = side < 0 ? 'wear_bootL' : 'wear_bootR';
       boot.visible = false;
-      boot.position.set(0, 0.01, 0.04);
-      boot.scale.setScalar(1.25);
+      boot.position.set(0, 0.02, 0.02);
+      boot.scale.setScalar(1.2);
       foot.add(boot);
     }
   }
+}
+
+function setBaseLayer(player: THREE.Group, layer: string, visible: boolean): void {
+  player.traverse((o) => {
+    if (o.userData.baseLayer === layer) o.visible = visible;
+  });
 }
 
 export function setYetiWear(player: THREE.Group, equipped: {
@@ -572,12 +624,20 @@ export function setYetiWear(player: THREE.Group, equipped: {
     const o = player.getObjectByName(name);
     if (o) o.visible = on;
   };
+  const chestOn = equipped.chest === 'frost_chest';
+  const legsOn = equipped.legs === 'frost_legs';
+  const greavesOn = equipped.greaves === 'frost_greaves';
+  const bootsOn = equipped.boots === 'frost_boots';
   show('wear_shield', equipped.shield === 'frost_shield');
-  show('wear_chest', equipped.chest === 'frost_chest');
-  show('wear_legL', equipped.legs === 'frost_legs');
-  show('wear_legR', equipped.legs === 'frost_legs');
-  show('wear_greaveL', equipped.greaves === 'frost_greaves');
-  show('wear_greaveR', equipped.greaves === 'frost_greaves');
-  show('wear_bootL', equipped.boots === 'frost_boots');
-  show('wear_bootR', equipped.boots === 'frost_boots');
+  show('wear_chest', chestOn);
+  show('wear_legL', legsOn);
+  show('wear_legR', legsOn);
+  show('wear_greaveL', greavesOn);
+  show('wear_greaveR', greavesOn);
+  show('wear_bootL', bootsOn);
+  show('wear_bootR', bootsOn);
+  setBaseLayer(player, 'chest', !chestOn);
+  setBaseLayer(player, 'legs', !legsOn);
+  setBaseLayer(player, 'greaves', !greavesOn);
+  setBaseLayer(player, 'boots', !bootsOn);
 }

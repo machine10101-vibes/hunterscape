@@ -231,6 +231,10 @@ function addPart(mesh: THREE.Mesh, parent: THREE.Object3D): THREE.Mesh {
   return mesh;
 }
 
+function tagLayer(obj: THREE.Object3D, layer: string): void {
+  obj.userData.baseLayer = layer;
+}
+
 function latheBody(radii: [number, number][], segs = 16): THREE.LatheGeometry {
   const pts = radii.map(([r, y]) => new THREE.Vector2(r, y));
   return new THREE.LatheGeometry(pts, segs);
@@ -256,6 +260,7 @@ function addCrissCross(
   radius: number,
   material: THREE.Material,
   z = 0,
+  layer?: string,
 ): void {
   const len = Math.hypot(radius * 1.7, y1 - y0);
   for (const dir of [-1, 1]) {
@@ -263,6 +268,7 @@ function addCrissCross(
     strap.position.set(0, (y0 + y1) * 0.5, z);
     strap.rotation.z = dir * Math.atan2(radius * 0.95, (y1 - y0) * 0.5);
     strap.castShadow = true;
+    if (layer) tagLayer(strap, layer);
     parent.add(strap);
   }
 }
@@ -289,6 +295,7 @@ function addFurCuff(
   size: number,
   fur: THREE.Material,
   furDark: THREE.Material,
+  layer?: string,
 ): void {
   for (let i = 0; i < count; i++) {
     const a = (i / count) * Math.PI * 2;
@@ -297,6 +304,7 @@ function addFurCuff(
     clump.rotation.set(0.2, a, 0.15);
     clump.scale.set(1.15, 0.85, 1.05);
     clump.castShadow = true;
+    if (layer) tagLayer(clump, layer);
     parent.add(clump);
   }
 }
@@ -503,7 +511,7 @@ export function createPlayerMesh(): THREE.Group {
 
     const hipBall = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 12), cloth);
     hipBall.scale.set(1.04, 1, 1.02);
-    addPart(hipBall, hip);
+    tagLayer(addPart(hipBall, hip), 'legs');
 
     // Thigh tapers from the hip to the knee; the quad sits forward and the
     // hamstring behind so the leg has a front and a back.
@@ -520,15 +528,15 @@ export function createPlayerMesh(): THREE.Group {
       ),
       cloth,
     );
-    addPart(thigh, hip);
+    tagLayer(addPart(thigh, hip), 'legs');
     const quad = new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 9), cloth);
     quad.scale.set(1, 1.7, 0.85);
     quad.position.set(0, -0.2, 0.04);
-    addPart(quad, hip);
+    tagLayer(addPart(quad, hip), 'legs');
     const ham = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 9), clothDark);
     ham.scale.set(1, 1.6, 0.8);
     ham.position.set(0, -0.18, -0.04);
-    addPart(ham, hip);
+    tagLayer(addPart(ham, hip), 'legs');
 
     const shin = new THREE.Group();
     shin.name = side < 0 ? 'shinL' : 'shinR';
@@ -566,45 +574,48 @@ export function createPlayerMesh(): THREE.Group {
     // Short boot shaft — two fur rings live on this, not on the ankle.
     const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.098, 0.1, 14), leather);
     boot.position.set(0, -0.2, -0.016);
-    addPart(boot, shin);
-    addCrissCross(shin, -0.15, -0.25, 0.094, leatherDark, 0.02);
+    tagLayer(addPart(boot, shin), 'greaves');
+    addCrissCross(shin, -0.15, -0.25, 0.094, leatherDark, 0.02, 'greaves');
 
     const bootFurTop = new THREE.Mesh(new THREE.TorusGeometry(0.092, 0.022, 6, 10), fur);
     bootFurTop.rotation.x = Math.PI / 2;
     bootFurTop.position.set(0, -0.14, 0.02);
+    tagLayer(bootFurTop, 'greaves');
     shin.add(bootFurTop);
     const bootFurLow = new THREE.Mesh(new THREE.TorusGeometry(0.082, 0.018, 6, 10), furDark);
     bootFurLow.rotation.x = Math.PI / 2;
     bootFurLow.position.set(0, -0.24, 0);
+    tagLayer(bootFurLow, 'greaves');
     shin.add(bootFurLow);
 
     // Long, skinny ankle so the joint reads between shaft and foot.
     const ankleCol = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.058, 0.14, 12), leatherDark);
     ankleCol.position.set(0, -0.36, -0.006);
-    addPart(ankleCol, shin);
+    tagLayer(addPart(ankleCol, shin), 'boots');
     const ankleWrap = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.055, 0.045, 12), leather);
     ankleWrap.position.set(0, -0.34, -0.006);
-    addPart(ankleWrap, shin);
+    tagLayer(addPart(ankleWrap, shin), 'boots');
 
     const foot = new THREE.Group();
     foot.name = side < 0 ? 'footL' : 'footR';
     foot.position.set(0, -0.48, 0.04);
     const ankle = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 10), leatherDark);
-    addPart(ankle, foot);
+    tagLayer(addPart(ankle, foot), 'boots');
     const heel = new THREE.Mesh(new THREE.SphereGeometry(0.046, 10, 8), leatherDark);
     heel.position.set(0, -0.016, -0.05);
-    addPart(heel, foot);
+    tagLayer(addPart(heel, foot), 'boots');
     const toe = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.16, 5, 12), leather);
     toe.rotation.x = Math.PI / 2;
     toe.position.set(0, -0.004, 0.12);
     toe.scale.set(1.2, 1, 0.68);
-    addPart(toe, foot);
+    tagLayer(addPart(toe, foot), 'boots');
     // Tucked inside the boot's footprint; any wider and it reads as a black
     // rectangle floating under each foot.
     const sole = new THREE.Mesh(new THREE.CapsuleGeometry(0.052, 0.16, 4, 10), mat(0x1c1410, { roughness: 0.96 }));
     sole.rotation.x = Math.PI / 2;
     sole.scale.set(1.12, 1, 0.36);
     sole.position.set(0, -0.032, 0.1);
+    tagLayer(sole, 'boots');
     foot.add(sole);
     shin.add(foot);
 
@@ -618,7 +629,7 @@ export function createPlayerMesh(): THREE.Group {
   const pelvis = new THREE.Mesh(latheBody([[0.2, -0.1], [0.24, -0.02], [0.22, 0.1]], 16), leather);
   pelvis.position.y = 0.92;
   pelvis.scale.set(1, 1, 0.86);
-  addPart(pelvis, hips);
+  tagLayer(addPart(pelvis, hips), 'legs');
 
   for (const [z, ry] of [
     [0.195, 0],
@@ -629,6 +640,7 @@ export function createPlayerMesh(): THREE.Group {
     const flap = triangleTasset(0.26, 0.2, 0.038, leatherDark);
     flap.position.set(0, 0.86, z);
     flap.rotation.set(Math.sign(z) * 0.28, ry, 0);
+    tagLayer(flap, 'legs');
     hips.add(flap);
   }
   for (const sx of [-1, 1]) {
@@ -636,6 +648,7 @@ export function createPlayerMesh(): THREE.Group {
     flap.position.set(sx * 0.24, 0.86, 0);
     flap.rotation.order = 'ZYX';
     flap.rotation.set(0, sx * Math.PI * 0.5, -sx * 0.24);
+    tagLayer(flap, 'legs');
     hips.add(flap);
   }
 
@@ -662,25 +675,25 @@ export function createPlayerMesh(): THREE.Group {
     leather,
   );
   vest.scale.set(1.08, 1, 0.88);
-  addPart(vest, torso);
+  tagLayer(addPart(vest, torso), 'chest');
 
   // Lats: the back flares below the shoulder blades and pulls in at the waist.
   const back = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 12), leather);
   back.scale.set(1.2, 0.95, 0.5);
   back.position.set(0, 0.06, -0.1);
-  addPart(back, torso);
+  tagLayer(addPart(back, torso), 'chest');
 
   // Chest and abdomen in the same leather as the vest: form, not decals.
   for (const sx of [-1, 1]) {
     const pec = new THREE.Mesh(new THREE.SphereGeometry(0.085, 14, 12), leather);
     pec.scale.set(1.2, 0.72, 0.5);
     pec.position.set(sx * 0.1, 0.1, 0.16);
-    addPart(pec, torso);
+    tagLayer(addPart(pec, torso), 'chest');
   }
   const abs = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), leather);
   abs.scale.set(1.1, 1.0, 0.36);
   abs.position.set(0, -0.14, 0.16);
-  addPart(abs, torso);
+  tagLayer(addPart(abs, torso), 'chest');
 
   const belt = new THREE.Mesh(new THREE.TorusGeometry(0.225, 0.03, 10, 18), leatherDark);
   belt.rotation.x = Math.PI / 2;
@@ -698,6 +711,7 @@ export function createPlayerMesh(): THREE.Group {
     strap.position.set(0, 0.02, z);
     strap.rotation.set(Math.sign(z) * 0.09, 0, rotZ);
     strap.castShadow = true;
+    tagLayer(strap, 'chest');
     torso.add(strap);
   };
   makeStrap(0.5, 0.18);
@@ -707,10 +721,12 @@ export function createPlayerMesh(): THREE.Group {
 
   const bucklePad = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.03), leatherDark);
   bucklePad.position.set(0, 0.05, 0.205);
+  tagLayer(bucklePad, 'chest');
   torso.add(bucklePad);
   const chestBuckle = squareBuckle(0.14, 0.038, 0.058, metalBright);
   chestBuckle.name = 'chestBuckle';
   chestBuckle.position.set(0, 0.05, 0.24);
+  tagLayer(chestBuckle, 'chest');
   torso.add(chestBuckle);
 
   // Shoulder root: clavicle pivot at ±0.2, humerus head another 0.11 out, so
@@ -728,7 +744,7 @@ export function createPlayerMesh(): THREE.Group {
     pad.scale.set(1.2, 0.5, 1.05);
     pad.position.set(sx * (SHOULDER_X - 0.03), 0.18, 0.005);
     pad.rotation.z = sx * -0.34;
-    addPart(pad, torso);
+    tagLayer(addPart(pad, torso), 'chest');
     // Studded leather cap: breaks up the bare shoulder ball in silhouette.
     const cap = new THREE.Mesh(
       new THREE.SphereGeometry(0.108, 12, 9, 0, Math.PI * 2, 0, Math.PI * 0.5),
@@ -737,11 +753,12 @@ export function createPlayerMesh(): THREE.Group {
     cap.scale.set(1.06, 0.9, 1.02);
     cap.rotation.z = sx * -0.38;
     cap.position.set(sx * (SHOULDER_X - 0.01), 0.13, -0.004);
-    addPart(cap, torso);
+    tagLayer(addPart(cap, torso), 'chest');
     for (let i = 0; i < 3; i++) {
       const stud = new THREE.Mesh(new THREE.SphereGeometry(0.011, 6, 5), metalBright);
       const a = -0.5 + i * 0.5;
       stud.position.set(sx * (SHOULDER_X + Math.cos(a) * 0.02), 0.19, Math.sin(a) * 0.08);
+      tagLayer(stud, 'chest');
       torso.add(stud);
     }
   }
@@ -750,8 +767,8 @@ export function createPlayerMesh(): THREE.Group {
   collarBase.rotation.x = Math.PI / 2;
   collarBase.position.set(0, 0.28, 0.01);
   collarBase.scale.set(1.08, 1.0, 0.92);
-  addPart(collarBase, torso);
-  addFurCuff(torso, 0, 0.29, 0.01, 0.18, 8, 0.042, fur, furDark);
+  tagLayer(addPart(collarBase, torso), 'chest');
+  addFurCuff(torso, 0, 0.29, 0.01, 0.18, 8, 0.042, fur, furDark, 'chest');
 
   const neck = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.1, 6, 14), skin);
   neck.position.set(0, 0.35, 0.012);
@@ -1295,22 +1312,22 @@ function attachYetiTools(toolRoot: THREE.Group): void {
   const sword = createFrostSword();
   sword.name = 'tool_frost_sword';
   sword.visible = false;
-  sword.scale.setScalar(1.12);
+  sword.scale.setScalar(1.18);
   toolRoot.add(sword);
   const hammer = createFrostHammer();
   hammer.name = 'tool_frost_hammer';
   hammer.visible = false;
-  hammer.scale.setScalar(1.08);
+  hammer.scale.setScalar(1.12);
   toolRoot.add(hammer);
   const spear = createFrostSpear();
   spear.name = 'tool_frost_spear';
   spear.visible = false;
-  spear.scale.setScalar(1.08);
+  spear.scale.setScalar(1.22);
   toolRoot.add(spear);
   const bow = createFrostBow();
   bow.name = 'tool_frost_bow';
   bow.visible = false;
-  bow.scale.setScalar(1.15);
+  bow.scale.setScalar(1.28);
   toolRoot.add(bow);
 }
 
