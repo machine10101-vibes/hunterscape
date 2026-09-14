@@ -1295,18 +1295,22 @@ function attachYetiTools(toolRoot: THREE.Group): void {
   const sword = createFrostSword();
   sword.name = 'tool_frost_sword';
   sword.visible = false;
+  sword.scale.setScalar(1.12);
   toolRoot.add(sword);
   const hammer = createFrostHammer();
   hammer.name = 'tool_frost_hammer';
   hammer.visible = false;
+  hammer.scale.setScalar(1.08);
   toolRoot.add(hammer);
   const spear = createFrostSpear();
   spear.name = 'tool_frost_spear';
   spear.visible = false;
+  spear.scale.setScalar(1.08);
   toolRoot.add(spear);
   const bow = createFrostBow();
   bow.name = 'tool_frost_bow';
   bow.visible = false;
+  bow.scale.setScalar(1.15);
   toolRoot.add(bow);
 }
 

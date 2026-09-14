@@ -130,13 +130,13 @@ export function createFrostSword(): THREE.Group {
   add(g, spine);
   for (let i = 0; i < 5; i++) {
     const t = i / 4;
-    const claw = new THREE.Mesh(new THREE.ConeGeometry(0.028 - t * 0.012, 0.14 - t * 0.02, 6), pal.claw());
+    const claw = new THREE.Mesh(new THREE.ConeGeometry(0.036 - t * 0.014, 0.15 - t * 0.02, 6), pal.claw());
     claw.rotation.z = Math.PI;
-    claw.position.set(0.012, 0.2 + i * 0.1, 0);
+    claw.position.set(0.016, 0.2 + i * 0.1, 0);
     claw.rotation.x = 0.12;
     add(g, claw);
-    const ice = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.09, 0.022), pal.ice());
-    ice.position.set(-0.006, 0.2 + i * 0.1, 0);
+    const ice = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.1, 0.028), pal.ice());
+    ice.position.set(-0.008, 0.2 + i * 0.1, 0);
     g.add(ice);
   }
   const tip = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.12, 6), pal.claw());
@@ -314,10 +314,10 @@ export function createFrostChest(): THREE.Group {
 
 export function createFrostGreave(): THREE.Group {
   const g = new THREE.Group();
-  const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.078, 0.07, 0.22, 10), pal.hide());
+  const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.24, 10), pal.fur());
   plate.position.y = -0.1;
   add(g, plate);
-  const cuff = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.02, 6, 10), pal.fur());
+  const cuff = new THREE.Mesh(new THREE.TorusGeometry(0.092, 0.024, 6, 10), pal.furMid());
   cuff.rotation.x = Math.PI / 2;
   cuff.position.y = 0.0;
   g.add(cuff);
@@ -368,74 +368,93 @@ export function createForge(): THREE.Group {
   const g = new THREE.Group();
   g.name = 'forge';
 
-  const stone = phys(0x5a5a58, { roughness: 0.94 });
-  const brick = phys(0x6a4030, { roughness: 0.9 });
+  const stone = phys(0x6a6a66, { roughness: 0.94 });
+  const brick = phys(0x7a4530, { roughness: 0.88 });
   const soot = phys(0x2a2420, { roughness: 0.96 });
+  const iron = phys(0x3a4048, { metalness: 0.5, roughness: 0.38 });
 
-  const base = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.42, 0.85), stone);
-  base.position.y = 0.21;
-  add(g, base);
-  const hearth = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.28, 0.5), soot);
-  hearth.position.set(0, 0.48, 0.05);
-  add(g, hearth);
-  const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.95, 0.38), brick);
-  chimney.position.set(0, 1.05, -0.18);
-  add(g, chimney);
-  const cap = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.1, 0.46), stone);
-  cap.position.set(0, 1.55, -0.18);
-  add(g, cap);
+  // Wide hearth so the station reads from the high game camera.
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2;
+    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.16, 0), stone);
+    rock.position.set(Math.cos(a) * 0.62, 0.14, Math.sin(a) * 0.5);
+    rock.rotation.set(0.2, a, 0.15);
+    add(g, rock);
+  }
+  const pit = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.48, 0.16, 12), soot);
+  pit.position.y = 0.12;
+  add(g, pit);
 
   const coals = new THREE.Mesh(
-    new THREE.SphereGeometry(0.16, 8, 6),
-    phys(0xff6622, { emissive: 0xff4400, emissiveIntensity: 1.4, roughness: 0.5 }),
+    new THREE.SphereGeometry(0.22, 8, 6),
+    phys(0xff6622, { emissive: 0xff4400, emissiveIntensity: 1.6, roughness: 0.45 }),
   );
-  coals.scale.set(1.4, 0.5, 1.1);
-  coals.position.set(0, 0.58, 0.08);
+  coals.scale.set(1.35, 0.55, 1.15);
+  coals.position.set(0, 0.28, 0);
   coals.name = 'forgeEmber';
   add(g, coals);
   const glow = new THREE.Mesh(
-    new THREE.SphereGeometry(0.22, 8, 6),
-    new THREE.MeshBasicMaterial({ color: 0xffaa44, transparent: true, opacity: 0.32, depthWrite: false }),
+    new THREE.SphereGeometry(0.34, 8, 6),
+    new THREE.MeshBasicMaterial({ color: 0xffaa44, transparent: true, opacity: 0.34, depthWrite: false }),
   );
-  glow.position.copy(coals.position);
+  glow.position.set(0, 0.32, 0);
   glow.name = 'forgeGlow';
   g.add(glow);
-  const light = new THREE.PointLight(0xff8844, 1.15, 8);
-  light.position.set(0, 0.85, 0.1);
+  const light = new THREE.PointLight(0xff8844, 1.35, 9);
+  light.position.set(0, 0.7, 0);
   g.add(light);
 
+  const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.7, 0.42), brick);
+  chimney.position.set(0, 0.62, -0.42);
+  add(g, chimney);
+  const cap = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.1, 0.52), stone);
+  cap.position.set(0, 1.0, -0.42);
+  add(g, cap);
+  rimIce(g, 1.08, 6, 0.2, 0.045);
+
+  // Anvil — a dark T from above.
   const anvil = new THREE.Group();
-  anvil.position.set(0.52, 0.62, 0.12);
-  const block = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.14, 0.16), phys(0x4a4e54, { metalness: 0.45, roughness: 0.4 }));
-  add(anvil, block);
-  const horn = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.07, 0.08), phys(0x3a3e44, { metalness: 0.4, roughness: 0.45 }));
-  horn.position.set(0.18, 0.02, 0);
+  anvil.position.set(0.72, 0.28, 0.08);
+  const stump = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 0.28, 8), pal.boneDark());
+  stump.position.y = 0.14;
+  add(anvil, stump);
+  const face = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.12, 0.18), iron);
+  face.position.y = 0.32;
+  add(anvil, face);
+  const horn = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.08, 0.1), iron);
+  horn.position.set(0.26, 0.3, 0);
   add(anvil, horn);
   g.add(anvil);
 
-  // Trophy rack — a yeti pelt and a claw so the station reads as a frost-yeti forge.
-  const rack = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 1.1, 6), pal.boneDark());
-  rack.position.set(-0.55, 0.7, -0.1);
+  // Trophy rack: a spread yeti pelt with claws, readable from above.
+  const rack = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, 1.15, 6), pal.boneDark());
+  rack.position.set(-0.7, 0.58, -0.05);
   add(g, rack);
-  const pelt = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), pal.fur());
-  pelt.scale.set(0.9, 1.4, 0.2);
-  pelt.position.set(-0.55, 0.85, 0.05);
+  const pelt = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 8), pal.fur());
+  pelt.scale.set(0.85, 0.22, 1.35);
+  pelt.position.set(-0.7, 0.72, 0.12);
+  pelt.rotation.x = -0.35;
   add(g, pelt);
-  const hanging = clawHook(0.18, 0.02, 0.2);
-  hanging.position.set(-0.55, 0.55, 0.12);
-  g.add(hanging);
-  rimIce(g, 1.48, 5, 0.16, 0.04);
+  for (const [x, z] of [
+    [-0.82, 0.28],
+    [-0.58, 0.3],
+    [-0.7, 0.38],
+  ] as const) {
+    const c = clawHook(0.14, 0.016, 1.1);
+    c.position.set(x, 0.62, z);
+    g.add(c);
+  }
 
-  const workClaw = clawHook(0.14, 0.016, 0.4);
-  workClaw.position.set(0.5, 0.74, 0.12);
-  workClaw.rotation.z = 0.8;
+  const workClaw = clawHook(0.16, 0.02, 0.5);
+  workClaw.position.set(0.72, 0.66, 0.08);
+  workClaw.rotation.z = 0.9;
   g.add(workClaw);
 
   const hit = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.7, 0.8, 1.7, 10),
+    new THREE.CylinderGeometry(0.95, 1.05, 1.4, 10),
     new THREE.MeshBasicMaterial({ visible: false }),
   );
-  hit.position.y = 0.85;
+  hit.position.y = 0.7;
   hit.name = 'hit';
   g.add(hit);
   return g;
@@ -495,7 +514,8 @@ export function attachYetiWear(player: THREE.Group): void {
     const chest = createFrostChest();
     chest.name = 'wear_chest';
     chest.visible = false;
-    chest.position.set(0, 0.02, 0.02);
+    chest.position.set(0, 0.04, 0.04);
+    chest.scale.setScalar(1.15);
     torso.add(chest);
   }
 
@@ -504,9 +524,9 @@ export function attachYetiWear(player: THREE.Group): void {
     const shield = createFrostShield();
     shield.name = 'wear_shield';
     shield.visible = false;
-    shield.position.set(-0.12, -0.14, 0.02);
-    shield.rotation.set(0.15, -1.15, 0.2);
-    shield.scale.setScalar(0.85);
+    shield.position.set(-0.16, -0.12, 0.04);
+    shield.rotation.set(0.2, -1.2, 0.15);
+    shield.scale.setScalar(1.05);
     armL.add(shield);
   }
 
@@ -517,6 +537,7 @@ export function attachYetiWear(player: THREE.Group): void {
       wrap.name = side < 0 ? 'wear_legL' : 'wear_legR';
       wrap.visible = false;
       wrap.position.set(0, -0.02, 0);
+      wrap.scale.setScalar(1.12);
       leg.add(wrap);
     }
     const shin = player.getObjectByName(side < 0 ? 'shinL' : 'shinR');
@@ -524,7 +545,8 @@ export function attachYetiWear(player: THREE.Group): void {
       const greave = createFrostGreave();
       greave.name = side < 0 ? 'wear_greaveL' : 'wear_greaveR';
       greave.visible = false;
-      greave.position.set(0, -0.02, 0);
+      greave.position.set(0, -0.06, 0.02);
+      greave.scale.setScalar(1.2);
       shin.add(greave);
     }
     const foot = player.getObjectByName(side < 0 ? 'footL' : 'footR');
@@ -532,7 +554,8 @@ export function attachYetiWear(player: THREE.Group): void {
       const boot = createFrostBoot();
       boot.name = side < 0 ? 'wear_bootL' : 'wear_bootR';
       boot.visible = false;
-      boot.position.set(0, 0.02, 0.02);
+      boot.position.set(0, 0.01, 0.04);
+      boot.scale.setScalar(1.25);
       foot.add(boot);
     }
   }
