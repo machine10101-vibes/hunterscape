@@ -357,8 +357,9 @@ export class Game {
     this.scene.add(fire);
 
     const forge = createForge();
-    plant(forge, 1.9, -2.15);
-    forge.rotation.y = -0.2;
+    plant(forge, 2.2, 0.35);
+    forge.rotation.y = -0.35;
+    forge.scale.setScalar(1.12);
     this.scene.add(forge);
     this.objects.push({
       kind: 'forge',
@@ -2242,7 +2243,7 @@ export class Game {
       else markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#c43c3c' });
     }
     markers.push({ x: -1.2, z: -0.5, color: '#ff8844' });
-    markers.push({ x: 1.9, z: -2.15, color: '#8ec8ff' });
+    markers.push({ x: 2.2, z: 0.35, color: '#8ec8ff' });
     this.hud.drawMinimap(this.player.position.x, this.player.position.z, this.player.rotation.y, markers);
   }
 

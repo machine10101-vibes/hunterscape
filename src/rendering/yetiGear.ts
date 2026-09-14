@@ -311,6 +311,11 @@ export function createFrostChest(): THREE.Group {
   waist.scale.set(1.15, 0.9, 1);
   waist.position.y = -0.24;
   g.add(waist);
+  // Dark hide yoke on top of the pelt so the high camera sees hide, not a snowball.
+  const yoke = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), pal.hideDark());
+  yoke.scale.set(1.7, 0.28, 1.05);
+  yoke.position.set(0, 0.28, 0.02);
+  add(g, yoke);
 
   for (let i = 0; i < 10; i++) {
     const a = (i / 10) * Math.PI * 2;
@@ -326,9 +331,13 @@ export function createFrostChest(): THREE.Group {
     pad.position.set(sx * 0.28, 0.2, 0.04);
     add(g, pad);
     const shard = new THREE.Mesh(new THREE.OctahedronGeometry(0.09, 0), pal.ice());
-    shard.position.set(sx * 0.3, 0.32, -0.02);
-    shard.scale.set(0.45, 1.8, 0.4);
+    shard.position.set(sx * 0.3, 0.38, -0.02);
+    shard.scale.set(0.45, 2.1, 0.4);
     add(g, shard);
+    const claw = clawHook(0.16, 0.02, 0.15);
+    claw.position.set(sx * 0.32, 0.3, 0.08);
+    claw.rotation.z = sx * 0.9;
+    g.add(claw);
     const clasp = clawHook(0.14, 0.018, 0.45);
     clasp.position.set(sx * 0.1, -0.02, 0.2);
     clasp.rotation.z = sx * 0.45;
@@ -368,6 +377,10 @@ export function createFrostLeg(): THREE.Group {
   const hide = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.26, 0.05), pal.hide());
   hide.position.set(0, -0.18, 0.1);
   add(g, hide);
+  const top = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), pal.hideDark());
+  top.scale.set(1.4, 0.35, 1.1);
+  top.position.set(0, 0.02, 0.02);
+  add(g, top);
   for (const [x, y, z] of [
     [0.1, -0.06, 0.04],
     [-0.1, -0.1, 0.02],
@@ -570,9 +583,9 @@ export function attachYetiWear(player: THREE.Group): void {
     const shield = createFrostShield();
     shield.name = 'wear_shield';
     shield.visible = false;
-    shield.position.set(-0.2, -0.1, 0.06);
-    shield.rotation.set(0.15, -1.15, 0.2);
-    shield.scale.setScalar(1.15);
+    shield.position.set(-0.24, -0.06, 0.1);
+    shield.rotation.set(1.05, -0.55, 0.25);
+    shield.scale.setScalar(1.22);
     armL.add(shield);
   }
 
