@@ -293,40 +293,30 @@ export function createFrostSpear(): THREE.Group {
 
 export function createFrostBow(): THREE.Group {
   const g = new THREE.Group();
-  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.034, 0.16, 8), pal.hide());
+  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.036, 0.16, 8), pal.hide());
   add(g, grip);
-  addShagBand(g, 0.02, 0.038, 8, 0.07, 1.25, pal.pelt(), pal.peltU());
+  addShagBand(g, 0.02, 0.04, 8, 0.07, 1.25, pal.pelt(), pal.peltU());
 
-  for (const sy of [-1, 1]) {
-    const limb = new THREE.Group();
-    limb.position.y = sy * 0.08;
-    for (let i = 0; i < 6; i++) {
-      const t = i / 5;
-      const bone = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.03 - t * 0.012, 0.026 - t * 0.01, 0.11, 6),
-        pal.bone(),
-      );
-      bone.position.y = sy * (0.055 + i * 0.095);
-      bone.position.z = -t * 0.1;
-      bone.rotation.x = sy * t * 0.55;
-      add(limb, bone);
-      if (i % 2 === 0) {
-        const shard = new THREE.Mesh(new THREE.OctahedronGeometry(0.018, 0), pal.ice());
-        shard.position.set(0.02, sy * (0.055 + i * 0.095), -t * 0.1);
-        shard.scale.set(0.4, 1.4, 0.4);
-        limb.add(shard);
-      }
-    }
-    const nock = new THREE.Mesh(new THREE.OctahedronGeometry(0.034, 0), pal.ice());
-    nock.position.set(0, sy * 0.62, -0.38);
-    add(limb, nock);
-    const hook = clawHook(0.12, 0.014, 0.3);
-    hook.position.set(0, sy * 0.6, -0.36);
-    limb.add(hook);
-    g.add(limb);
+  for (const sy of [-1, 1] as const) {
+    const curve = new THREE.QuadraticBezierCurve3(
+      new THREE.Vector3(0, sy * 0.08, 0),
+      new THREE.Vector3(0, sy * 0.36, -0.08),
+      new THREE.Vector3(0, sy * 0.6, -0.38),
+    );
+    const bone = new THREE.Mesh(new THREE.TubeGeometry(curve, 10, 0.022, 7, false), pal.bone());
+    add(g, bone);
+    const hide = new THREE.Mesh(new THREE.TubeGeometry(curve, 8, 0.016, 6, false), pal.hide());
+    hide.position.x = 0.012;
+    g.add(hide);
+    const nock = new THREE.Mesh(new THREE.OctahedronGeometry(0.032, 0), pal.ice());
+    nock.position.set(0, sy * 0.6, -0.38);
+    add(g, nock);
+    const hook = clawHook(0.12, 0.014, 0.25);
+    hook.position.set(0, sy * 0.58, -0.36);
+    g.add(hook);
   }
 
-  const string = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 1.22, 5), pal.claw());
+  const string = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 1.2, 5), pal.claw());
   string.position.set(0, 0, -0.38);
   g.add(string);
   return g;
@@ -402,12 +392,12 @@ export function createFrostChest(): THREE.Group {
     pad.scale.set(1.2, 0.65, 1.05);
     pad.position.set(sx * 0.26, 0.2, 0.04);
     add(g, pad);
-    const shard = new THREE.Mesh(new THREE.OctahedronGeometry(0.09, 0), pal.ice());
-    shard.position.set(sx * 0.28, 0.4, 0.0);
-    shard.scale.set(0.42, 2.2, 0.38);
+    const shard = new THREE.Mesh(new THREE.OctahedronGeometry(0.08, 0), pal.ice());
+    shard.position.set(sx * 0.3, 0.32, 0.04);
+    shard.scale.set(0.42, 1.7, 0.38);
     add(g, shard);
     const claw = clawHook(0.18, 0.02, 0.12);
-    claw.position.set(sx * 0.3, 0.28, 0.1);
+    claw.position.set(sx * 0.3, 0.26, 0.1);
     claw.rotation.z = sx * 0.95;
     g.add(claw);
     const clasp = clawHook(0.14, 0.018, 0.5);
