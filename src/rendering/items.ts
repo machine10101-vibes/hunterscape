@@ -1,5 +1,20 @@
 import * as THREE from 'three';
 import { createHatchetTool, createPickaxeTool, createSwordTool } from './player';
+import {
+  createFrostBow,
+  createFrostBoot,
+  createFrostChest,
+  createFrostFangItem,
+  createFrostGreave,
+  createFrostHammer,
+  createFrostLeg,
+  createFrostShield,
+  createFrostSpear,
+  createFrostSword,
+  createRimeShardItem,
+  createYetiBoneItem,
+  createYetiHideItem,
+} from './yetiGear';
 
 function std(color: number, opts: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
@@ -27,6 +42,19 @@ export function createItemMesh(id: string): THREE.Group {
   if (id === 'camp_rations') return makeRations();
   if (id === 'yeti_fur') return makeFur();
   if (id === 'frost_claw') return makeClaw();
+  if (id === 'yeti_hide') return createYetiHideItem();
+  if (id === 'frost_fang') return createFrostFangItem();
+  if (id === 'yeti_bone') return createYetiBoneItem();
+  if (id === 'rime_shard') return createRimeShardItem();
+  if (id === 'frost_sword') return createFrostSword();
+  if (id === 'frost_shield') return createFrostShield();
+  if (id === 'frost_bow') return createFrostBow();
+  if (id === 'frost_hammer') return createFrostHammer();
+  if (id === 'frost_spear') return createFrostSpear();
+  if (id === 'frost_chest') return createFrostChest();
+  if (id === 'frost_greaves') return createFrostGreave();
+  if (id === 'frost_legs') return createFrostLeg();
+  if (id === 'frost_boots') return createFrostBoot();
   if (id === 'orc_tooth') return makeTooth();
   if (id === 'scout_leather') return makeLeather();
   return makeUnknown();

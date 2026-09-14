@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { animatePlayerIdle } from '../rendering/anim';
-import { createPlayerMesh, setPlayerTool } from '../rendering/player';
+import { createPlayerMesh, setPlayerTool, syncPlayerGear, weaponHeldFromId } from '../rendering/player';
 import type { EquipSlot, SaveData } from '../game/types';
 
 /** Dedicated 3D portrait of the hunter for the Gear window. */
@@ -62,14 +62,17 @@ export class HeroPane {
   }
 
   syncEquipment(save: SaveData): void {
-    // The portrait only draws the worn weapon. Tools appear when that slot is
-    // inspected — otherwise a standing hunter with a hatchet looks like a bug.
-    setPlayerTool(this.hero, save.equipped.weapon ? 'sword' : null);
+    // The portrait draws the worn weapon and any yeti armor. Tools appear when
+    // that slot is inspected — otherwise a standing hunter with a hatchet looks
+    // like a bug.
+    setPlayerTool(this.hero, weaponHeldFromId(save.equipped.weapon));
+    syncPlayerGear(this.hero, save);
   }
 
   /** Prefer the slot the player just clicked so the portrait matches the inspect. */
   showSlot(slot: EquipSlot | null, save: SaveData): void {
-    if (slot === 'weapon' && save.equipped.weapon) setPlayerTool(this.hero, 'sword');
+    syncPlayerGear(this.hero, save);
+    if (slot === 'weapon' && save.equipped.weapon) setPlayerTool(this.hero, weaponHeldFromId(save.equipped.weapon));
     else if (slot === 'hatchet' && save.equipped.hatchet) setPlayerTool(this.hero, 'hatchet');
     else if (slot === 'pickaxe' && save.equipped.pickaxe) setPlayerTool(this.hero, 'pickaxe');
     else this.syncEquipment(save);

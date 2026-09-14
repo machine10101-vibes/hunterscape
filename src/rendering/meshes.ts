@@ -45,9 +45,13 @@ export {
   createPlayerMesh,
   createSwordTool,
   setPlayerTool,
+  syncPlayerGear,
+  weaponHeldFromId,
 } from './player';
+export type { HeldTool } from './player';
 
 export { createFrostYeti, createOrcScout } from './monsters';
+export { createForge } from './yetiGear';
 
 
 export function createTree(seed = 0): THREE.Group {

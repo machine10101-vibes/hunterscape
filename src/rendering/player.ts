@@ -1,4 +1,13 @@
 import * as THREE from 'three';
+import {
+  attachYetiWear,
+  createFrostBow,
+  createFrostHammer,
+  createFrostSpear,
+  createFrostSword,
+  setYetiWear,
+} from './yetiGear';
+import type { SaveData } from '../game/types';
 
 type PhysOpts = Partial<THREE.MeshPhysicalMaterialParameters>;
 
@@ -1022,6 +1031,9 @@ export function createPlayerMesh(): THREE.Group {
   sword.visible = false;
   toolRoot.add(sword);
 
+  attachYetiTools(toolRoot);
+  attachYetiWear(g);
+
   return g;
 }
 
@@ -1257,17 +1269,60 @@ export function createSwordTool(): THREE.Group {
   return g;
 }
 
+export type HeldTool =
+  | 'hatchet'
+  | 'pickaxe'
+  | 'sword'
+  | 'frost_sword'
+  | 'frost_hammer'
+  | 'frost_spear'
+  | 'frost_bow'
+  | null;
+
+const COMBAT_TOOLS: HeldTool[] = ['sword', 'frost_sword', 'frost_hammer', 'frost_spear', 'frost_bow'];
+const ALL_TOOLS: HeldTool[] = ['hatchet', 'pickaxe', ...COMBAT_TOOLS];
+
+export function weaponHeldFromId(id: string | null): HeldTool {
+  if (id === 'bronze_sword') return 'sword';
+  if (id === 'frost_sword') return 'frost_sword';
+  if (id === 'frost_hammer') return 'frost_hammer';
+  if (id === 'frost_spear') return 'frost_spear';
+  if (id === 'frost_bow') return 'frost_bow';
+  return null;
+}
+
+function attachYetiTools(toolRoot: THREE.Group): void {
+  const sword = createFrostSword();
+  sword.name = 'tool_frost_sword';
+  sword.visible = false;
+  toolRoot.add(sword);
+  const hammer = createFrostHammer();
+  hammer.name = 'tool_frost_hammer';
+  hammer.visible = false;
+  toolRoot.add(hammer);
+  const spear = createFrostSpear();
+  spear.name = 'tool_frost_spear';
+  spear.visible = false;
+  toolRoot.add(spear);
+  const bow = createFrostBow();
+  bow.name = 'tool_frost_bow';
+  bow.visible = false;
+  toolRoot.add(bow);
+}
+
 /**
  * Seat a tool in the fist. The handle always runs along the grip group's +X so
  * the fingers close around it; aiming the weapon is the wrist's job, not this
  * transform's. rotation.y cants the handle forward, rotation.x rolls the head.
  */
-function poseToolRoot(root: THREE.Object3D, tool: 'hatchet' | 'pickaxe' | 'sword' | null): void {
+function poseToolRoot(root: THREE.Object3D, tool: HeldTool): void {
   root.position.copy(GRIP_POINT);
-  if (tool === 'hatchet') {
+  if (tool === 'hatchet' || tool === 'frost_hammer') {
     root.rotation.set(0.12, -0.14, -Math.PI / 2);
   } else if (tool === 'pickaxe') {
     root.rotation.set(0.08, -0.1, -Math.PI / 2);
+  } else if (tool === 'frost_bow') {
+    root.rotation.set(0.35, -0.2, -Math.PI / 2);
   } else {
     // +π/2 puts the wide face in the knuckle plane (edge leads a cut).
     // The extra 0.7 tips that face toward the sky so the game camera,
@@ -1276,23 +1331,39 @@ function poseToolRoot(root: THREE.Object3D, tool: 'hatchet' | 'pickaxe' | 'sword
   }
 }
 
+function visibleHeldTool(root: THREE.Object3D): HeldTool {
+  for (const kind of ALL_TOOLS) {
+    if (!kind) continue;
+    if (root.getObjectByName(`tool_${kind}`)?.visible) return kind;
+  }
+  return null;
+}
+
 export function poseEquippedTool(player: THREE.Group): void {
   const root = player.getObjectByName('toolRoot');
   if (!root || !root.visible) return;
-  const sword = root.getObjectByName('tool_sword');
-  const hatchet = root.getObjectByName('tool_hatchet');
-  const pickaxe = root.getObjectByName('tool_pickaxe');
-  const kind = sword?.visible ? 'sword' : hatchet?.visible ? 'hatchet' : pickaxe?.visible ? 'pickaxe' : null;
-  poseToolRoot(root, kind);
+  poseToolRoot(root, visibleHeldTool(root));
 }
 
-export function setPlayerTool(player: THREE.Group, tool: 'hatchet' | 'pickaxe' | 'sword' | null): void {
+export function setPlayerTool(player: THREE.Group, tool: HeldTool): void {
   const root = player.getObjectByName('toolRoot');
   if (!root) return;
   root.visible = tool !== null;
-  for (const name of ['tool_hatchet', 'tool_pickaxe', 'tool_sword']) {
-    const t = root.getObjectByName(name);
-    if (t) t.visible = name === `tool_${tool}`;
+  for (const kind of ALL_TOOLS) {
+    if (!kind) continue;
+    const t = root.getObjectByName(`tool_${kind}`);
+    if (t) t.visible = kind === tool;
   }
   poseToolRoot(root, tool);
+}
+
+export function isCombatWeaponHeld(player: THREE.Group): boolean {
+  const root = player.getObjectByName('toolRoot');
+  if (!root?.visible) return false;
+  const kind = visibleHeldTool(root);
+  return !!kind && COMBAT_TOOLS.includes(kind);
+}
+
+export function syncPlayerGear(player: THREE.Group, save: SaveData): void {
+  setYetiWear(player, save.equipped);
 }

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { YETI_REST } from './monsters';
-import { poseEquippedTool, setHandGrip } from './player';
+import { isCombatWeaponHeld, poseEquippedTool, setHandGrip } from './player';
 
 /** Smoothstep helper */
 function smooth(t: number): number {
@@ -57,11 +57,6 @@ function rot(obj: THREE.Object3D | undefined, x: number, y: number, z: number): 
  */
 function knee(flex: number): number {
   return Math.max(0, flex);
-}
-
-function isToolVisible(player: THREE.Group, name: string): boolean {
-  const obj = get(player, name);
-  return !!obj?.visible;
 }
 
 /**
@@ -232,7 +227,7 @@ export function resetPlayerPose(player: THREE.Group): void {
     torso.position.z = 0;
     torso.scale.set(1, 1, 1);
   }
-  setHandGrip(get(player, 'handR'), isToolVisible(player, 'tool_sword') ? 0.96 : 0.22);
+  setHandGrip(get(player, 'handR'), isCombatWeaponHeld(player) ? 0.96 : 0.22);
   setHandGrip(get(player, 'handL'), 0.22);
   poseEquippedTool(player);
   player.rotation.z = 0;
@@ -246,7 +241,7 @@ export function resetPlayerPose(player: THREE.Group): void {
  * are what stop a procedural idle reading as a metronome.
  */
 export function animatePlayerIdle(player: THREE.Group, t: number, ready = false): void {
-  if (isToolVisible(player, 'tool_sword')) {
+  if (isCombatWeaponHeld(player)) {
     animateSwordGuard(player, t);
     return;
   }
@@ -409,7 +404,7 @@ export function animatePlayerWalk(
   const gait = gaitOf(sn);
   const run = smooth((sn - 0.62) / 0.4);
   const stride = mix(0.3, RUN_STRIDE, gait) * blend;
-  const sword = isToolVisible(player, 'tool_sword');
+  const sword = isCombatWeaponHeld(player);
 
   const hipL = Math.sin(phase);
   const hipR = Math.sin(phase + Math.PI);

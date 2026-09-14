@@ -3,6 +3,10 @@ import {
   EQUIP_SLOTS,
   ITEM_META,
   SKILL_META,
+  YETI_RECIPES,
+  canCraft,
+  countItem,
+  ownsItem,
   xpForLevel,
   type EquipSlot,
   type ItemStack,
@@ -41,6 +45,8 @@ export class HUD {
   private btnGear!: HTMLButtonElement;
   private gearInspect!: HTMLElement;
   private heroPane: HeroPane;
+  private forgePanel!: HTMLElement;
+  private forgeList!: HTMLElement;
   private narrowMq!: MediaQueryList;
   private desktopInvInited = false;
   private circum = 2 * Math.PI * 28;
@@ -48,6 +54,7 @@ export class HUD {
   onAction: ((action: string) => void) | null = null;
   onInventoryClick: ((index: number) => void) | null = null;
   onGearSlotClick: ((slot: EquipSlot) => void) | null = null;
+  onForgeCraft: ((recipeId: string) => void) | null = null;
 
   constructor() {
     this.chatLog = el('chat-log');
@@ -77,6 +84,9 @@ export class HUD {
     this.btnGear = el('btn-gear') as HTMLButtonElement;
     this.gearInspect = el('gear-inspect');
     this.heroPane = new HeroPane(el('gear-hero') as HTMLCanvasElement);
+    this.forgePanel = el('forge-panel');
+    this.forgeList = el('forge-list');
+    el('forge-close').addEventListener('click', () => this.setForgeOpen(false));
     this.narrowMq = window.matchMedia('(max-width: 480px)');
 
     this.btnGear.addEventListener('click', () => this.setGearOpen(this.gearPanel.hidden));
@@ -148,11 +158,56 @@ export class HUD {
     return !this.gearPanel.hidden;
   }
 
+  setForgeOpen(open: boolean, save?: SaveData): void {
+    this.forgePanel.hidden = !open;
+    if (open && save) this.setForgeRecipes(save);
+  }
+
+  isForgeOpen(): boolean {
+    return !this.forgePanel.hidden;
+  }
+
+  setForgeRecipes(save: SaveData): void {
+    this.forgeList.innerHTML = '';
+    for (const recipe of YETI_RECIPES) {
+      const owned = ownsItem(save, recipe.id);
+      const ready = canCraft(save, recipe);
+      const row = document.createElement('div');
+      row.className = `forge-row${owned ? ' owned' : ''}`;
+      const icon = document.createElement('canvas');
+      icon.className = 'item-icon';
+      icon.width = 128;
+      icon.height = 128;
+      paintItemIcon(icon, recipe.id);
+      const meta = document.createElement('div');
+      meta.className = 'forge-meta';
+      const cost = recipe.cost
+        .map((c) => {
+          const have = countItem(save.inventory, c.id);
+          const name = ITEM_META[c.id]?.name ?? c.id;
+          const cls = have >= c.qty ? 'have' : 'need';
+          return `<span class="${cls}">${name} ${have}/${c.qty}</span>`;
+        })
+        .join(' · ');
+      meta.innerHTML = `<div class="forge-name">${recipe.name}</div><div class="forge-desc">${recipe.blurb}</div><div class="forge-cost">${cost}</div>`;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'forge-craft';
+      btn.textContent = owned ? 'Owned' : 'Forge';
+      btn.disabled = !ready;
+      const id = recipe.id;
+      btn.addEventListener('click', () => this.onForgeCraft?.(id));
+      row.append(icon, meta, btn);
+      this.forgeList.appendChild(row);
+    }
+  }
+
   setEnvironment(env: Texture | null): void {
     this.heroPane.setEnvironment(env);
   }
 
   setEquipment(save: SaveData, inspect?: string): void {
+    if (this.isForgeOpen()) this.setForgeRecipes(save);
     this.heroPane.syncEquipment(save);
     for (const { id, label } of EQUIP_SLOTS) {
       const btn = this.gearPanel.querySelector(`.gear-slot[data-slot="${id}"]`) as HTMLElement | null;

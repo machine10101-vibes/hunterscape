@@ -49,9 +49,14 @@ export function getItemIcon(id: string): HTMLCanvasElement {
   if (hit) return hit;
   ensureStudio();
   const mesh = createItemMesh(id);
-  if (id === 'bronze_sword') mesh.rotation.set(0, 0.6, -0.55);
-  if (id === 'bronze_hatchet') mesh.rotation.set(0.2, 0.8, -0.3);
+  if (id === 'bronze_sword' || id === 'frost_sword' || id === 'frost_spear') mesh.rotation.set(0, 0.6, -0.55);
+  if (id === 'bronze_hatchet' || id === 'frost_hammer') mesh.rotation.set(0.2, 0.8, -0.3);
   if (id === 'bronze_pickaxe') mesh.rotation.set(0.15, 0.7, -0.25);
+  if (id === 'frost_bow') mesh.rotation.set(0.1, 0.4, 0.15);
+  if (id === 'frost_shield') mesh.rotation.set(0.2, 0.6, 0);
+  if (id === 'frost_chest' || id === 'frost_greaves' || id === 'frost_legs' || id === 'frost_boots') {
+    mesh.rotation.set(0.15, 0.55, 0);
+  }
   scene!.add(mesh);
   frame(mesh);
   renderer!.render(scene!, camera!);

@@ -423,7 +423,7 @@ html, body {
 }
 #gear-hero {
   width: 100%;
-  height: 280px;
+  height: 360px;
   display: block;
   border-radius: 6px;
   background:
@@ -483,6 +483,78 @@ html, body {
   font-size: 11px;
   color: var(--text-dim);
   min-height: 2.2em;
+}
+
+#forge-panel {
+  position: absolute;
+  top: calc(80px + var(--safe-top));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(420px, calc(100vw - 16px));
+  max-height: min(72vh, 640px);
+  overflow-y: auto;
+  z-index: 24;
+}
+#forge-blurb {
+  margin: 0;
+  padding: 8px 12px 4px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+#forge-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 10px 12px;
+}
+.forge-row {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  background: var(--slot);
+  border: 1px solid #3a3420;
+  border-radius: 4px;
+}
+.forge-row.owned { opacity: 0.55; }
+.forge-row .item-icon {
+  width: 56px;
+  height: 56px;
+  display: block;
+}
+.forge-meta { min-width: 0; }
+.forge-name {
+  color: var(--gold);
+  font-size: 13px;
+}
+.forge-desc {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin: 2px 0 4px;
+}
+.forge-cost {
+  font-size: 11px;
+  color: #c8d0d8;
+}
+.forge-cost .need { color: #d07060; }
+.forge-cost .have { color: #8ecf8a; }
+.forge-craft {
+  padding: 6px 10px;
+  background: #2a2418;
+  border: 1px solid var(--gold-dim);
+  color: var(--gold);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.forge-craft:disabled {
+  opacity: 0.4;
+  cursor: default;
+  border-color: #3a3420;
+  color: var(--text-dim);
 }
 
 #skills-list {
@@ -914,9 +986,13 @@ html, body {
     top: calc(72px + var(--safe-top));
     width: min(360px, calc(100vw - 16px));
   }
-  #gear-hero { height: 220px; }
-  .gear-slot { width: 60px; height: 60px; }
-  #gear-body { grid-template-columns: 60px 1fr 60px; }
+  #gear-hero { height: 260px; }
+  .gear-slot { width: 56px; height: 56px; }
+  #gear-body { grid-template-columns: 56px 1fr 56px; }
+  #forge-panel {
+    top: calc(72px + var(--safe-top));
+    width: min(360px, calc(100vw - 16px));
+  }
 
   #studio-top {
     padding: 8px 10px 8px 8px;
