@@ -72,6 +72,19 @@ const SETS = {
     { name: 'orc-face', o: { model: 'orc', pose: 'idle', t: 1.0, az: 0.3, dist: 1.8, look: 1.75, fov: 34 } },
     { name: 'orc-grip', o: { model: 'orc', pose: 'idle', t: 1.0, az: 1.2, dist: 1.4, look: 1.15, fov: 32 } },
   ],
+  frost: [
+    { name: 'frost-front', o: { pose: 'frost', t: 1.2, az: 0.55 } },
+    { name: 'frost-side', o: { pose: 'frost', t: 1.2, az: 1.45 } },
+    { name: 'frost-back', o: { pose: 'frost', t: 1.2, az: Math.PI } },
+    { name: 'frost-gamecam', o: { pose: 'frost', t: 1.2, az: 0.0, el: 0.69 } },
+    { name: 'frost-sword-grip', o: { pose: 'frost', t: 1.2, az: 1.3, dist: 0.7, focus: 'handR', fov: 32 } },
+    { name: 'frost-hammer', o: { pose: 'frost-hammer', t: 1.2, az: 0.55 } },
+    { name: 'frost-spear', o: { pose: 'frost-spear', t: 1.2, az: 0.55 } },
+    { name: 'frost-bow', o: { pose: 'frost-bow', t: 1.2, az: 0.55 } },
+    { name: 'frost-slash', o: { pose: 'frost-slash', t: 0.4, az: 0.7 } },
+    { name: 'frost-boot', o: { pose: 'frost', t: 1.2, az: 0.6, el: 1.25, dist: 1.5, focus: 'footR', fov: 32 } },
+    { name: 'frost-shield', o: { pose: 'frost', t: 1.2, az: 1.1, dist: 1.1, focus: 'forearmL', fov: 34 } },
+  ],
 };
 
 const shots = SETS[specArg] || DEFAULT;

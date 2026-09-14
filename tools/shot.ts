@@ -14,6 +14,7 @@ import {
 } from '../src/rendering/anim';
 import { createFrostYeti, createOrcScout, createPlayerMesh, setPlayerTool } from '../src/rendering/meshes';
 import { poseEquippedTool } from '../src/rendering/player';
+import { setYetiWear } from '../src/rendering/yetiGear';
 
 const canvas = document.getElementById('c') as HTMLCanvasElement;
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -80,7 +81,27 @@ function frame(opts: {
   m.position.set(0, 0, 0);
 
   if (o.model === 'hunter') {
-    if (o.pose === 'idle') {
+    const frost = o.pose.startsWith('frost');
+    setYetiWear(m, {
+      shield: frost ? 'frost_shield' : null,
+      chest: frost ? 'frost_chest' : null,
+      greaves: frost ? 'frost_greaves' : null,
+      legs: frost ? 'frost_legs' : null,
+      boots: frost ? 'frost_boots' : null,
+    });
+    if (frost) {
+      const tool =
+        o.pose === 'frost-hammer'
+          ? 'frost_hammer'
+          : o.pose === 'frost-spear'
+            ? 'frost_spear'
+            : o.pose === 'frost-bow'
+              ? 'frost_bow'
+              : 'frost_sword';
+      setPlayerTool(m, tool);
+      if (o.pose === 'frost-slash') animatePlayerAttack(m, o.t);
+      else animatePlayerIdle(m, o.t);
+    } else if (o.pose === 'idle') {
       setPlayerTool(m, null);
       animatePlayerIdle(m, o.t);
     } else if (o.pose === 'walk') {
