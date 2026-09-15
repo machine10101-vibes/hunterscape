@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { YETI_REST } from './monsters';
-import { isCombatWeaponHeld, poseEquippedTool, setHandGrip } from './player';
+import { heldCombatTool, isCombatWeaponHeld, isShieldWorn, poseEquippedTool, setHandGrip } from './player';
 
 /** Smoothstep helper */
 function smooth(t: number): number {
@@ -227,8 +227,9 @@ export function resetPlayerPose(player: THREE.Group): void {
     torso.position.z = 0;
     torso.scale.set(1, 1, 1);
   }
-  setHandGrip(get(player, 'handR'), isCombatWeaponHeld(player) ? 0.96 : 0.22);
-  setHandGrip(get(player, 'handL'), 0.22);
+  const bow = heldCombatTool(player) === 'frost_bow';
+  setHandGrip(get(player, 'handR'), isCombatWeaponHeld(player) && !bow ? 0.96 : bow ? 0.38 : 0.22);
+  setHandGrip(get(player, 'handL'), bow || isShieldWorn(player) ? 0.84 : 0.22);
   poseEquippedTool(player);
   player.rotation.z = 0;
   player.rotation.x = 0;
@@ -242,7 +243,7 @@ export function resetPlayerPose(player: THREE.Group): void {
  */
 export function animatePlayerIdle(player: THREE.Group, t: number, ready = false): void {
   if (isCombatWeaponHeld(player)) {
-    animateSwordGuard(player, t);
+    animateWeaponGuard(player, t, combatGuardOf(player));
     return;
   }
 
@@ -319,12 +320,96 @@ const SWORD_GUARD: BodyPose = {
   lift: 0.02,
 };
 
-/** One-handed guard with breathing and a slow settle on the blade. */
-function animateSwordGuard(player: THREE.Group, t: number): void {
+/** Center-grip round shield: fist closed on the bar, boss toward the threat. */
+const SHIELD_ARM: BodyPose = {
+  clavL: [0.1, 0.14, 0.12],
+  armL: [-0.48, 0.24, -0.38],
+  forearmL: [-1.18, 0.14, 0.1],
+  handL: [0.16, 0.28, 0.14],
+  gripL: 0.84,
+};
+
+/** Two-hand spear: right hand at the butt, left farther up the shaft. */
+const SPEAR_GUARD: BodyPose = {
+  ...SWORD_GUARD,
+  playerTorso: [0.06, -0.12, 0.03],
+  clavR: [0.08, -0.08, -0.08],
+  clavL: [0.08, 0.12, 0.1],
+  armR: [-0.22, 0.26, 0.4],
+  forearmR: [-1.28, -0.1, 0.08],
+  handR: [0.28, -1.05, -0.12],
+  armL: [-0.42, 0.3, -0.16],
+  forearmL: [-1.02, 0.2, 0.06],
+  handL: [0.18, 0.38, 0.1],
+  gripR: 0.96,
+  gripL: 0.88,
+};
+
+/** Two-hand hammer: left hand chokes up the haft under the right. */
+const HAMMER_GUARD: BodyPose = {
+  ...SWORD_GUARD,
+  playerTorso: [0.1, -0.16, 0.04],
+  clavR: [0.08, -0.1, -0.08],
+  clavL: [0.08, 0.12, 0.1],
+  armR: [-0.14, 0.22, 0.46],
+  forearmR: [-1.52, -0.12, 0.04],
+  handR: [0.28, -1.18, -0.16],
+  armL: [-0.52, 0.22, -0.2],
+  forearmL: [-1.22, 0.16, 0.04],
+  handL: [0.12, 0.28, 0.1],
+  gripR: 0.97,
+  gripL: 0.86,
+};
+
+/** Left hand holds the bow, right rests on the string. */
+const BOW_GUARD: BodyPose = {
+  playerHips: [0.02, 0.1, 0.02],
+  playerTorso: [0.05, 0.2, -0.03],
+  playerHead: [-0.02, -0.14, 0.02],
+  clavL: [0.08, 0.18, 0.14],
+  clavR: [0.08, -0.08, -0.08],
+  armL: [-0.26, 0.44, -0.58],
+  forearmL: [-0.36, 0.08, 0.04],
+  handL: [0.2, 0.5, 0.12],
+  armR: [-0.82, -0.12, 0.3],
+  forearmR: [-1.48, -0.18, 0],
+  handR: [0.12, -0.82, -0.08],
+  legL: [-0.18, 0.05, 0.04],
+  shinL: [0.26, 0, 0],
+  footL: [0.04, 0.08, 0],
+  legR: [0.1, -0.04, -0.04],
+  shinR: [0.22, 0, 0],
+  footR: [0.04, -0.06, 0],
+  gripR: 0.38,
+  gripL: 0.9,
+  lift: 0.02,
+};
+
+function withShieldArm(pose: BodyPose): BodyPose {
+  return {
+    ...pose,
+    clavL: SHIELD_ARM.clavL,
+    armL: SHIELD_ARM.armL,
+    forearmL: SHIELD_ARM.forearmL,
+    handL: SHIELD_ARM.handL,
+    gripL: SHIELD_ARM.gripL,
+  };
+}
+
+function combatGuardOf(player: THREE.Group): BodyPose {
+  const tool = heldCombatTool(player);
+  const shield = isShieldWorn(player);
+  if (tool === 'frost_bow') return BOW_GUARD;
+  if (tool === 'frost_spear') return shield ? withShieldArm(SPEAR_GUARD) : SPEAR_GUARD;
+  if (tool === 'frost_hammer') return shield ? withShieldArm(HAMMER_GUARD) : HAMMER_GUARD;
+  return shield ? withShieldArm(SWORD_GUARD) : SWORD_GUARD;
+}
+
+/** Ready stance with breathing and a slow settle on the held weapon. */
+function animateWeaponGuard(player: THREE.Group, t: number, g: BodyPose): void {
   const breath = Math.sin(t * 1.4) * 0.016;
   const sway = Math.sin(t * 0.7) * 0.012;
   const settle = Math.sin(t * 0.43 + 0.6) * 0.02;
-  const g = SWORD_GUARD;
   rot(get(player, 'playerHips'), g.playerHips![0], g.playerHips![1] + sway, g.playerHips![2]);
   const hips = get(player, 'playerHips');
   if (hips) hips.position.x = 0.02;
@@ -349,8 +434,8 @@ function animateSwordGuard(player: THREE.Group, t: number): void {
   rot(get(player, 'shinR'), knee(g.shinR![0]), 0, 0);
   rot(get(player, 'footL'), ...(g.footL as Rot3));
   rot(get(player, 'footR'), ...(g.footR as Rot3));
-  setHandGrip(get(player, 'handR'), 0.97);
-  setHandGrip(get(player, 'handL'), 0.3);
+  setHandGrip(get(player, 'handR'), g.gripR ?? 0.96);
+  setHandGrip(get(player, 'handL'), g.gripL ?? 0.3);
   poseEquippedTool(player);
   setLocomotionY(player, breath * 0.02);
 }
@@ -404,7 +489,9 @@ export function animatePlayerWalk(
   const gait = gaitOf(sn);
   const run = smooth((sn - 0.62) / 0.4);
   const stride = mix(0.3, RUN_STRIDE, gait) * blend;
-  const sword = isCombatWeaponHeld(player);
+  const tool = heldCombatTool(player);
+  const shield = isShieldWorn(player);
+  const combat = tool !== null;
 
   const hipL = Math.sin(phase);
   const hipR = Math.sin(phase + Math.PI);
@@ -463,17 +550,52 @@ export function animatePlayerWalk(
   rot(get(player, 'clavL'), -hipL * shoulderTwist * blend, 0, -0.04);
   rot(get(player, 'clavR'), -hipR * shoulderTwist * blend, 0, 0.04);
 
-  if (sword) {
-    // Blade stays in a lowered carry while moving; only the off arm swings.
+  if (combat) {
     const bounce = Math.max(0, hipR) * mix(0.08, 0.22, run);
-    rot(get(player, 'armL'), -hipL * mix(0.55, 1.05, run) * blend + 0.1, 0.06, -0.06);
-    rot(get(player, 'forearmL'), mix(-0.28, -1.35, run) - Math.max(0, hipL) * 0.2, 0.04, 0);
-    rot(get(player, 'handL'), 0.06, 0.04, 0.04);
-    rot(get(player, 'armR'), 0.22 + bounce * 0.35, 0.08, 0.14);
-    rot(get(player, 'forearmR'), -0.62 - bounce * 0.4, -0.06, 0.04);
-    rot(get(player, 'handR'), 0.18 + bounce * 0.2, -1.18, -0.26);
-    setHandGrip(get(player, 'handR'), 0.96);
-    setHandGrip(get(player, 'handL'), 0.22);
+    if (tool === 'frost_bow') {
+      const g = BOW_GUARD;
+      rot(get(player, 'armL'), g.armL![0] + bounce * 0.08, g.armL![1], g.armL![2]);
+      rot(get(player, 'forearmL'), ...(g.forearmL as Rot3));
+      rot(get(player, 'handL'), ...(g.handL as Rot3));
+      rot(get(player, 'armR'), g.armR![0] + bounce * 0.12, g.armR![1], g.armR![2]);
+      rot(get(player, 'forearmR'), g.forearmR![0] - bounce * 0.08, g.forearmR![1], g.forearmR![2]);
+      rot(get(player, 'handR'), ...(g.handR as Rot3));
+      setHandGrip(get(player, 'handR'), 0.38);
+      setHandGrip(get(player, 'handL'), 0.9);
+    } else {
+      if (tool === 'frost_spear') {
+        rot(get(player, 'armR'), 0.04 + bounce * 0.16, 0.2, 0.3);
+        rot(get(player, 'forearmR'), -1.18 - bounce * 0.16, -0.08, 0.06);
+        rot(get(player, 'handR'), 0.24, -1.02, -0.12);
+      } else if (tool === 'frost_hammer') {
+        rot(get(player, 'armR'), 0.14 + bounce * 0.22, 0.1, 0.2);
+        rot(get(player, 'forearmR'), -0.88 - bounce * 0.22, -0.08, 0.04);
+        rot(get(player, 'handR'), 0.18 + bounce * 0.12, -1.12, -0.18);
+      } else {
+        rot(get(player, 'armR'), 0.22 + bounce * 0.35, 0.08, 0.14);
+        rot(get(player, 'forearmR'), -0.62 - bounce * 0.4, -0.06, 0.04);
+        rot(get(player, 'handR'), 0.18 + bounce * 0.2, -1.18, -0.26);
+      }
+      setHandGrip(get(player, 'handR'), 0.96);
+      if (shield) {
+        const s = SHIELD_ARM;
+        rot(get(player, 'armL'), s.armL![0] + bounce * 0.06, s.armL![1], s.armL![2]);
+        rot(get(player, 'forearmL'), ...(s.forearmL as Rot3));
+        rot(get(player, 'handL'), ...(s.handL as Rot3));
+        setHandGrip(get(player, 'handL'), 0.84);
+      } else if (tool === 'frost_spear' || tool === 'frost_hammer') {
+        const g = tool === 'frost_spear' ? SPEAR_GUARD : HAMMER_GUARD;
+        rot(get(player, 'armL'), g.armL![0] + bounce * 0.08, g.armL![1], g.armL![2]);
+        rot(get(player, 'forearmL'), ...(g.forearmL as Rot3));
+        rot(get(player, 'handL'), ...(g.handL as Rot3));
+        setHandGrip(get(player, 'handL'), g.gripL ?? 0.86);
+      } else {
+        rot(get(player, 'armL'), -hipL * mix(0.55, 1.05, run) * blend + 0.1, 0.06, -0.06);
+        rot(get(player, 'forearmL'), mix(-0.28, -1.35, run) - Math.max(0, hipL) * 0.2, 0.04, 0);
+        rot(get(player, 'handL'), 0.06, 0.04, 0.04);
+        setHandGrip(get(player, 'handL'), 0.22);
+      }
+    }
   } else {
     // Free arms: long and pendular at a walk, folded and pumping at a run.
     // Shoulders swing about as far as the hips at a walk and a little less
@@ -522,7 +644,19 @@ export function animatePlayerWalk(
 export function animatePlayerAttack(player: THREE.Group, progress: number): void {
   const p = Math.max(0, Math.min(1, progress));
 
-  const guard = SWORD_GUARD;
+  const guard = combatGuardOf(player);
+  const lockOff = isShieldWorn(player) || heldCombatTool(player) === 'frost_bow';
+  const holdOff = (pose: BodyPose): BodyPose =>
+    lockOff
+      ? {
+          ...pose,
+          clavL: guard.clavL,
+          armL: guard.armL,
+          forearmL: guard.forearmL,
+          handL: guard.handL,
+          gripL: guard.gripL,
+        }
+      : pose;
 
   // Coil: sword goes up over the right shoulder, hips and chest wind back.
   // Solved against the sword's own tip so the blade stays in front of the
@@ -593,14 +727,14 @@ export function animatePlayerAttack(player: THREE.Group, progress: number): void
 
   let pose: BodyPose;
   if (p < 0.36) {
-    pose = blendPose(guard, windup, easeInOut(p / 0.36));
+    pose = blendPose(guard, holdOff(windup), easeInOut(p / 0.36));
   } else if (p < 0.52) {
     // Squared ease: slow off the coil, fastest at contact.
-    pose = blendPose(windup, strike, Math.pow((p - 0.36) / 0.16, 2.1));
+    pose = blendPose(holdOff(windup), holdOff(strike), Math.pow((p - 0.36) / 0.16, 2.1));
   } else if (p < 0.64) {
-    pose = blendPose(strike, follow, smooth((p - 0.52) / 0.12));
+    pose = blendPose(holdOff(strike), holdOff(follow), smooth((p - 0.52) / 0.12));
   } else {
-    pose = blendPose(follow, guard, easeInOut((p - 0.64) / 0.36));
+    pose = blendPose(holdOff(follow), guard, easeInOut((p - 0.64) / 0.36));
   }
 
   applyBodyPose(player, pose);

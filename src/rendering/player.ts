@@ -1049,6 +1049,7 @@ export function createPlayerMesh(): THREE.Group {
   toolRoot.add(sword);
 
   attachYetiTools(toolRoot);
+  attachBowOffhand(g);
   attachYetiWear(g);
 
   return g;
@@ -1324,11 +1325,20 @@ function attachYetiTools(toolRoot: THREE.Group): void {
   spear.visible = false;
   spear.scale.setScalar(1.22);
   toolRoot.add(spear);
+}
+
+function attachBowOffhand(player: THREE.Group): void {
+  const gripL = player.getObjectByName('handL')?.getObjectByName('grip');
+  if (!gripL) return;
+  const bowRoot = new THREE.Group();
+  bowRoot.name = 'bowRoot';
+  bowRoot.visible = false;
   const bow = createFrostBow();
   bow.name = 'tool_frost_bow';
-  bow.visible = false;
-  bow.scale.setScalar(1.28);
-  toolRoot.add(bow);
+  bow.scale.setScalar(1.22);
+  bowRoot.add(bow);
+  gripL.add(bowRoot);
+  poseBowRoot(bowRoot);
 }
 
 /**
@@ -1339,17 +1349,30 @@ function attachYetiTools(toolRoot: THREE.Group): void {
 function poseToolRoot(root: THREE.Object3D, tool: HeldTool): void {
   root.position.copy(GRIP_POINT);
   if (tool === 'hatchet' || tool === 'frost_hammer') {
-    root.rotation.set(0.12, -0.14, -Math.PI / 2);
+    // Haft stands out of the thumb side; the head sits above the fist.
+    root.position.x += 0.012;
+    root.rotation.set(0.18, -0.1, -Math.PI / 2);
   } else if (tool === 'pickaxe') {
     root.rotation.set(0.08, -0.1, -Math.PI / 2);
+  } else if (tool === 'frost_spear') {
+    // Pole grip: the shaft runs through the fist, point out the thumb.
+    root.position.x += 0.02;
+    root.rotation.set(0.22, -0.06, -Math.PI / 2);
   } else if (tool === 'frost_bow') {
-    root.rotation.set(0.35, -0.2, -Math.PI / 2);
+    poseBowRoot(root);
   } else {
-    // +π/2 puts the wide face in the knuckle plane (edge leads a cut).
-    // The extra 0.7 tips that face toward the sky so the game camera,
-    // looking down, sees a blade instead of a needle.
-    root.rotation.set(Math.PI / 2 + 0.7, -0.1, -Math.PI / 2);
+    // Handshake sword: edge in the knuckle plane, a small cant so the
+    // blade still reads from the high camp camera.
+    root.position.x += 0.008;
+    root.rotation.set(Math.PI / 2 + 0.32, -0.06, -Math.PI / 2);
   }
+}
+
+function poseBowRoot(root: THREE.Object3D): void {
+  root.position.copy(GRIP_POINT);
+  // Bow grip is along +Y; map that onto the fist's +X, then stand the
+  // limbs up so the string faces the hunter.
+  root.rotation.set(0.08, 0.55, -Math.PI / 2);
 }
 
 function visibleHeldTool(root: THREE.Object3D): HeldTool {
@@ -1360,29 +1383,60 @@ function visibleHeldTool(root: THREE.Object3D): HeldTool {
   return null;
 }
 
+function poseShieldRoot(root: THREE.Object3D): void {
+  // Handle sits on the shield's -Z; after a Y flip the bar lands in the
+  // fist and the boss stands in front of the knuckles.
+  root.position.set(GRIP_POINT.x, GRIP_POINT.y, -0.001);
+  root.rotation.set(0.06, Math.PI + 0.1, 0.04);
+}
+
 export function poseEquippedTool(player: THREE.Group): void {
   const root = player.getObjectByName('toolRoot');
-  if (!root || !root.visible) return;
-  poseToolRoot(root, visibleHeldTool(root));
+  if (root?.visible) poseToolRoot(root, visibleHeldTool(root));
+  const bow = player.getObjectByName('bowRoot');
+  if (bow?.visible) poseBowRoot(bow);
+  const shield = player.getObjectByName('wear_shield');
+  if (shield?.visible) poseShieldRoot(shield);
 }
 
 export function setPlayerTool(player: THREE.Group, tool: HeldTool): void {
   const root = player.getObjectByName('toolRoot');
-  if (!root) return;
-  root.visible = tool !== null;
-  for (const kind of ALL_TOOLS) {
-    if (!kind) continue;
-    const t = root.getObjectByName(`tool_${kind}`);
-    if (t) t.visible = kind === tool;
+  const bow = player.getObjectByName('bowRoot');
+  const rightTools: HeldTool[] = ['hatchet', 'pickaxe', 'sword', 'frost_sword', 'frost_hammer', 'frost_spear'];
+  if (root) {
+    for (const kind of rightTools) {
+      const t = root.getObjectByName(`tool_${kind}`);
+      if (t) t.visible = kind === tool;
+    }
+    root.visible = tool !== null && tool !== 'frost_bow';
+    if (root.visible) poseToolRoot(root, tool);
   }
-  poseToolRoot(root, tool);
+  if (bow) {
+    const mesh = bow.getObjectByName('tool_frost_bow');
+    if (mesh) mesh.visible = tool === 'frost_bow';
+    bow.visible = tool === 'frost_bow';
+    if (bow.visible) poseBowRoot(bow);
+  }
+  const shield = player.getObjectByName('wear_shield');
+  if (shield && tool === 'frost_bow') shield.visible = false;
 }
 
 export function isCombatWeaponHeld(player: THREE.Group): boolean {
+  return heldCombatTool(player) !== null;
+}
+
+export function heldCombatTool(player: THREE.Group): HeldTool {
+  const bow = player.getObjectByName('bowRoot');
+  if (bow?.visible && bow.getObjectByName('tool_frost_bow')?.visible) return 'frost_bow';
   const root = player.getObjectByName('toolRoot');
-  if (!root?.visible) return false;
+  if (!root?.visible) return null;
   const kind = visibleHeldTool(root);
-  return !!kind && COMBAT_TOOLS.includes(kind);
+  if (kind && COMBAT_TOOLS.includes(kind)) return kind;
+  return null;
+}
+
+export function isShieldWorn(player: THREE.Group): boolean {
+  return !!player.getObjectByName('wear_shield')?.visible;
 }
 
 export function syncPlayerGear(player: THREE.Group, save: SaveData): void {

@@ -79,11 +79,17 @@ const SETS = {
     { name: 'frost-gamecam', o: { pose: 'frost', t: 1.2, az: 0.0, el: 0.69 } },
     { name: 'frost-sword-grip', o: { pose: 'frost', t: 1.2, az: 1.3, dist: 0.7, focus: 'handR', fov: 32 } },
     { name: 'frost-hammer', o: { pose: 'frost-hammer', t: 1.2, az: 0.55 } },
+    { name: 'frost-hammer-grip', o: { pose: 'frost-hammer', t: 1.2, az: 1.3, dist: 0.7, focus: 'handR', fov: 32 } },
     { name: 'frost-spear', o: { pose: 'frost-spear', t: 1.2, az: 0.55 } },
+    { name: 'frost-spear-grip', o: { pose: 'frost-spear', t: 1.2, az: 1.25, dist: 0.85, focus: 'handR', fov: 32 } },
     { name: 'frost-bow', o: { pose: 'frost-bow', t: 1.2, az: 0.55 } },
+    { name: 'frost-bow-side', o: { pose: 'frost-bow', t: 1.2, az: 1.45 } },
+    { name: 'frost-bow-grip', o: { pose: 'frost-bow', t: 1.2, az: 1.15, dist: 0.85, focus: 'handL', fov: 32 } },
     { name: 'frost-slash', o: { pose: 'frost-slash', t: 0.4, az: 0.7 } },
+    { name: 'frost-walk', o: { pose: 'frost-walk', t: 0.4, speed: 0.7, az: 0.7 } },
+    { name: 'frost-bow-walk', o: { pose: 'frost-bow-walk', t: 0.4, speed: 0.7, az: 0.7 } },
     { name: 'frost-boot', o: { pose: 'frost', t: 1.2, az: 0.6, el: 1.25, dist: 1.5, focus: 'footR', fov: 32 } },
-    { name: 'frost-shield', o: { pose: 'frost', t: 1.2, az: 1.1, dist: 1.1, focus: 'forearmL', fov: 34 } },
+    { name: 'frost-shield', o: { pose: 'frost', t: 1.2, az: 1.05, dist: 0.95, focus: 'handL', fov: 34 } },
   ],
 };
 

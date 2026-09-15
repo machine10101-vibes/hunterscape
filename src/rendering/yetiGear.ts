@@ -352,6 +352,30 @@ export function createFrostShield(): THREE.Group {
     spike.rotation.z = a + Math.PI / 2;
     g.add(spike);
   }
+
+  // Center grip on the back: a hide-wrapped bone bar the fist actually closes
+  // around, plus a short enarme so the forearm still reads as strapped in.
+  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.018, 0.15, 8), pal.bone());
+  handle.name = 'shieldHandle';
+  handle.rotation.z = Math.PI / 2;
+  handle.position.z = -0.042;
+  add(g, handle);
+  const wrap = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.022, 0.1, 8), pal.hide());
+  wrap.rotation.z = Math.PI / 2;
+  wrap.position.z = -0.042;
+  add(g, wrap);
+  for (const x of [-0.055, 0.055]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.028, 0.05), pal.boneDark());
+    post.position.set(x, 0, -0.03);
+    add(g, post);
+  }
+  const pad = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.02), pal.hideDark());
+  pad.position.set(0, 0.04, -0.028);
+  add(g, pad);
+  const strap = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.01, 5, 10, Math.PI * 1.15), pal.wrap());
+  strap.rotation.set(0.15, Math.PI / 2, 0.2);
+  strap.position.set(0.01, 0.05, -0.03);
+  g.add(strap);
   return g;
 }
 
@@ -621,15 +645,17 @@ export function attachYetiWear(player: THREE.Group): void {
     torso.add(chest);
   }
 
-  const armL = player.getObjectByName('forearmL');
-  if (armL) {
+  const gripL = player.getObjectByName('handL')?.getObjectByName('grip');
+  if (gripL) {
     const shield = createFrostShield();
     shield.name = 'wear_shield';
     shield.visible = false;
-    shield.position.set(-0.24, -0.06, 0.1);
-    shield.rotation.set(1.05, -0.55, 0.25);
-    shield.scale.setScalar(1.22);
-    armL.add(shield);
+    // Seated in the left fist like the weapons: handle along grip +X,
+    // boss in front of the knuckles. poseEquippedTool keeps it there.
+    shield.position.set(0, -0.008, -0.001);
+    shield.rotation.set(0.06, Math.PI + 0.1, 0.04);
+    shield.scale.setScalar(1.12);
+    gripL.add(shield);
   }
 
   for (const side of [-1, 1] as const) {
@@ -684,7 +710,8 @@ export function setYetiWear(player: THREE.Group, equipped: {
   const legsOn = equipped.legs === 'frost_legs';
   const greavesOn = equipped.greaves === 'frost_greaves';
   const bootsOn = equipped.boots === 'frost_boots';
-  show('wear_shield', equipped.shield === 'frost_shield');
+  const bowHeld = !!player.getObjectByName('bowRoot')?.visible;
+  show('wear_shield', equipped.shield === 'frost_shield' && !bowHeld);
   show('wear_chest', chestOn);
   show('wear_legL', legsOn);
   show('wear_legR', legsOn);

@@ -82,46 +82,50 @@ function frame(opts: {
 
   if (o.model === 'hunter') {
     const frost = o.pose.startsWith('frost');
-    setYetiWear(m, {
-      shield: frost ? 'frost_shield' : null,
-      chest: frost ? 'frost_chest' : null,
-      greaves: frost ? 'frost_greaves' : null,
-      legs: frost ? 'frost_legs' : null,
-      boots: frost ? 'frost_boots' : null,
-    });
     if (frost) {
       const tool =
-        o.pose === 'frost-hammer'
+        o.pose.startsWith('frost-hammer')
           ? 'frost_hammer'
-          : o.pose === 'frost-spear'
+          : o.pose.startsWith('frost-spear')
             ? 'frost_spear'
-            : o.pose === 'frost-bow'
+            : o.pose.startsWith('frost-bow')
               ? 'frost_bow'
               : 'frost_sword';
       setPlayerTool(m, tool);
-      if (o.pose === 'frost-slash') animatePlayerAttack(m, o.t);
+      setYetiWear(m, {
+        shield: tool === 'frost_bow' ? null : 'frost_shield',
+        chest: 'frost_chest',
+        greaves: 'frost_greaves',
+        legs: 'frost_legs',
+        boots: 'frost_boots',
+      });
+      if (o.pose.includes('slash')) animatePlayerAttack(m, o.t);
+      else if (o.pose.includes('walk')) animatePlayerWalk(m, o.t * walkFrequency(o.speed), o.speed, 1);
       else animatePlayerIdle(m, o.t);
-    } else if (o.pose === 'idle') {
-      setPlayerTool(m, null);
-      animatePlayerIdle(m, o.t);
-    } else if (o.pose === 'walk') {
-      setPlayerTool(m, null);
-      animatePlayerWalk(m, o.t * walkFrequency(o.speed), o.speed, 1);
-    } else if (o.pose === 'sword') {
-      setPlayerTool(m, 'sword');
-      animatePlayerIdle(m, o.t);
-    } else if (o.pose === 'sword-walk') {
-      setPlayerTool(m, 'sword');
-      animatePlayerWalk(m, o.t * walkFrequency(o.speed), o.speed, 1);
-    } else if (o.pose === 'slash') {
-      setPlayerTool(m, 'sword');
-      animatePlayerAttack(m, o.t);
-    } else if (o.pose === 'chop') {
-      setPlayerTool(m, 'hatchet');
-      animatePlayerGather(m, o.t, 'tree');
-    } else if (o.pose === 'mine') {
-      setPlayerTool(m, 'pickaxe');
-      animatePlayerGather(m, o.t, 'rock');
+    } else {
+      setYetiWear(m, { shield: null, chest: null, greaves: null, legs: null, boots: null });
+      if (o.pose === 'idle') {
+        setPlayerTool(m, null);
+        animatePlayerIdle(m, o.t);
+      } else if (o.pose === 'walk') {
+        setPlayerTool(m, null);
+        animatePlayerWalk(m, o.t * walkFrequency(o.speed), o.speed, 1);
+      } else if (o.pose === 'sword') {
+        setPlayerTool(m, 'sword');
+        animatePlayerIdle(m, o.t);
+      } else if (o.pose === 'sword-walk') {
+        setPlayerTool(m, 'sword');
+        animatePlayerWalk(m, o.t * walkFrequency(o.speed), o.speed, 1);
+      } else if (o.pose === 'slash') {
+        setPlayerTool(m, 'sword');
+        animatePlayerAttack(m, o.t);
+      } else if (o.pose === 'chop') {
+        setPlayerTool(m, 'hatchet');
+        animatePlayerGather(m, o.t, 'tree');
+      } else if (o.pose === 'mine') {
+        setPlayerTool(m, 'pickaxe');
+        animatePlayerGather(m, o.t, 'rock');
+      }
     }
     m.position.y = Number(m.userData.locomotionY) || 0;
   } else if (o.model === 'yeti') {

@@ -44,6 +44,8 @@ export {
   createPickaxeTool,
   createPlayerMesh,
   createSwordTool,
+  heldCombatTool,
+  isShieldWorn,
   setPlayerTool,
   syncPlayerGear,
   weaponHeldFromId,
