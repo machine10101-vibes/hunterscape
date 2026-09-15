@@ -89,7 +89,9 @@ const SETS = {
     { name: 'frost-walk', o: { pose: 'frost-walk', t: 0.4, speed: 0.7, az: 0.7 } },
     { name: 'frost-bow-walk', o: { pose: 'frost-bow-walk', t: 0.4, speed: 0.7, az: 0.7 } },
     { name: 'frost-boot', o: { pose: 'frost', t: 1.2, az: 0.6, el: 1.25, dist: 1.5, focus: 'footR', fov: 32 } },
-    { name: 'frost-shield', o: { pose: 'frost', t: 1.2, az: 1.05, dist: 0.95, focus: 'handL', fov: 34 } },
+    { name: 'frost-chest', o: { pose: 'frost', t: 1.2, az: 0.45, el: 1.35, dist: 1.7, focus: 'playerTorso', fov: 32 } },
+    { name: 'frost-greave', o: { pose: 'frost', t: 1.2, az: 0.7, el: 1.2, dist: 1.4, focus: 'shinR', fov: 32 } },
+    { name: 'frost-shield', o: { pose: 'frost', t: 1.2, az: 0.55, dist: 1.15, focus: 'wear_shield', fov: 34 } },
   ],
 };
 
