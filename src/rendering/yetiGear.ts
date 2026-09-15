@@ -295,10 +295,13 @@ export function createFrostHammer(): THREE.Group {
   const knuckle = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), pal.hideDark());
   knuckle.scale.set(1.2, 1.0, 1.4);
   add(head, knuckle);
-  const iceCore = new THREE.Mesh(new THREE.OctahedronGeometry(0.11, 0), pal.iceHot());
-  iceCore.scale.set(0.85, 0.7, 1.15);
-  iceCore.position.z = 0.04;
+  const iceCore = new THREE.Mesh(new THREE.OctahedronGeometry(0.12, 0), pal.iceHot());
+  iceCore.scale.set(0.9, 0.75, 1.25);
+  iceCore.position.z = 0.08;
   add(head, iceCore);
+  const iceFace = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.12, 0.08), pal.iceHot());
+  iceFace.position.z = 0.1;
+  add(head, iceFace);
   addShagBand(head, 0.05, 0.1, 12, 0.1, 1.22, pal.pelt(), pal.peltU());
   addRime(head, 0, 0.04, 0.08, 0.08, 7, 0.028, 3);
   const face = clawHook(0.26, 0.03, 1.2);
@@ -515,10 +518,9 @@ export function createFrostChest(): THREE.Group {
     add(g, pec);
   }
 
-  // Joined yeti shag — longer, darker undercoat so the mantle reads as a coat.
-  addShagBand(g, 0.26, 0.31, 18, 0.18, 1.18, pal.pelt(), pal.peltU());
-  addShagBand(g, 0.12, 0.29, 16, 0.18, 1.12, pal.peltMid(), pal.peltMidU());
-  addShagBand(g, -0.1, 0.26, 14, 0.14, 1.1, pal.peltDeep(), pal.peltDeepU());
+  // Shoulder and hem shag only — the sternum stays plated hide so ribs and
+  // the amber clasp are not buried under a white curtain.
+  addShagBand(g, 0.28, 0.31, 18, 0.16, 1.18, pal.pelt(), pal.peltU());
   addShagBand(g, -0.24, 0.24, 14, 0.12, 1.14, pal.peltMid(), pal.peltMidU());
 
   const cape = new THREE.Group();
