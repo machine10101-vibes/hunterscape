@@ -38,7 +38,7 @@ export class HeroPane {
     this.camera = new THREE.PerspectiveCamera(32, 1, 0.1, 20);
     // Same 3/4 framing as the pose harness so the face and the weapon both read.
     const look = new THREE.Vector3(0, 1.0, 0);
-    this.camera.position.setFromSpherical(new THREE.Spherical(3.4, 1.22, 0.55)).add(look);
+    this.camera.position.setFromSpherical(new THREE.Spherical(4.05, 1.22, 0.55)).add(look);
     this.camera.lookAt(look);
 
     this.pivot = new THREE.Group();

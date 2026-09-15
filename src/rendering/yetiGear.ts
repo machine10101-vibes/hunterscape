@@ -652,8 +652,8 @@ export function attachYetiWear(player: THREE.Group): void {
     shield.visible = false;
     // Seated in the left fist like the weapons: handle along grip +X,
     // boss in front of the knuckles. poseEquippedTool keeps it there.
-    shield.position.set(0, -0.008, -0.001);
-    shield.rotation.set(0.06, Math.PI + 0.1, 0.04);
+    shield.position.set(0, -0.008, 0.083);
+    shield.rotation.set(0.05, 0.16, 0.04);
     shield.scale.setScalar(1.12);
     gripL.add(shield);
   }

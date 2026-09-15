@@ -363,17 +363,19 @@ const HAMMER_GUARD: BodyPose = {
 
 /** Left hand holds the bow, right rests on the string. */
 const BOW_GUARD: BodyPose = {
-  playerHips: [0.02, 0.1, 0.02],
-  playerTorso: [0.05, 0.2, -0.03],
-  playerHead: [-0.02, -0.14, 0.02],
-  clavL: [0.08, 0.18, 0.14],
-  clavR: [0.08, -0.08, -0.08],
-  armL: [-0.26, 0.44, -0.58],
-  forearmL: [-0.36, 0.08, 0.04],
-  handL: [0.2, 0.5, 0.12],
-  armR: [-0.82, -0.12, 0.3],
-  forearmR: [-1.48, -0.18, 0],
-  handR: [0.12, -0.82, -0.08],
+  playerHips: [0.02, 0.12, 0.02],
+  playerTorso: [0.04, 0.22, -0.04],
+  playerHead: [-0.02, -0.16, 0.02],
+  clavL: [0.1, 0.2, 0.16],
+  clavR: [0.1, -0.1, -0.1],
+  // Left arm reaches toward the target; wrist rolls thumb-up so the
+  // riser (grip +X) stands the limbs in world Y.
+  armL: [-1.22, 0.1, -0.82],
+  forearmL: [-0.16, 0.08, 0.1],
+  handL: [0.18, 0.08, -0.72],
+  armR: [-0.92, 0.06, 0.22],
+  forearmR: [-1.52, -0.22, 0.08],
+  handR: [0.14, -0.58, 0.12],
   legL: [-0.18, 0.05, 0.04],
   shinL: [0.26, 0, 0],
   footL: [0.04, 0.08, 0],

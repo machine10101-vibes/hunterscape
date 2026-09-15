@@ -1335,7 +1335,7 @@ function attachBowOffhand(player: THREE.Group): void {
   bowRoot.visible = false;
   const bow = createFrostBow();
   bow.name = 'tool_frost_bow';
-  bow.scale.setScalar(1.22);
+  bow.scale.setScalar(1.08);
   bowRoot.add(bow);
   gripL.add(bowRoot);
   poseBowRoot(bowRoot);
@@ -1350,8 +1350,7 @@ function poseToolRoot(root: THREE.Object3D, tool: HeldTool): void {
   root.position.copy(GRIP_POINT);
   if (tool === 'hatchet' || tool === 'frost_hammer') {
     // Haft stands out of the thumb side; the head sits above the fist.
-    root.position.x += 0.012;
-    root.rotation.set(0.18, -0.1, -Math.PI / 2);
+    root.rotation.set(0.16, -0.12, -Math.PI / 2);
   } else if (tool === 'pickaxe') {
     root.rotation.set(0.08, -0.1, -Math.PI / 2);
   } else if (tool === 'frost_spear') {
@@ -1370,9 +1369,9 @@ function poseToolRoot(root: THREE.Object3D, tool: HeldTool): void {
 
 function poseBowRoot(root: THREE.Object3D): void {
   root.position.copy(GRIP_POINT);
-  // Bow grip is along +Y; map that onto the fist's +X, then stand the
-  // limbs up so the string faces the hunter.
-  root.rotation.set(0.08, 0.55, -Math.PI / 2);
+  // Riser along the fist (+X). The wrist's thumb-up roll stands the limbs;
+  // a small Y cant keeps the string toward the drawing hand.
+  root.rotation.set(0.42, 0.18, -Math.PI / 2);
 }
 
 function visibleHeldTool(root: THREE.Object3D): HeldTool {
@@ -1384,10 +1383,10 @@ function visibleHeldTool(root: THREE.Object3D): HeldTool {
 }
 
 function poseShieldRoot(root: THREE.Object3D): void {
-  // Handle sits on the shield's -Z; after a Y flip the bar lands in the
-  // fist and the boss stands in front of the knuckles.
-  root.position.set(GRIP_POINT.x, GRIP_POINT.y, -0.001);
-  root.rotation.set(0.06, Math.PI + 0.1, 0.04);
+  // Handle is on the shield's -Z. Seat that bar in the fist and keep the
+  // boss on the palm / threat side so the face reads from the front.
+  root.position.set(GRIP_POINT.x, GRIP_POINT.y, GRIP_POINT.z + 0.042);
+  root.rotation.set(0.05, 0.16, 0.04);
 }
 
 export function poseEquippedTool(player: THREE.Group): void {
