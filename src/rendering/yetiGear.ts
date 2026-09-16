@@ -491,12 +491,12 @@ export function createFrostShield(): THREE.Group {
     [0.075, 'shieldStrapElbow'],
     [-0.085, 'shieldStrapWrist'],
   ] as const) {
-    const band = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.016, 6, 14), pal.wrap());
+    const band = new THREE.Mesh(new THREE.TorusGeometry(0.072, 0.02, 6, 14), pal.wrap());
     band.name = name;
     band.rotation.x = Math.PI / 2;
     band.position.set(0, y, strapZ);
     add(g, band);
-    const hide = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.011, 5, 12), pal.hide());
+    const hide = new THREE.Mesh(new THREE.TorusGeometry(0.072, 0.013, 5, 12), pal.hide());
     hide.rotation.x = Math.PI / 2;
     hide.position.set(0, y, strapZ);
     add(g, hide);

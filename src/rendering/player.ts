@@ -1369,9 +1369,9 @@ function poseToolRoot(root: THREE.Object3D, tool: HeldTool): void {
 
 function poseBowRoot(root: THREE.Object3D): void {
   root.position.copy(GRIP_POINT);
-  // Riser along the fist (+X). Wrist roll stands the limbs; Y cant keeps
-  // the string toward the body / drawing hand, belly toward the threat.
-  root.rotation.set(0.08, 0.28, -Math.PI / 2);
+  // Riser along the fist (+X). Roll around the handle so the belly faces
+  // the threat and the string sits toward the body, not edge-on to the camera.
+  root.rotation.set(0.88, 0.1, -Math.PI / 2);
 }
 
 function visibleHeldTool(root: THREE.Object3D): HeldTool {

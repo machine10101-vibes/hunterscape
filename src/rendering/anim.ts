@@ -322,11 +322,11 @@ const SWORD_GUARD: BodyPose = {
 
 /** Strapped shield: forearm through the back bands, boss away from the hunter. */
 const SHIELD_ARM: BodyPose = {
-  clavL: [0.1, 0.14, 0.12],
-  armL: [-0.62, 0.16, -0.28],
-  forearmL: [-0.72, 0.08, 0.06],
-  handL: [0.08, 0.12, 0.08],
-  gripL: 0.35,
+  clavL: [0.08, 0.18, 0.14],
+  armL: [-0.15, 1.2, -0.35],
+  forearmL: [-1.25, 0.4, 0.15],
+  handL: [0.06, 0.08, 0.06],
+  gripL: 0.32,
 };
 
 /** Two-hand spear: right hand at the butt, left farther up the shaft. */
@@ -371,12 +371,12 @@ const BOW_GUARD: BodyPose = {
   // Left arm reaches toward the target, not out to the hip. Wrist rolls
   // thumb-up so the riser (grip +X) stands the limbs; the right hand sits
   // on the string at the chest.
-  armL: [-1.28, 0.06, -0.28],
-  forearmL: [-0.18, 0.04, 0.06],
-  handL: [0.12, 0.1, -0.88],
-  armR: [-0.55, 0.12, 0.35],
-  forearmR: [-1.25, -0.18, 0.08],
-  handR: [0.16, -0.35, 0.1],
+  armL: [-1.32, 0.06, -0.32],
+  forearmL: [-0.14, 0.04, 0.04],
+  handL: [0.16, 0.08, -1.05],
+  armR: [-0.95, 0.16, 0.48],
+  forearmR: [-0.82, -0.12, 0.12],
+  handR: [0.16, -0.22, 0.14],
   legL: [-0.18, 0.05, 0.04],
   shinL: [0.26, 0, 0],
   footL: [0.04, 0.08, 0],
