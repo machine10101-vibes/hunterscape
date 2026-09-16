@@ -584,25 +584,29 @@ export function createFrostChest(): THREE.Group {
 /** Hide bracer that rides the existing gauntlet so a frost chest still shows arms. */
 export function createFrostBracer(): THREE.Group {
   const g = new THREE.Group();
-  const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.058, 0.07, 0.22, 10), pal.hideDark());
+  // Mid-grey hide, not vest-dark, so a bent forearm still separates from the ribs.
+  const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.064, 0.08, 0.24, 10), pal.hide());
   sleeve.position.set(0, -0.14, 0.008);
   add(g, sleeve);
-  const plate = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.16, 0.028), pal.bone());
-  plate.position.set(0, -0.14, 0.062);
+  const wrap = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.082, 0.08, 8), pal.hideDark());
+  wrap.position.set(0, -0.09, 0.008);
+  add(g, wrap);
+  const plate = new THREE.Mesh(new THREE.BoxGeometry(0.058, 0.18, 0.034), pal.bone());
+  plate.position.set(0, -0.14, 0.074);
   add(g, plate);
-  const ice = new THREE.Mesh(new THREE.BoxGeometry(0.032, 0.14, 0.02), pal.iceHot());
-  ice.position.set(0, -0.14, 0.078);
+  const ice = new THREE.Mesh(new THREE.BoxGeometry(0.038, 0.16, 0.024), pal.iceHot());
+  ice.position.set(0, -0.14, 0.094);
   add(g, ice);
-  addShagBand(g, -0.03, 0.072, 9, 0.06, 1.16, pal.pelt(), pal.peltU());
-  const cuff = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.012, 5, 10), pal.boneDark());
+  addShagBand(g, -0.02, 0.084, 10, 0.075, 1.2, pal.pelt(), pal.peltU());
+  const cuff = new THREE.Mesh(new THREE.TorusGeometry(0.054, 0.014, 5, 10), pal.bone());
   cuff.rotation.x = Math.PI / 2;
-  cuff.position.set(0, -0.24, 0.008);
+  cuff.position.set(0, -0.25, 0.008);
   add(g, cuff);
-  addRime(g, 0, -0.12, 0.08, 0.03, 3, 0.012, 4);
-  addStitch(g, -0.03, -0.2, 0.06, 4, 0.028);
-  addStitch(g, 0.03, -0.2, 0.06, 4, 0.028);
-  const claw = clawHook(0.1, 0.012, 0.15);
-  claw.position.set(0.02, -0.06, 0.07);
+  addRime(g, 0, -0.12, 0.09, 0.032, 3, 0.014, 4);
+  addStitch(g, -0.032, -0.22, 0.07, 4, 0.03);
+  addStitch(g, 0.032, -0.22, 0.07, 4, 0.03);
+  const claw = clawHook(0.11, 0.013, 0.15);
+  claw.position.set(0.02, -0.05, 0.08);
   claw.rotation.z = 0.4;
   g.add(claw);
   return g;
