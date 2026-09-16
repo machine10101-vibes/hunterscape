@@ -480,29 +480,32 @@ export function createFrostShield(): THREE.Group {
     }
   }
 
-  // Center grip on the back: a hide-wrapped bone bar the fist actually closes
-  // around, plus a short enarme so the forearm still reads as strapped in.
-  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.018, 0.15, 8), pal.bone());
-  handle.name = 'shieldHandle';
-  handle.rotation.z = Math.PI / 2;
-  handle.position.z = -0.042;
-  add(g, handle);
-  const wrap = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.022, 0.1, 8), pal.hide());
-  wrap.rotation.z = Math.PI / 2;
-  wrap.position.z = -0.042;
-  add(g, wrap);
-  for (const x of [-0.055, 0.055]) {
-    const post = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.028, 0.05), pal.boneDark());
-    post.position.set(x, 0, -0.03);
-    add(g, post);
-  }
-  const pad = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.02), pal.hideDark());
-  pad.position.set(0, 0.04, -0.028);
+  // Enarmes on the back: two leather bands the forearm actually goes through.
+  // Holes sit on local -Z so poseShieldRoot can seat the arm on that axis
+  // and keep the boss (+Z) facing away from the hunter.
+  const strapZ = -0.08;
+  const pad = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.24, 0.028), pal.hideDark());
+  pad.position.set(0, -0.01, -0.032);
   add(g, pad);
-  const strap = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.01, 5, 10, Math.PI * 1.15), pal.wrap());
-  strap.rotation.set(0.15, Math.PI / 2, 0.2);
-  strap.position.set(0.01, 0.05, -0.03);
-  g.add(strap);
+  for (const [y, name] of [
+    [0.075, 'shieldStrapElbow'],
+    [-0.085, 'shieldStrapWrist'],
+  ] as const) {
+    const band = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.016, 6, 14), pal.wrap());
+    band.name = name;
+    band.rotation.x = Math.PI / 2;
+    band.position.set(0, y, strapZ);
+    add(g, band);
+    const hide = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.011, 5, 12), pal.hide());
+    hide.rotation.x = Math.PI / 2;
+    hide.position.set(0, y, strapZ);
+    add(g, hide);
+    for (const sx of [-1, 1]) {
+      const rivet = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.03, 0.042), pal.boneDark());
+      rivet.position.set(sx * 0.058, y, -0.03);
+      add(g, rivet);
+    }
+  }
   return g;
 }
 
@@ -849,16 +852,17 @@ export function attachYetiWear(player: THREE.Group): void {
     }
   }
 
-  const gripL = player.getObjectByName('handL')?.getObjectByName('grip');
-  if (gripL) {
+  const forearmL = player.getObjectByName('forearmL');
+  if (forearmL) {
     const shield = createFrostShield();
     shield.name = 'wear_shield';
     shield.visible = false;
-    // Handle in the fist; poseEquippedTool rolls the boss toward the threat.
-    shield.position.set(0, -0.008, 0.083);
-    shield.rotation.set(0.05, 0.1, 0.04);
+    // Strapped to the left forearm. poseEquippedTool keeps the boss facing
+    // away from the hunter with the arm through the back bands.
+    shield.position.set(0, -0.14, -0.08);
+    shield.rotation.set(0, Math.PI, 0);
     shield.scale.setScalar(1.12);
-    gripL.add(shield);
+    forearmL.add(shield);
   }
 
   for (const side of [-1, 1] as const) {
@@ -914,9 +918,10 @@ export function setYetiWear(player: THREE.Group, equipped: {
   const greavesOn = equipped.greaves === 'frost_greaves';
   const bootsOn = equipped.boots === 'frost_boots';
   const bowHeld = !!player.getObjectByName('bowRoot')?.visible;
-  show('wear_shield', equipped.shield === 'frost_shield' && !bowHeld);
+  const shieldOn = equipped.shield === 'frost_shield' && !bowHeld;
+  show('wear_shield', shieldOn);
   show('wear_chest', chestOn);
-  show('wear_bracerL', chestOn);
+  show('wear_bracerL', chestOn && !shieldOn);
   show('wear_bracerR', chestOn);
   show('wear_legL', legsOn);
   show('wear_legR', legsOn);

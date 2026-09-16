@@ -320,13 +320,13 @@ const SWORD_GUARD: BodyPose = {
   lift: 0.02,
 };
 
-/** Center-grip round shield: fist closed on the bar, boss toward the threat. */
+/** Strapped shield: forearm through the back bands, boss away from the hunter. */
 const SHIELD_ARM: BodyPose = {
-  clavL: [0.12, 0.16, 0.14],
-  armL: [-0.42, 0.2, -0.46],
-  forearmL: [-1.05, 0.12, 0.08],
-  handL: [0.12, 0.22, 0.1],
-  gripL: 0.84,
+  clavL: [0.1, 0.14, 0.12],
+  armL: [-0.62, 0.16, -0.28],
+  forearmL: [-0.72, 0.08, 0.06],
+  handL: [0.08, 0.12, 0.08],
+  gripL: 0.35,
 };
 
 /** Two-hand spear: right hand at the butt, left farther up the shaft. */
@@ -368,14 +368,15 @@ const BOW_GUARD: BodyPose = {
   playerHead: [-0.02, -0.16, 0.02],
   clavL: [0.1, 0.2, 0.16],
   clavR: [0.1, -0.1, -0.1],
-  // Left arm reaches toward the target; wrist rolls thumb-up so the
-  // riser (grip +X) stands the limbs in world Y.
-  armL: [-1.22, 0.1, -0.82],
-  forearmL: [-0.16, 0.08, 0.1],
-  handL: [0.18, 0.08, -0.72],
-  armR: [-0.92, 0.06, 0.22],
-  forearmR: [-1.52, -0.22, 0.08],
-  handR: [0.14, -0.58, 0.12],
+  // Left arm reaches toward the target, not out to the hip. Wrist rolls
+  // thumb-up so the riser (grip +X) stands the limbs; the right hand sits
+  // on the string at the chest.
+  armL: [-1.28, 0.06, -0.28],
+  forearmL: [-0.18, 0.04, 0.06],
+  handL: [0.12, 0.1, -0.88],
+  armR: [-0.55, 0.12, 0.35],
+  forearmR: [-1.25, -0.18, 0.08],
+  handR: [0.16, -0.35, 0.1],
   legL: [-0.18, 0.05, 0.04],
   shinL: [0.26, 0, 0],
   footL: [0.04, 0.08, 0],
@@ -584,7 +585,7 @@ export function animatePlayerWalk(
         rot(get(player, 'armL'), s.armL![0] + bounce * 0.06, s.armL![1], s.armL![2]);
         rot(get(player, 'forearmL'), ...(s.forearmL as Rot3));
         rot(get(player, 'handL'), ...(s.handL as Rot3));
-        setHandGrip(get(player, 'handL'), 0.84);
+        setHandGrip(get(player, 'handL'), s.gripL ?? 0.35);
       } else if (tool === 'frost_spear' || tool === 'frost_hammer') {
         const g = tool === 'frost_spear' ? SPEAR_GUARD : HAMMER_GUARD;
         rot(get(player, 'armL'), g.armL![0] + bounce * 0.08, g.armL![1], g.armL![2]);

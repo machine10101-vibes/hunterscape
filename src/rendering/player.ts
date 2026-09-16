@@ -1369,9 +1369,9 @@ function poseToolRoot(root: THREE.Object3D, tool: HeldTool): void {
 
 function poseBowRoot(root: THREE.Object3D): void {
   root.position.copy(GRIP_POINT);
-  // Riser along the fist (+X). The wrist's thumb-up roll stands the limbs;
-  // a small Y cant keeps the string toward the drawing hand.
-  root.rotation.set(0.42, 0.18, -Math.PI / 2);
+  // Riser along the fist (+X). Wrist roll stands the limbs; Y cant keeps
+  // the string toward the body / drawing hand, belly toward the threat.
+  root.rotation.set(0.08, 0.28, -Math.PI / 2);
 }
 
 function visibleHeldTool(root: THREE.Object3D): HeldTool {
@@ -1387,29 +1387,32 @@ const _shieldHandle = new THREE.Vector3();
 const _shieldInv = new THREE.Matrix4();
 
 function poseShieldRoot(root: THREE.Object3D): void {
-  // Handle stays on grip +X (inside the fist). Roll around that bar so the
-  // boss (+Z) aims along the hunter's forward instead of out the palm — the
-  // palm currently faces the hunter's right, which left the disc rim-on.
-  const grip = root.parent;
-  if (!grip) return;
-  grip.updateWorldMatrix(true, false);
+  // Parent is the left forearm. Enarme holes sit on the shield's -Z; keep
+  // that axis on the arm and aim the boss (+Z) along hunter-forward so the
+  // face is always away from the hunter, like a real strapped shield.
+  const arm = root.parent;
+  if (!arm) return;
+  arm.updateWorldMatrix(true, false);
 
-  let hunter: THREE.Object3D | null = grip;
+  let hunter: THREE.Object3D | null = arm;
   while (hunter && hunter.name !== 'player') hunter = hunter.parent;
   _shieldFwd.set(0, 0, 1);
   if (hunter) {
     hunter.updateWorldMatrix(true, false);
     _shieldFwd.transformDirection(hunter.matrixWorld);
   }
-  _shieldInv.copy(grip.matrixWorld).invert();
+  _shieldInv.copy(arm.matrixWorld).invert();
   _shieldFwd.transformDirection(_shieldInv);
 
-  const yz = _shieldFwd.y * _shieldFwd.y + _shieldFwd.z * _shieldFwd.z;
-  const roll = yz > 0.04 ? Math.atan2(-_shieldFwd.y, _shieldFwd.z) : 0.05;
-  root.rotation.set(roll, 0.1, 0.04);
+  _shieldHandle.set(_shieldFwd.x, 0, _shieldFwd.z);
+  if (_shieldHandle.lengthSq() < 0.04) _shieldHandle.set(0, 0, -1);
+  _shieldHandle.normalize();
 
-  _shieldHandle.set(0, 0, -0.042).applyEuler(root.rotation).multiplyScalar(root.scale.x || 1);
-  root.position.copy(GRIP_POINT).sub(_shieldHandle);
+  const yaw = Math.atan2(_shieldHandle.x, _shieldHandle.z);
+  root.rotation.set(0, yaw, 0);
+
+  const stand = 0.08 * (root.scale.x || 1);
+  root.position.set(_shieldHandle.x * stand, -0.14, _shieldHandle.z * stand);
 }
 
 export function poseEquippedTool(player: THREE.Group): void {
