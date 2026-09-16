@@ -628,10 +628,12 @@ export class Game {
         tap = null;
         pinchDist0 = pinchDist() || 1;
         pinchZoom0 = this.camZoomTarget;
-        try {
-          canvas.setPointerCapture(ev.pointerId);
-        } catch {
-          /* capture is best-effort on some mobile browsers */
+        for (const id of pointers.keys()) {
+          try {
+            canvas.setPointerCapture(id);
+          } catch {
+            /* capture is best-effort on some mobile browsers */
+          }
         }
         ev.preventDefault();
         return;
@@ -682,9 +684,6 @@ export class Game {
     };
     canvas.addEventListener('pointerup', endPointer);
     canvas.addEventListener('pointercancel', endPointer);
-    canvas.addEventListener('pointerleave', (ev) => {
-      if (pinching) endPointer(ev);
-    });
 
     // Stop the browser from stealing the two-finger gesture (page zoom / scroll).
     canvas.addEventListener(
