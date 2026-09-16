@@ -6,6 +6,8 @@ import {
   createFrostSpear,
   createFrostSword,
   setYetiWear,
+  SHIELD_FOREARM_Y,
+  SHIELD_STRAP_Z,
 } from './yetiGear';
 import type { SaveData } from '../game/types';
 
@@ -1369,9 +1371,9 @@ function poseToolRoot(root: THREE.Object3D, tool: HeldTool): void {
 
 function poseBowRoot(root: THREE.Object3D): void {
   root.position.copy(GRIP_POINT);
-  // Riser along the fist (+X). Roll around the handle so the belly faces
-  // the threat and the string sits toward the body, not edge-on to the camera.
-  root.rotation.set(0.88, 0.1, -Math.PI / 2);
+  // Riser along the fist (+X). A modest roll around the handle turns the
+  // belly toward the threat so the 3/4 camera sees the curve, not a staff.
+  root.rotation.set(0.62, 0.08, -Math.PI / 2);
 }
 
 function visibleHeldTool(root: THREE.Object3D): HeldTool {
@@ -1387,9 +1389,9 @@ const _shieldHandle = new THREE.Vector3();
 const _shieldInv = new THREE.Matrix4();
 
 function poseShieldRoot(root: THREE.Object3D): void {
-  // Parent is the left forearm. Enarme holes sit on the shield's -Z; keep
-  // that axis on the arm and aim the boss (+Z) along hunter-forward so the
-  // face is always away from the hunter, like a real strapped shield.
+  // Parent is the left forearm. Enarme holes sit on the shield's -Z and
+  // open along +Y, so a yaw-only rotation keeps the arm through the bands
+  // while the boss (+Z) turns away from the hunter toward the threat.
   const arm = root.parent;
   if (!arm) return;
   arm.updateWorldMatrix(true, false);
@@ -1405,14 +1407,18 @@ function poseShieldRoot(root: THREE.Object3D): void {
   _shieldFwd.transformDirection(_shieldInv);
 
   _shieldHandle.set(_shieldFwd.x, 0, _shieldFwd.z);
-  if (_shieldHandle.lengthSq() < 0.04) _shieldHandle.set(0, 0, -1);
+  if (_shieldHandle.lengthSq() < 0.04) {
+    // Arm pointing at the threat: face the leftover "out" so the disc
+    // stays as upright as possible instead of rolling onto its rim.
+    _shieldHandle.set(0, 0, -1);
+  }
   _shieldHandle.normalize();
 
   const yaw = Math.atan2(_shieldHandle.x, _shieldHandle.z);
   root.rotation.set(0, yaw, 0);
 
-  const stand = 0.08 * (root.scale.x || 1);
-  root.position.set(_shieldHandle.x * stand, -0.14, _shieldHandle.z * stand);
+  const stand = Math.abs(SHIELD_STRAP_Z) * (root.scale.x || 1);
+  root.position.set(_shieldHandle.x * stand, SHIELD_FOREARM_Y, _shieldHandle.z * stand);
 }
 
 export function poseEquippedTool(player: THREE.Group): void {

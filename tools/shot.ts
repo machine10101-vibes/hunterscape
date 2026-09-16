@@ -269,8 +269,23 @@ function probe(names: string[]) {
   return out;
 }
 
+function dumpAxes(name: string) {
+  const o = findVisible(name) || subject!.getObjectByName(name);
+  if (!o) return null;
+  o.updateWorldMatrix(true, false);
+  const p = new THREE.Vector3();
+  const x = new THREE.Vector3();
+  const y = new THREE.Vector3();
+  const z = new THREE.Vector3();
+  o.matrixWorld.extractBasis(x, y, z);
+  o.getWorldPosition(p);
+  const n = (v: THREE.Vector3) => v.toArray().map((q) => +q.toFixed(3));
+  return { p: n(p), x: n(x), y: n(y), z: n(z) };
+}
+
 (window as unknown as { render: () => void }).render = () => renderer.render(scene, camera);
 (window as unknown as { probe: typeof probe }).probe = probe;
+(window as unknown as { dumpAxes: typeof dumpAxes }).dumpAxes = dumpAxes;
 (window as unknown as { shot: typeof frame }).shot = frame;
 (window as unknown as { shotReady: boolean }).shotReady = true;
 frame({});

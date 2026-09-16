@@ -5,6 +5,11 @@ import * as THREE from 'three';
  * ice-white fur, grey hide, cream bone, hooked black claws, and rime ice.
  */
 
+/** Back-of-shield offset where the enarme holes sit (local −Z). */
+export const SHIELD_STRAP_Z = -0.1;
+/** Mid-forearm seat so the elbow and wrist bands land on the gauntlet. */
+export const SHIELD_FOREARM_Y = -0.14;
+
 function phys(
   color: number,
   opts: Partial<THREE.MeshPhysicalMaterialParameters> = {},
@@ -480,32 +485,47 @@ export function createFrostShield(): THREE.Group {
     }
   }
 
-  // Enarmes on the back: two leather bands the forearm actually goes through.
-  // Holes sit on local -Z so poseShieldRoot can seat the arm on that axis
-  // and keep the boss (+Z) facing away from the hunter.
-  const strapZ = -0.08;
-  const pad = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.24, 0.028), pal.hideDark());
-  pad.position.set(0, -0.01, -0.032);
+  // Enarmes on the back: two leather loops the forearm threads. Holes run
+  // along local +Y (the forearm) and sit on -Z so poseShieldRoot can park
+  // the arm in the bands and keep the boss (+Z) facing away from the hunter.
+  // Inner radius stays outside the gauntlet (~0.07) so the arm is visibly
+  // inside the straps instead of fused with them.
+  const pad = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.28, 0.032), pal.hideDark());
+  pad.position.set(0, -0.01, -0.04);
   add(g, pad);
+  const spine = new THREE.Mesh(new THREE.BoxGeometry(0.058, 0.26, 0.024), pal.wrap());
+  spine.position.set(0, -0.01, -0.058);
+  add(g, spine);
   for (const [y, name] of [
-    [0.075, 'shieldStrapElbow'],
-    [-0.085, 'shieldStrapWrist'],
+    [0.07, 'shieldStrapElbow'],
+    [-0.09, 'shieldStrapWrist'],
   ] as const) {
-    const band = new THREE.Mesh(new THREE.TorusGeometry(0.072, 0.02, 6, 14), pal.wrap());
+    const band = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.028, 8, 16), pal.wrap());
     band.name = name;
     band.rotation.x = Math.PI / 2;
-    band.position.set(0, y, strapZ);
+    band.position.set(0, y, SHIELD_STRAP_Z);
+    // Oval: wider than the arm so the loops read from 3/4, tighter toward the pad.
+    band.scale.set(1.22, 1, 0.88);
     add(g, band);
-    const hide = new THREE.Mesh(new THREE.TorusGeometry(0.072, 0.013, 5, 12), pal.hide());
+    const hide = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.016, 6, 14), pal.sinew());
     hide.rotation.x = Math.PI / 2;
-    hide.position.set(0, y, strapZ);
+    hide.position.set(0, y, SHIELD_STRAP_Z);
+    hide.scale.set(1.22, 1, 0.88);
     add(g, hide);
     for (const sx of [-1, 1]) {
-      const rivet = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.03, 0.042), pal.boneDark());
-      rivet.position.set(sx * 0.058, y, -0.03);
+      const plate = new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.048, 0.058), pal.boneDark());
+      plate.position.set(sx * 0.082, y, -0.042);
+      add(g, plate);
+      const rivet = new THREE.Mesh(new THREE.SphereGeometry(0.014, 6, 5), pal.bone());
+      rivet.position.set(sx * 0.082, y, -0.012);
       add(g, rivet);
     }
   }
+  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.13, 8), pal.wrap());
+  grip.name = 'shieldGrip';
+  grip.rotation.z = Math.PI / 2;
+  grip.position.set(0, -0.175, SHIELD_STRAP_Z);
+  add(g, grip);
   return g;
 }
 
@@ -859,7 +879,7 @@ export function attachYetiWear(player: THREE.Group): void {
     shield.visible = false;
     // Strapped to the left forearm. poseEquippedTool keeps the boss facing
     // away from the hunter with the arm through the back bands.
-    shield.position.set(0, -0.14, -0.08);
+    shield.position.set(0, SHIELD_FOREARM_Y, SHIELD_STRAP_Z);
     shield.rotation.set(0, Math.PI, 0);
     shield.scale.setScalar(1.12);
     forearmL.add(shield);
