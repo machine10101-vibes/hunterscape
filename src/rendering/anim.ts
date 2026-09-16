@@ -369,13 +369,13 @@ const BOW_GUARD: BodyPose = {
   playerHead: [-0.02, -0.16, 0.02],
   clavL: [0.12, 0.22, 0.18],
   clavR: [0.1, -0.12, -0.12],
-  // Left arm reaches toward the target. Wrist rolls thumb-up so the riser
-  // (grip +X) stands the limbs; the right hand sits on the string at the chest.
-  armL: [-1.48, 0.18, -0.4],
-  forearmL: [-0.22, 0.06, 0.06],
-  handL: [0.12, 0.06, -1.18],
-  armR: [-1.08, 0.28, 0.42],
-  forearmR: [-1.12, -0.2, 0.1],
+  // Left arm reaches toward the target. Wrist stands the riser (grip +X
+  // world-up) so the limbs read as a bow; the right hand sits on the string.
+  armL: [-1.52, -0.2, -0.15],
+  forearmL: [-0.2, -0.37, 0.25],
+  handL: [-1.03, -0.47, -0.73],
+  armR: [-1.38, -0.28, 0.05],
+  forearmR: [-0.52, -0.37, -0.3],
   handR: [0.14, -0.4, 0.16],
   legL: [-0.18, 0.05, 0.04],
   shinL: [0.26, 0, 0],
