@@ -322,10 +322,10 @@ const SWORD_GUARD: BodyPose = {
 
 /** Center-grip round shield: fist closed on the bar, boss toward the threat. */
 const SHIELD_ARM: BodyPose = {
-  clavL: [0.1, 0.14, 0.12],
-  armL: [-0.48, 0.24, -0.38],
-  forearmL: [-1.18, 0.14, 0.1],
-  handL: [0.16, 0.28, 0.14],
+  clavL: [0.12, 0.16, 0.14],
+  armL: [-0.42, 0.2, -0.46],
+  forearmL: [-1.05, 0.12, 0.08],
+  handL: [0.12, 0.22, 0.1],
   gripL: 0.84,
 };
 

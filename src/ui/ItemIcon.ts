@@ -54,7 +54,7 @@ export function getItemIcon(id: string): HTMLCanvasElement {
   if (id === 'bronze_hatchet' || id === 'frost_hammer') mesh.rotation.set(0.25, 0.95, -0.35);
   if (id === 'bronze_pickaxe') mesh.rotation.set(0.15, 0.7, -0.25);
   if (id === 'frost_bow') mesh.rotation.set(0.05, 0.9, 0.2);
-  if (id === 'frost_shield') mesh.rotation.set(0.35, 0.85, 0.15);
+  if (id === 'frost_shield') mesh.rotation.set(0.22, 0.38, 0.06);
   if (id === 'frost_chest') mesh.rotation.set(0.2, 0.7, 0);
   if (id === 'frost_greaves' || id === 'frost_legs') mesh.rotation.set(0.15, 0.6, 0.15);
   if (id === 'frost_boots') mesh.rotation.set(0.6, 0.4, 0);

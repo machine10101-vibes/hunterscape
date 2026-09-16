@@ -1382,11 +1382,34 @@ function visibleHeldTool(root: THREE.Object3D): HeldTool {
   return null;
 }
 
+const _shieldFwd = new THREE.Vector3();
+const _shieldHandle = new THREE.Vector3();
+const _shieldInv = new THREE.Matrix4();
+
 function poseShieldRoot(root: THREE.Object3D): void {
-  // Handle is on the shield's -Z. Seat that bar in the fist and keep the
-  // boss on the palm / threat side so the face reads from the front.
-  root.position.set(GRIP_POINT.x, GRIP_POINT.y, GRIP_POINT.z + 0.042);
-  root.rotation.set(0.05, 0.16, 0.04);
+  // Handle stays on grip +X (inside the fist). Roll around that bar so the
+  // boss (+Z) aims along the hunter's forward instead of out the palm — the
+  // palm currently faces the hunter's right, which left the disc rim-on.
+  const grip = root.parent;
+  if (!grip) return;
+  grip.updateWorldMatrix(true, false);
+
+  let hunter: THREE.Object3D | null = grip;
+  while (hunter && hunter.name !== 'player') hunter = hunter.parent;
+  _shieldFwd.set(0, 0, 1);
+  if (hunter) {
+    hunter.updateWorldMatrix(true, false);
+    _shieldFwd.transformDirection(hunter.matrixWorld);
+  }
+  _shieldInv.copy(grip.matrixWorld).invert();
+  _shieldFwd.transformDirection(_shieldInv);
+
+  const yz = _shieldFwd.y * _shieldFwd.y + _shieldFwd.z * _shieldFwd.z;
+  const roll = yz > 0.04 ? Math.atan2(-_shieldFwd.y, _shieldFwd.z) : 0.05;
+  root.rotation.set(roll, 0.1, 0.04);
+
+  _shieldHandle.set(0, 0, -0.042).applyEuler(root.rotation).multiplyScalar(root.scale.x || 1);
+  root.position.copy(GRIP_POINT).sub(_shieldHandle);
 }
 
 export function poseEquippedTool(player: THREE.Group): void {

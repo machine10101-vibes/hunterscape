@@ -97,14 +97,16 @@ function addFurSkirt(
   mat: THREE.Material,
   cz = 0,
   phase = 0,
+  arc = Math.PI * 2,
+  yaw = 0,
 ): void {
   const pos: number[] = [];
   const push = (a: number, y: number, r: number) => {
     pos.push(Math.cos(a) * r, y, cz + Math.sin(a) * r);
   };
   for (let i = 0; i < count; i++) {
-    const a0 = ((i + phase) / count) * Math.PI * 2;
-    const a1 = ((i + 1 + phase) / count) * Math.PI * 2;
+    const a0 = yaw - arc / 2 + ((i + phase) / count) * arc;
+    const a1 = yaw - arc / 2 + ((i + 1 + phase) / count) * arc;
     const am = (a0 + a1) / 2;
     const jitter = ((i * 7) % 5) / 5;
     const d = drop * (0.7 + jitter * 0.55);
@@ -130,9 +132,11 @@ function addShagBand(
   top: THREE.Material,
   under: THREE.Material,
   cz = 0,
+  arc = Math.PI * 2,
+  yaw = 0,
 ): void {
-  addFurSkirt(parent, cy + drop * 0.1, radius * 0.98, count, drop * 1.18, flare * 0.96, under, cz, 0.5);
-  addFurSkirt(parent, cy, radius, count, drop, flare, top, cz);
+  addFurSkirt(parent, cy + drop * 0.1, radius * 0.98, count, drop * 1.18, flare * 0.96, under, cz, 0.5, arc, yaw);
+  addFurSkirt(parent, cy, radius, count, drop, flare, top, cz, 0, arc, yaw);
 }
 
 function clawHook(len: number, rad: number, pitch = 0.35): THREE.Group {
@@ -504,24 +508,28 @@ export function createFrostShield(): THREE.Group {
 
 export function createFrostChest(): THREE.Group {
   const g = new THREE.Group();
+  // Narrow through the ribs so the vest stops at the armpits instead of
+  // swallowing the gauntlets. The plated sternum still sits proud in Z.
   const vest = new THREE.Mesh(new THREE.SphereGeometry(0.29, 12, 10), pal.hideDark());
-  vest.scale.set(1.26, 1.16, 0.84);
+  vest.scale.set(0.88, 1.14, 0.78);
+  vest.position.set(0, 0.02, 0.03);
   add(g, vest);
   const belly = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), pal.hide());
-  belly.scale.set(1.12, 0.92, 0.6);
+  belly.scale.set(0.95, 0.88, 0.55);
   belly.position.set(0, -0.14, 0.1);
   add(g, belly);
   for (const sx of [-1, 1]) {
     const pec = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), pal.hide());
-    pec.scale.set(1.25, 0.7, 0.55);
-    pec.position.set(sx * 0.12, 0.06, 0.18);
+    pec.scale.set(1.15, 0.7, 0.55);
+    pec.position.set(sx * 0.1, 0.06, 0.18);
     add(g, pec);
   }
 
-  // Shoulder and hem shag only — the sternum stays plated hide so ribs and
-  // the amber clasp are not buried under a white curtain.
-  addShagBand(g, 0.28, 0.31, 18, 0.16, 1.18, pal.pelt(), pal.peltU());
-  addShagBand(g, -0.24, 0.24, 14, 0.12, 1.14, pal.peltMid(), pal.peltMidU());
+  // Shoulder shag stays a collar. Hem is front and back only so the hanging
+  // triangles do not wrap through the forearms.
+  addShagBand(g, 0.28, 0.26, 16, 0.14, 1.14, pal.pelt(), pal.peltU());
+  addShagBand(g, -0.22, 0.15, 8, 0.1, 1.1, pal.peltMid(), pal.peltMidU(), 0, Math.PI * 0.7, Math.PI / 2);
+  addShagBand(g, -0.22, 0.14, 8, 0.1, 1.1, pal.peltMid(), pal.peltMidU(), 0, Math.PI * 0.7, -Math.PI / 2);
 
   const cape = new THREE.Group();
   cape.position.set(0, 0.22, -0.12);
@@ -531,7 +539,7 @@ export function createFrostChest(): THREE.Group {
   g.add(cape);
 
   const yoke = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8), pal.hide());
-  yoke.scale.set(1.75, 0.26, 1.05);
+  yoke.scale.set(1.45, 0.24, 1.0);
   yoke.position.set(0, 0.28, 0.02);
   add(g, yoke);
 
@@ -546,17 +554,17 @@ export function createFrostChest(): THREE.Group {
   }
 
   for (const sx of [-1, 1]) {
-    const pad = new THREE.Mesh(new THREE.SphereGeometry(0.125, 10, 8), pal.hide());
-    pad.scale.set(1.25, 0.7, 1.1);
-    pad.position.set(sx * 0.27, 0.2, 0.04);
+    const pad = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), pal.hide());
+    pad.scale.set(1.15, 0.64, 1.05);
+    pad.position.set(sx * 0.24, 0.22, 0.03);
     add(g, pad);
     const shard = new THREE.Mesh(new THREE.OctahedronGeometry(0.1, 0), pal.iceHot());
-    shard.position.set(sx * 0.32, 0.36, 0.05);
+    shard.position.set(sx * 0.28, 0.36, 0.05);
     shard.scale.set(0.4, 2.05, 0.36);
     add(g, shard);
-    addRime(g, sx * 0.3, 0.3, 0.08, 0.06, 4, 0.02, sx + 3);
+    addRime(g, sx * 0.26, 0.3, 0.08, 0.06, 4, 0.02, sx + 3);
     const claw = clawHook(0.22, 0.022, 0.1);
-    claw.position.set(sx * 0.32, 0.26, 0.12);
+    claw.position.set(sx * 0.28, 0.26, 0.12);
     claw.rotation.z = sx * 0.98;
     g.add(claw);
     const clasp = clawHook(0.16, 0.02, 0.48);
@@ -570,6 +578,33 @@ export function createFrostChest(): THREE.Group {
   const gem = new THREE.Mesh(new THREE.SphereGeometry(0.036, 8, 6), pal.amber());
   gem.position.set(0, 0.05, 0.236);
   add(g, gem);
+  return g;
+}
+
+/** Hide bracer that rides the existing gauntlet so a frost chest still shows arms. */
+export function createFrostBracer(): THREE.Group {
+  const g = new THREE.Group();
+  const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.058, 0.07, 0.22, 10), pal.hideDark());
+  sleeve.position.set(0, -0.14, 0.008);
+  add(g, sleeve);
+  const plate = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.16, 0.028), pal.bone());
+  plate.position.set(0, -0.14, 0.062);
+  add(g, plate);
+  const ice = new THREE.Mesh(new THREE.BoxGeometry(0.032, 0.14, 0.02), pal.iceHot());
+  ice.position.set(0, -0.14, 0.078);
+  add(g, ice);
+  addShagBand(g, -0.03, 0.072, 9, 0.06, 1.16, pal.pelt(), pal.peltU());
+  const cuff = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.012, 5, 10), pal.boneDark());
+  cuff.rotation.x = Math.PI / 2;
+  cuff.position.set(0, -0.24, 0.008);
+  add(g, cuff);
+  addRime(g, 0, -0.12, 0.08, 0.03, 3, 0.012, 4);
+  addStitch(g, -0.03, -0.2, 0.06, 4, 0.028);
+  addStitch(g, 0.03, -0.2, 0.06, 4, 0.028);
+  const claw = clawHook(0.1, 0.012, 0.15);
+  claw.position.set(0.02, -0.06, 0.07);
+  claw.rotation.z = 0.4;
+  g.add(claw);
   return g;
 }
 
@@ -796,8 +831,18 @@ export function attachYetiWear(player: THREE.Group): void {
     chest.name = 'wear_chest';
     chest.visible = false;
     chest.position.set(0, 0.0, 0.02);
-    chest.scale.setScalar(1.05);
+    chest.scale.setScalar(1.02);
     torso.add(chest);
+  }
+
+  for (const side of [-1, 1] as const) {
+    const forearm = player.getObjectByName(side < 0 ? 'forearmL' : 'forearmR');
+    if (forearm) {
+      const bracer = createFrostBracer();
+      bracer.name = side < 0 ? 'wear_bracerL' : 'wear_bracerR';
+      bracer.visible = false;
+      forearm.add(bracer);
+    }
   }
 
   const gripL = player.getObjectByName('handL')?.getObjectByName('grip');
@@ -805,10 +850,9 @@ export function attachYetiWear(player: THREE.Group): void {
     const shield = createFrostShield();
     shield.name = 'wear_shield';
     shield.visible = false;
-    // Seated in the left fist like the weapons: handle along grip +X,
-    // boss in front of the knuckles. poseEquippedTool keeps it there.
+    // Handle in the fist; poseEquippedTool rolls the boss toward the threat.
     shield.position.set(0, -0.008, 0.083);
-    shield.rotation.set(0.05, 0.16, 0.04);
+    shield.rotation.set(0.05, 0.1, 0.04);
     shield.scale.setScalar(1.12);
     gripL.add(shield);
   }
@@ -868,6 +912,8 @@ export function setYetiWear(player: THREE.Group, equipped: {
   const bowHeld = !!player.getObjectByName('bowRoot')?.visible;
   show('wear_shield', equipped.shield === 'frost_shield' && !bowHeld);
   show('wear_chest', chestOn);
+  show('wear_bracerL', chestOn);
+  show('wear_bracerR', chestOn);
   show('wear_legL', legsOn);
   show('wear_legR', legsOn);
   show('wear_greaveL', greavesOn);
