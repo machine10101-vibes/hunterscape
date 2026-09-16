@@ -8,9 +8,13 @@ import {
   animateOrcWalk,
   animateYetiAttack,
   animateYetiWalk,
+  walkFrequency,
+  YETI_WALK_FREQ,
+  ORC_WALK_FREQ,
 } from '../src/rendering/anim';
 import { createFrostYeti, createOrcScout, createPlayerMesh, setPlayerTool } from '../src/rendering/meshes';
 import { poseEquippedTool } from '../src/rendering/player';
+import { setYetiWear } from '../src/rendering/yetiGear';
 
 const canvas = document.getElementById('c') as HTMLCanvasElement;
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -77,35 +81,59 @@ function frame(opts: {
   m.position.set(0, 0, 0);
 
   if (o.model === 'hunter') {
-    if (o.pose === 'idle') {
-      setPlayerTool(m, null);
-      animatePlayerIdle(m, o.t);
-    } else if (o.pose === 'walk') {
-      setPlayerTool(m, null);
-      animatePlayerWalk(m, o.t, o.speed, 1);
-    } else if (o.pose === 'sword') {
-      setPlayerTool(m, 'sword');
-      animatePlayerIdle(m, o.t);
-    } else if (o.pose === 'sword-walk') {
-      setPlayerTool(m, 'sword');
-      animatePlayerWalk(m, o.t, o.speed, 1);
-    } else if (o.pose === 'slash') {
-      setPlayerTool(m, 'sword');
-      animatePlayerAttack(m, o.t);
-    } else if (o.pose === 'chop') {
-      setPlayerTool(m, 'hatchet');
-      animatePlayerGather(m, o.t, 'tree');
-    } else if (o.pose === 'mine') {
-      setPlayerTool(m, 'pickaxe');
-      animatePlayerGather(m, o.t, 'rock');
+    const frost = o.pose.startsWith('frost');
+    if (frost) {
+      const tool =
+        o.pose.startsWith('frost-hammer')
+          ? 'frost_hammer'
+          : o.pose.startsWith('frost-spear')
+            ? 'frost_spear'
+            : o.pose.startsWith('frost-bow')
+              ? 'frost_bow'
+              : 'frost_sword';
+      setPlayerTool(m, tool);
+      setYetiWear(m, {
+        shield: tool === 'frost_bow' ? null : 'frost_shield',
+        chest: 'frost_chest',
+        greaves: 'frost_greaves',
+        legs: 'frost_legs',
+        boots: 'frost_boots',
+      });
+      if (o.pose.includes('slash')) animatePlayerAttack(m, o.t);
+      else if (o.pose.includes('walk')) animatePlayerWalk(m, o.t * walkFrequency(o.speed), o.speed, 1);
+      else animatePlayerIdle(m, o.t);
+    } else {
+      setYetiWear(m, { shield: null, chest: null, greaves: null, legs: null, boots: null });
+      if (o.pose === 'idle') {
+        setPlayerTool(m, null);
+        animatePlayerIdle(m, o.t);
+      } else if (o.pose === 'walk') {
+        setPlayerTool(m, null);
+        animatePlayerWalk(m, o.t * walkFrequency(o.speed), o.speed, 1);
+      } else if (o.pose === 'sword') {
+        setPlayerTool(m, 'sword');
+        animatePlayerIdle(m, o.t);
+      } else if (o.pose === 'sword-walk') {
+        setPlayerTool(m, 'sword');
+        animatePlayerWalk(m, o.t * walkFrequency(o.speed), o.speed, 1);
+      } else if (o.pose === 'slash') {
+        setPlayerTool(m, 'sword');
+        animatePlayerAttack(m, o.t);
+      } else if (o.pose === 'chop') {
+        setPlayerTool(m, 'hatchet');
+        animatePlayerGather(m, o.t, 'tree');
+      } else if (o.pose === 'mine') {
+        setPlayerTool(m, 'pickaxe');
+        animatePlayerGather(m, o.t, 'rock');
+      }
     }
     m.position.y = Number(m.userData.locomotionY) || 0;
   } else if (o.model === 'yeti') {
     if (o.pose === 'attack') animateYetiAttack(m, o.t);
-    else animateYetiWalk(m, o.t, o.pose === 'walk', 1);
+    else animateYetiWalk(m, o.pose === 'walk' ? o.t * YETI_WALK_FREQ : o.t, o.pose === 'walk', 1);
   } else {
     if (o.pose === 'attack') animateOrcAttack(m, o.t);
-    else animateOrcWalk(m, o.t, o.pose === 'walk', 1);
+    else animateOrcWalk(m, o.pose === 'walk' ? o.t * ORC_WALK_FREQ : o.t, o.pose === 'walk', 1);
   }
 
   camera.fov = o.fov;
@@ -145,8 +173,21 @@ function setRaw(pose: Pose, tool: string | null) {
   m.updateMatrixWorld(true);
 }
 
+/**
+ * Marker lookup that ignores hidden subtrees. Every tool carries a `toolEdge`
+ * and `toolHeel`, and `getObjectByName` would return the first one it meets —
+ * the invisible hatchet's — regardless of which weapon is actually equipped.
+ */
+function findVisible(name: string): THREE.Object3D | undefined {
+  let found: THREE.Object3D | undefined;
+  subject!.traverseVisible((o) => {
+    if (!found && o.name === name) found = o;
+  });
+  return found;
+}
+
 function worldOf(name: string): THREE.Vector3 {
-  const o = subject!.getObjectByName(name);
+  const o = findVisible(name);
   return o ? o.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3();
 }
 
@@ -220,7 +261,7 @@ function probe(names: string[]) {
   m.updateMatrixWorld(true);
   const out: Record<string, number[]> = {};
   for (const n of names) {
-    const o = m.getObjectByName(n);
+    const o = findVisible(n);
     if (!o) continue;
     const p = o.getWorldPosition(new THREE.Vector3());
     out[n] = [+p.x.toFixed(3), +p.y.toFixed(3), +p.z.toFixed(3)];
@@ -228,8 +269,23 @@ function probe(names: string[]) {
   return out;
 }
 
+function dumpAxes(name: string) {
+  const o = findVisible(name) || subject!.getObjectByName(name);
+  if (!o) return null;
+  o.updateWorldMatrix(true, false);
+  const p = new THREE.Vector3();
+  const x = new THREE.Vector3();
+  const y = new THREE.Vector3();
+  const z = new THREE.Vector3();
+  o.matrixWorld.extractBasis(x, y, z);
+  o.getWorldPosition(p);
+  const n = (v: THREE.Vector3) => v.toArray().map((q) => +q.toFixed(3));
+  return { p: n(p), x: n(x), y: n(y), z: n(z) };
+}
+
 (window as unknown as { render: () => void }).render = () => renderer.render(scene, camera);
 (window as unknown as { probe: typeof probe }).probe = probe;
+(window as unknown as { dumpAxes: typeof dumpAxes }).dumpAxes = dumpAxes;
 (window as unknown as { shot: typeof frame }).shot = frame;
 (window as unknown as { shotReady: boolean }).shotReady = true;
 frame({});

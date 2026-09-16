@@ -9,6 +9,7 @@ import {
   createCampfire,
   createCrate,
   createDummy,
+  createForge,
   createFrostYeti,
   createGodRays,
   createGround,
@@ -21,6 +22,8 @@ import {
   createTree,
   flashDummy,
   setPlayerTool,
+  syncPlayerGear,
+  weaponHeldFromId,
 } from '../rendering/meshes';
 import { createTerrainFoliage, groundHeight, tickTerrainFoliage } from '../rendering/terrain';
 import {
@@ -33,6 +36,13 @@ import {
   animatePlayerIdle,
   animatePlayerWalk,
   animateYetiAttack,
+  PoseSmoother,
+  ORC_SMOOTH_JOINTS,
+  ORC_STEP_LENGTH,
+  YETI_SMOOTH_JOINTS,
+  YETI_STEP_LENGTH,
+  walkFrequency,
+  walkStepLength,
   animateYetiWalk,
   ORC_ATTACK_CONNECT_END,
   ORC_ATTACK_CONNECT_START,
@@ -53,12 +63,19 @@ import { VFX } from '../rendering/vfx';
 import { loadSave, writeSave } from './Persistence';
 import {
   ITEM_META,
+  YETI_RECIPES,
+  armorMitigation,
+  canCraft,
+  countItem,
   levelFromXp,
+  weaponDamageBonus,
+  weaponReachBonus,
+  type EquipSlot,
   type SaveData,
   type SkillId,
 } from './types';
 
-type InteractKind = 'tree' | 'rock' | 'dummy' | 'yeti' | 'orc';
+type InteractKind = 'tree' | 'rock' | 'dummy' | 'yeti' | 'orc' | 'forge';
 
 interface WorldObject {
   kind: InteractKind;
@@ -99,6 +116,9 @@ const YETI_AGGRO_RADIUS = 5.8;
 const ORC_ATTACK_RANGE = 2.15;
 const ORC_AGGRO_RADIUS = 5.4;
 const MOVE_SPEED = 4.2;
+/** Follow-camera zoom. 1 is the authored framing; higher is farther out. */
+const CAM_ZOOM_MIN = 0.7;
+const CAM_ZOOM_MAX = 2.45;
 const MOVE_ACCEL = 9.5;
 const MOVE_DECEL = 12.0;
 const SAVE_EVERY = 3;
@@ -141,6 +161,8 @@ export class Game {
   private saveTimer = 0;
   private keys = new Set<string>();
   private camOffset = new THREE.Vector3(0, 8.7, 7.15);
+  private camZoom = 1;
+  private camZoomTarget = 1;
   private camLook = new THREE.Vector3();
   private dummyTarget: WorldObject | null = null;
   private yetiTarget: WorldObject | null = null;
@@ -170,6 +192,13 @@ export class Game {
   private moveSpeedCur = 0;
   private moveBlend = 0;
   private stoppingSteps = 0;
+  /** Gait phase in radians; advanced from ground speed so feet do not skate. */
+  private gaitPhase = 0;
+  private poseSmoother = new PoseSmoother();
+  private yetiGait = 0;
+  private orcGait = 0;
+  private yetiSmoother = new PoseSmoother(YETI_SMOOTH_JOINTS);
+  private orcSmoother = new PoseSmoother(ORC_SMOOTH_JOINTS);
   private lastMoveDir = new THREE.Vector3(0, 0, 1);
   /** Target hit-react timers (mesh uuid → remaining) */
   private hitReacts: { mesh: THREE.Object3D; t: number; inten: number }[] = [];
@@ -184,6 +213,7 @@ export class Game {
   private combatAbortT = 0;
   private pendingCombatTarget: WorldObject | null = null;
   private pendingCombatChat = '';
+  private pendingForge = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.save = loadSave();
@@ -208,6 +238,7 @@ export class Game {
     this.setupReflectionEnv();
     this.studio = new ModelStudio(canvas);
     this.studio.setEnvironment(this.scene.environment);
+    this.hud.setEnvironment(this.scene.environment);
     this.scene.add(createSkyDome(70));
     this.ground = createGround(48);
     this.scene.add(this.ground);
@@ -217,6 +248,8 @@ export class Game {
     this.player = createPlayerMesh();
     this.player.position.set(this.save.x, groundHeight(this.save.x, this.save.z), this.save.z);
     this.scene.add(this.player);
+    this.syncHeldTool();
+    animatePlayerIdle(this.player, 0);
 
     const app = document.getElementById('app') ?? document.body;
     this.vfx = new VFX(this.scene, this.camera, app);
@@ -238,12 +271,17 @@ export class Game {
     this.bindInput(canvas);
     this.hud.onAction = (a) => this.handleAction(a);
     this.hud.onInventoryClick = (i) => this.handleInvClick(i);
+    this.hud.onGearSlotClick = (slot) => this.unequipSlot(slot);
+    this.hud.onForgeCraft = (id) => this.craftAtForge(id);
 
     this.refreshUI();
     this.hud.chat('Welcome to Thornrest Camp in the Whisperwood.', 'system');
     this.hud.chat('Tap the ground to walk. Chop trees, mine rocks, or spar with the training dummy.', 'system');
     this.hud.chat('A Frost Yeti stalks the north-east clearing — keep your distance until you are ready.', 'combat');
     this.hud.chat('An Orc Scout prowls the south-west trail — spear ready, leather and tooth to loot.', 'combat');
+    this.hud.chat('The camp forge will work frost-yeti hide, fur, bone, and claws into a matching set.', 'system');
+    this.hud.chat('Open Gear (C) to inspect your hero and equip or unequip items.', 'system');
+    this.hud.chat('Scroll the wheel or use + / − to zoom the camera.', 'system');
     this.hud.chat('Your progress is saved in this browser.', 'system');
 
     window.addEventListener('resize', () => this.onResize());
@@ -317,6 +355,21 @@ export class Game {
     const fire = createCampfire();
     plant(fire, -1.2, -0.5);
     this.scene.add(fire);
+
+    const forge = createForge();
+    plant(forge, 2.2, 0.35);
+    forge.rotation.y = -0.35;
+    forge.scale.setScalar(1.12);
+    this.scene.add(forge);
+    this.objects.push({
+      kind: 'forge',
+      mesh: forge,
+      id: 'forge_0',
+      hp: 1,
+      maxHp: 1,
+      depleted: false,
+      respawnAt: 0,
+    });
 
     const crate = createCrate();
     plant(crate, -2.4, -2.2);
@@ -559,6 +612,19 @@ export class Game {
     };
     canvas.addEventListener('pointerdown', onPointer);
 
+    window.addEventListener(
+      'wheel',
+      (e) => {
+        if (this.studio.isOpen()) return;
+        const el = e.target as HTMLElement | null;
+        if (el?.closest('#gear-panel, #forge-panel, #inventory, #skills-panel, #chat, #studio')) return;
+        e.preventDefault();
+        // Wheel down / pinch-out → zoom out (see more of the wood).
+        this.nudgeZoom(Math.sign(e.deltaY) || 1, 0.11);
+      },
+      { passive: false },
+    );
+
     window.addEventListener('keydown', (e) => {
       if (this.studio.isOpen()) return;
       this.keys.add(e.key.toLowerCase());
@@ -567,9 +633,17 @@ export class Game {
       if (e.key === '3') this.handleAction('mine');
       if (e.key === '4') this.handleAction('eat');
       if (e.key === '5') this.handleAction('examine');
+      if (e.key === '-' || e.key === '_') this.nudgeZoom(1, 0.16);
+      if (e.key === '=' || e.key === '+') this.nudgeZoom(-1, 0.16);
       if (e.key.toLowerCase() === 'k') {
         const panel = document.getElementById('skills-panel');
         if (panel) panel.hidden = !panel.hidden;
+      }
+      if (e.key.toLowerCase() === 'c') {
+        this.hud.setGearOpen(!this.hud.isGearOpen());
+      }
+      if (e.key.toLowerCase() === 'f') {
+        this.approachThenForge();
       }
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.key.toLowerCase()));
@@ -603,18 +677,23 @@ export class Game {
       this.pendingCombatTarget = null;
       this.pendingCombatChat = '';
       this.pendingGather = null;
+      this.pendingForge = false;
       this.startMove(p.x, p.z);
     }
   }
 
   private interactWith(obj: WorldObject): void {
+    if (obj.kind === 'forge') {
+      this.approachThenForge();
+      return;
+    }
     if (obj.kind === 'yeti') {
       if (obj.depleted || obj.hp <= 0) {
         this.hud.chat('The Frost Yeti lies slain. It will return before long.', 'system');
         return;
       }
       this.yetiAggroed = true;
-      this.approachThenCombat(obj, 'You ready your bronze sword against the Frost Yeti!');
+      this.approachThenCombat(obj, `You ready your ${this.weaponName()} against the Frost Yeti!`);
       return;
     }
     if (obj.kind === 'orc') {
@@ -623,7 +702,7 @@ export class Game {
         return;
       }
       this.orcAggroed = true;
-      this.approachThenCombat(obj, 'You ready your bronze sword against the Orc Scout!');
+      this.approachThenCombat(obj, `You ready your ${this.weaponName()} against the Orc Scout!`);
       return;
     }
     if (obj.kind === 'dummy') {
@@ -631,7 +710,7 @@ export class Game {
         this.hud.chat('The training dummy is already collapsed.', 'system');
         return;
       }
-      this.approachThenCombat(obj, 'You ready your bronze sword against the training dummy.');
+      this.approachThenCombat(obj, `You ready your ${this.weaponName()} against the training dummy.`);
       return;
     }
     if (obj.depleted) {
@@ -639,16 +718,28 @@ export class Game {
       return;
     }
     if (obj.kind === 'tree') {
-      if (!this.hasItem('bronze_hatchet') && !this.save.equipped.hatchet) {
-        this.hud.chat('You need a hatchet to chop trees.', 'system');
+      if (!this.save.equipped.hatchet) {
+        this.hud.chat(
+          this.hasItem('bronze_hatchet')
+            ? 'Equip your hatchet from the Gear window first.'
+            : 'You need a hatchet to chop trees.',
+          'system',
+        );
+        if (this.hasItem('bronze_hatchet')) this.hud.setGearOpen(true);
         return;
       }
       this.approachThenGather(obj, 2.4, 'Chopping Whisperwood…');
       return;
     }
     if (obj.kind === 'rock') {
-      if (!this.hasItem('bronze_pickaxe') && !this.save.equipped.pickaxe) {
-        this.hud.chat('You need a pickaxe to mine rocks.', 'system');
+      if (!this.save.equipped.pickaxe) {
+        this.hud.chat(
+          this.hasItem('bronze_pickaxe')
+            ? 'Equip your pickaxe from the Gear window first.'
+            : 'You need a pickaxe to mine rocks.',
+          'system',
+        );
+        if (this.hasItem('bronze_pickaxe')) this.hud.setGearOpen(true);
         return;
       }
       this.approachThenGather(obj, 2.6, `Mining ${obj.meta?.ore === 'tin' ? 'tin' : 'copper'}…`);
@@ -674,6 +765,11 @@ export class Game {
   }
 
   private beginCombat(obj: WorldObject, chat: string): void {
+    if (!this.save.equipped.weapon) {
+      this.hud.chat('Equip a weapon from the Gear window first.', 'system');
+      this.hud.setGearOpen(true);
+      return;
+    }
     this.hud.chat(chat, 'combat');
     this.pendingGather = null;
     this.pendingCombat = false;
@@ -689,14 +785,19 @@ export class Game {
       swingDur: PLAYER_ATTACK_DURATION,
       hitDone: false,
     };
-    setPlayerTool(this.player, 'sword');
+    this.syncHeldTool();
     this.hud.showTarget(this.combatName(obj), obj.hp / obj.maxHp);
     this.combatCamPull = 1;
   }
 
   /** Walk into soft range before locking into combat (avoids instant out-of-range cancel). */
   private approachThenCombat(obj: WorldObject, chat: string): void {
-    const range = this.monsterAttackRange(obj);
+    if (!this.save.equipped.weapon) {
+      this.hud.chat('Equip a weapon from the Gear window first.', 'system');
+      this.hud.setGearOpen(true);
+      return;
+    }
+    const range = this.playerAttackRange(obj);
     const dist = this.distTo(obj);
     if (dist > range * 0.92) {
       const dx = obj.mesh.position.x - this.player.position.x;
@@ -749,7 +850,7 @@ export class Game {
     x = Math.max(-lim, Math.min(lim, x));
     z = Math.max(-lim, Math.min(lim, z));
     this.activity = { type: 'move', tx: x, tz: z };
-    setPlayerTool(this.player, null);
+    this.syncHeldTool();
     this.moveMarker.position.set(x, groundHeight(x, z) + 0.06, z);
     this.moveMarker.visible = true;
     this.hud.hideProgress();
@@ -759,12 +860,17 @@ export class Game {
   private handleAction(action: string): void {
     switch (action) {
       case 'attack': {
+        if (!this.save.equipped.weapon) {
+          this.hud.chat('Equip a weapon from the Gear window first.', 'system');
+          this.hud.setGearOpen(true);
+          return;
+        }
         const target = this.nearestCombatTarget();
         if (!target) {
           this.hud.chat('No enemies nearby to attack.', 'system');
           return;
         }
-        const range = this.monsterAttackRange(target);
+        const range = this.playerAttackRange(target);
         const d = this.distTo(target);
         if (d > range + 2) {
           this.hud.chat(`${this.combatName(target)} is too far. Walk closer.`, 'system');
@@ -778,7 +884,7 @@ export class Game {
           );
           this.pendingCombat = true;
           this.pendingCombatTarget = target;
-          this.pendingCombatChat = `You ready your bronze sword against the ${this.combatName(target)}!`;
+          this.pendingCombatChat = `You ready your ${this.weaponName()} against the ${this.combatName(target)}!`;
           return;
         }
         this.interactWith(target);
@@ -838,9 +944,11 @@ export class Game {
         'system',
       );
     else if (all.kind === 'yeti')
-      this.hud.chat('A massive Frost Yeti. Dark stripes mark its fur; amber eyes burn with hunger.', 'combat');
+      this.hud.chat('A massive Frost Yeti. Hide, fur, bone, claws, and rime — the camp forge can work them all.', 'combat');
     else if (all.kind === 'orc')
       this.hud.chat('An Orc Scout in spiked tan fur and leather. White tusks and a long spear gleam.', 'combat');
+    else if (all.kind === 'forge')
+      this.hud.chat('The Thornrest forge. Bring frost-yeti parts here to smith a matching set.', 'system');
     else this.hud.chat('A stuffed training dummy. Safe practice for combat skills.', 'system');
   }
 
@@ -865,8 +973,73 @@ export class Game {
     const item = this.save.inventory[index];
     if (!item) return;
     const meta = ITEM_META[item.id];
+    if (meta?.slot) {
+      this.equipFromInventory(index);
+      return;
+    }
     this.hud.chat(`${meta?.name ?? item.id}${item.qty > 1 ? ` ×${item.qty}` : ''}`, 'system');
     if (item.id === 'camp_rations') this.eatFood();
+  }
+
+  private heldTool() {
+    if (this.activity.type === 'gather') {
+      const kind = this.activity.target.kind;
+      if (kind === 'tree') return this.save.equipped.hatchet ? 'hatchet' as const : null;
+      if (kind === 'rock') return this.save.equipped.pickaxe ? 'pickaxe' as const : null;
+    }
+    return weaponHeldFromId(this.save.equipped.weapon);
+  }
+
+  private syncHeldTool(): void {
+    setPlayerTool(this.player, this.heldTool());
+    syncPlayerGear(this.player, this.save);
+  }
+
+  private weaponName(): string {
+    const id = this.save.equipped.weapon;
+    return ITEM_META[id ?? '']?.name ?? 'weapon';
+  }
+
+  private playerAttackRange(obj: WorldObject): number {
+    return this.monsterAttackRange(obj) + weaponReachBonus(this.save.equipped.weapon);
+  }
+
+  private equipFromInventory(index: number): void {
+    const item = this.save.inventory[index];
+    if (!item) return;
+    const meta = ITEM_META[item.id];
+    if (!meta?.slot) return;
+    const prev = this.save.equipped[meta.slot];
+    this.save.inventory.splice(index, 1);
+    if (prev) this.addItem(prev, 1);
+    this.save.equipped[meta.slot] = item.id;
+    this.syncHeldTool();
+    this.hud.setGearOpen(true);
+    this.hud.chat(`You equip the ${meta.name}.`, 'system');
+    this.refreshUI();
+    this.hud.setEquipment(this.save, `Equipped ${meta.name}`);
+    this.hud.showSlotPreview(meta.slot, this.save);
+    this.persist();
+  }
+
+  private unequipSlot(slot: EquipSlot): void {
+    const id = this.save.equipped[slot];
+    if (!id) {
+      this.hud.inspectGear(`${slot[0].toUpperCase()}${slot.slice(1)} slot is empty`);
+      return;
+    }
+    if (this.save.inventory.length >= 28) {
+      this.hud.chat('Inventory full — cannot unequip.', 'system');
+      return;
+    }
+    this.save.equipped[slot] = null;
+    this.addItem(id, 1);
+    this.syncHeldTool();
+    const meta = ITEM_META[id];
+    this.hud.setEquipment(this.save, `Unequipped ${meta?.name ?? id}`);
+    this.hud.chat(`You unequip the ${meta?.name ?? id}.`, 'system');
+    this.refreshUI();
+    this.persist();
   }
 
   private distTo(o: WorldObject): number {
@@ -912,6 +1085,59 @@ export class Game {
     if (!item) return;
     item.qty -= qty;
     if (item.qty <= 0) this.save.inventory.splice(index, 1);
+  }
+
+  private consumeId(id: string, qty: number): boolean {
+    if (countItem(this.save.inventory, id) < qty) return false;
+    let left = qty;
+    for (let i = this.save.inventory.length - 1; i >= 0 && left > 0; i--) {
+      const stack = this.save.inventory[i];
+      if (stack.id !== id) continue;
+      const take = Math.min(stack.qty, left);
+      this.consumeAt(i, take);
+      left -= take;
+    }
+    return left === 0;
+  }
+
+  private approachThenForge(): void {
+    const forge = this.objects.find((o) => o.kind === 'forge');
+    if (!forge) return;
+    const dist = this.distTo(forge);
+    if (dist > 8.5) {
+      const dx = forge.mesh.position.x - this.player.position.x;
+      const dz = forge.mesh.position.z - this.player.position.z;
+      const n = Math.hypot(dx, dz) || 1;
+      this.startMove(forge.mesh.position.x - (dx / n) * 1.4, forge.mesh.position.z - (dz / n) * 1.4);
+      this.pendingForge = true;
+      this.hud.chat('You walk to the Thornrest forge…', 'system');
+      return;
+    }
+    this.openForge();
+  }
+
+  private openForge(): void {
+    this.hud.setForgeOpen(true, this.save);
+    this.hud.chat('The forge is hot. Choose a frost-yeti pattern to work.', 'system');
+  }
+
+  private craftAtForge(recipeId: string): void {
+    const recipe = YETI_RECIPES.find((r) => r.id === recipeId);
+    if (!recipe) return;
+    if (!canCraft(this.save, recipe)) {
+      this.hud.chat('You still need more frost-yeti parts for that.', 'system');
+      this.hud.setForgeRecipes(this.save);
+      return;
+    }
+    for (const cost of recipe.cost) this.consumeId(cost.id, cost.qty);
+    if (!this.addItem(recipe.id, 1)) {
+      for (const cost of recipe.cost) this.addItem(cost.id, cost.qty);
+      return;
+    }
+    this.hud.chat(`You forge the ${recipe.name} from frost-yeti parts.`, 'loot');
+    this.refreshUI();
+    this.hud.setForgeRecipes(this.save);
+    this.persist();
   }
 
   private grantXp(skill: SkillId, amount: number): void {
@@ -975,6 +1201,8 @@ export class Game {
         this.yetiHitDone = false;
         this.yetiTeleDone = false;
         this.yetiMoveBlend = 0;
+        this.yetiGait = 0;
+        this.yetiSmoother.reset();
         animateYetiSwipe(o.mesh, 0);
         animateYetiWalk(o.mesh, this.animTime, false);
         this.hud.chat('A Frost Yeti stomps back into the north-east clearing!', 'combat');
@@ -990,7 +1218,10 @@ export class Game {
         this.orcAttackCd = 0;
         this.orcSwipeT = 0;
         this.orcHitDone = false;
+        this.orcGait = 0;
+        this.orcSmoother.reset();
         animateOrcSpear(o.mesh, 0);
+        animateOrcWalk(o.mesh, this.animTime, false);
         this.hud.chat('An Orc Scout stalks back onto the south-west trail!', 'combat');
       }
     }
@@ -1014,9 +1245,12 @@ export class Game {
         obj.scale.y = 0.9 + Math.sin(now * 8) * 0.15;
         obj.rotation.y += dt * 2;
       }
-      if (obj.name === 'flameGlow') {
+      if (obj.name === 'flameGlow' || obj.name === 'forgeGlow') {
         const s = 0.9 + Math.sin(now * 6) * 0.2;
         obj.scale.setScalar(s);
+      }
+      if (obj.name === 'forgeEmber') {
+        obj.scale.y = 0.45 + Math.sin(now * 7) * 0.08;
       }
       if (obj.name === 'yetiBreath') {
         const fightBoost = this.yetiAggroed ? 1.35 : 1;
@@ -1113,37 +1347,46 @@ export class Game {
       }
     }
 
+    this.syncHeldTool();
+
     if (this.activity.type === 'move') {
       const { tx, tz } = this.activity;
       const dx = tx - this.player.position.x;
       const dz = tz - this.player.position.z;
       const dist = Math.hypot(dx, dz);
-      // Ease into full walk speed; start decelerating near destination
-      const want = dist < 0.55 ? Math.max(0.35, dist / 0.55) * MOVE_SPEED : MOVE_SPEED;
+      // Ease into full walk speed; start decelerating near destination.
+      // Do not floor the wanted speed: a 0.35×MOVE_SPEED floor (1.47) sat
+      // above the old 0.55 arrival gate, so the hunter never left the walk
+      // clip after he had already arrived.
+      const want = dist < 0.55 ? (dist / 0.55) * MOVE_SPEED : MOVE_SPEED;
       if (this.moveSpeedCur < want) {
         this.moveSpeedCur = Math.min(want, this.moveSpeedCur + MOVE_ACCEL * dt);
       } else {
         this.moveSpeedCur = Math.max(want, this.moveSpeedCur - MOVE_DECEL * dt);
       }
       this.moveBlend = Math.min(1, this.moveBlend + dt * 4.5);
-      if (dist < 0.1 && this.moveSpeedCur < 0.55) {
+      if (dist < 0.12) {
         this.player.position.x = tx;
         this.player.position.z = tz;
         this.moveMarker.visible = false;
-        // Residual settle steps before full idle
-        this.stoppingSteps = 0.28;
+        // PoseSmoother eases walk → idle; do not keep playing the walk clip.
+        this.stoppingSteps = 0;
+        this.moveBlend = 0;
         this.activity = { type: 'idle' };
         this.moveSpeedCur = 0;
         if (this.pendingGather) {
           const p = this.pendingGather;
           this.pendingGather = null;
           this.approachThenGather(p.obj, p.duration, p.label);
+        } else if (this.pendingForge) {
+          this.pendingForge = false;
+          this.openForge();
         } else if (this.pendingCombat) {
           this.pendingCombat = false;
           const t = this.pendingCombatTarget ?? this.nearestCombatTarget();
           const chat =
             this.pendingCombatChat ||
-            (t ? `You ready your bronze sword against the ${this.combatName(t)}!` : '');
+            (t ? `You ready your ${this.weaponName()} against the ${this.combatName(t)}!` : '');
           this.pendingCombatTarget = null;
           this.pendingCombatChat = '';
           if (t && t.hp > 0 && !t.depleted) {
@@ -1166,19 +1409,26 @@ export class Game {
         const turnRate = Math.abs(yawDelta) > 1.2 ? 7 : 11;
         this.faceToward(tx, tz, dt, turnRate);
         const speedNorm = Math.min(1.05, 0.45 + (this.moveSpeedCur / MOVE_SPEED) * 0.55);
-        animatePlayerWalk(this.player, this.animTime, speedNorm, this.moveBlend);
+        // Cadence follows ground speed (π per step); the floor keeps the legs
+        // moving through the first accelerating frames.
+        const cadence = Math.max(
+          walkFrequency(speedNorm) * 0.5,
+          (Math.PI * this.moveSpeedCur) / walkStepLength(speedNorm),
+        );
+        this.gaitPhase += cadence * dt;
+        animatePlayerWalk(this.player, this.gaitPhase, speedNorm, this.moveBlend);
         this.save.stamina = Math.max(0, this.save.stamina - dt * 2);
       }
     } else if (this.activity.type === 'gather') {
       const act = this.activity;
       if (act.target.depleted) {
         this.activity = { type: 'idle' };
-        setPlayerTool(this.player, null);
+        this.syncHeldTool();
         resetPlayerPose(this.player);
         this.hud.hideProgress();
       } else if (this.distTo(act.target) > GATHER_RANGE + 0.35) {
         this.activity = { type: 'idle' };
-        setPlayerTool(this.player, null);
+        this.syncHeldTool();
         resetPlayerPose(this.player);
         this.hud.hideProgress();
         this.hud.chat('You move too far away.', 'system');
@@ -1199,7 +1449,7 @@ export class Game {
         if (act.elapsed >= act.duration) {
           this.completeGather(act.target);
           this.activity = { type: 'idle' };
-          setPlayerTool(this.player, null);
+          this.syncHeldTool();
           resetPlayerPose(this.player);
           this.hud.hideProgress();
         }
@@ -1210,13 +1460,13 @@ export class Game {
       this.hud.showTarget(this.combatName(target), Math.max(0, target.hp) / target.maxHp);
       if (target.hp <= 0 || target.depleted) {
         this.activity = { type: 'idle' };
-        setPlayerTool(this.player, null);
+        this.syncHeldTool();
         resetPlayerPose(this.player);
         this.hud.hideTarget();
         this.combatCamPull = 0;
         this.combatOorT = 0;
       } else {
-        const range = this.monsterAttackRange(target);
+        const range = this.playerAttackRange(target);
         const softLeash = range + 0.55;
         const hardLeash = range + 1.45;
         let dist = this.distTo(target);
@@ -1295,29 +1545,30 @@ export class Game {
               act.hitDone = false;
               this.playerTeleDone = false;
               act.cooldown = 0.72;
-              setPlayerTool(this.player, 'sword');
+              this.syncHeldTool();
             }
           } else {
             act.cooldown -= dt;
             // Idle combat stance breath while waiting
-            animatePlayerIdle(this.player, this.animTime);
+            animatePlayerIdle(this.player, this.animTime, true);
             if (act.cooldown <= 0 && this.distTo(target) <= softLeash + 0.2) {
               act.swingT = 0.001;
               act.swingDur = PLAYER_ATTACK_DURATION;
               act.hitDone = false;
               this.playerTeleDone = false;
-              setPlayerTool(this.player, 'sword');
+              this.syncHeldTool();
             }
           }
         }
       }
     } else {
-      setPlayerTool(this.player, null);
+      this.syncHeldTool();
       // Residual foot plants after stop, then idle breath
       if (this.stoppingSteps > 0) {
         this.stoppingSteps -= dt;
         this.moveBlend = Math.max(0, this.moveBlend - dt * 3.5);
-        animatePlayerWalk(this.player, this.animTime, 0.4, Math.max(0.15, this.moveBlend));
+        this.gaitPhase += 4.5 * dt;
+        animatePlayerWalk(this.player, this.gaitPhase, 0.4, Math.max(0.15, this.moveBlend));
       } else {
         this.moveBlend = Math.max(0, this.moveBlend - dt * 5);
         this.moveSpeedCur = 0;
@@ -1338,10 +1589,13 @@ export class Game {
       // Ease out of swing pose instead of snapping
       animatePlayerIdle(this.player, this.animTime);
       if (this.combatAbortT <= 0) {
-        setPlayerTool(this.player, null);
+        this.syncHeldTool();
         resetPlayerPose(this.player);
       }
     }
+    this.poseSmoother.apply(this.player, dt, this.activity.type === 'combat' ? 26 : 18);
+    if (this.yetiTarget) this.yetiSmoother.apply(this.yetiTarget.mesh, dt, this.yetiAggroed ? 22 : 16);
+    if (this.orcTarget) this.orcSmoother.apply(this.orcTarget.mesh, dt, this.orcAggroed ? 24 : 16);
     this.snapMoversToGround();
     tickTerrainFoliage(this.animTime);
     this.updateCamera(dt);
@@ -1390,7 +1644,7 @@ export class Game {
       this.hud.chat(`You swing and miss the ${label}.`, 'combat');
       return;
     }
-    const dmg = 3 + Math.floor(Math.random() * (4 + str));
+    const dmg = 3 + weaponDamageBonus(this.save.equipped.weapon) + Math.floor(Math.random() * (4 + str));
     target.hp -= dmg;
     const xpAtk = target.kind === 'yeti' ? 18 : target.kind === 'orc' ? 15 : 12;
     const xpStr = target.kind === 'yeti' ? 14 : target.kind === 'orc' ? 12 : 8;
@@ -1455,7 +1709,7 @@ export class Game {
     this.hud.chat('The training dummy collapses! It will be repaired shortly.', 'combat');
     this.grantXp('defence', 15);
     this.activity = { type: 'idle' };
-    setPlayerTool(this.player, null);
+    this.syncHeldTool();
     resetPlayerPose(this.player);
     this.hud.hideTarget();
     this.combatCamPull = 0;
@@ -1476,16 +1730,25 @@ export class Game {
     this.grantXp('attack', 12);
     this.grantXp('strength', 10);
     this.grantXp('constitution', 10);
-    if (this.addItem('yeti_fur', 1)) {
-      this.hud.chat('You loot Yeti Fur.', 'loot');
+    const drops: [string, number, string][] = [
+      ['yeti_fur', 2, 'You strip Yeti Fur from the pelt.'],
+      ['yeti_hide', 1, 'You cut a sheet of Yeti Hide.'],
+      ['frost_claw', 1, 'You pry free a Frost Claw.'],
+    ];
+    for (const [id, qty, msg] of drops) {
+      if (this.addItem(id, qty)) this.hud.chat(msg, 'loot');
     }
-    if (Math.random() < 0.55) {
-      if (this.addItem('frost_claw', 1)) {
-        this.hud.chat('You pry free a Frost Claw!', 'loot');
-      }
+    if (Math.random() < 0.75 && this.addItem('yeti_bone', 1)) {
+      this.hud.chat('A Yeti Bone comes free of the carcass.', 'loot');
+    }
+    if (Math.random() < 0.6 && this.addItem('frost_fang', 1)) {
+      this.hud.chat('You wrench out a Frost Fang.', 'loot');
+    }
+    if (Math.random() < 0.45 && this.addItem('rime_shard', 1)) {
+      this.hud.chat('A Rime Shard cracks off the hide.', 'loot');
     }
     this.activity = { type: 'idle' };
-    setPlayerTool(this.player, null);
+    this.syncHeldTool();
     this.hud.hideTarget();
     this.refreshUI();
     this.persist();
@@ -1516,7 +1779,7 @@ export class Game {
       }
     }
     this.activity = { type: 'idle' };
-    setPlayerTool(this.player, null);
+    this.syncHeldTool();
     this.hud.hideTarget();
     this.refreshUI();
     this.persist();
@@ -1553,7 +1816,7 @@ export class Game {
         yeti.mesh.position.z += (hz / hd) * step;
         yeti.mesh.rotation.y = turnTowardYaw(yeti.mesh.rotation.y, Math.atan2(hx, hz), 4, dt);
         yeti.mesh.position.y = 0;
-        animateYetiWalk(yeti.mesh, this.animTime, true, Math.min(1, hd / 2));
+        animateYetiWalk(yeti.mesh, this.tickMonsterGait('yeti', 2.8, dt), true, Math.min(1, hd / 2));
         animateYetiSwipe(yeti.mesh, 0);
         return;
       }
@@ -1596,15 +1859,18 @@ export class Game {
       this.yetiAggroed = false;
       this.yetiSwipeT = 0;
       this.hud.chat('The Frost Yeti loses interest and returns to the clearing.', 'system');
+      const ox = yeti.mesh.position.x;
+      const oz = yeti.mesh.position.z;
       yeti.mesh.position.x += (YETI_HOME.x - yeti.mesh.position.x) * Math.min(1, dt * 0.9);
       yeti.mesh.position.z += (YETI_HOME.z - yeti.mesh.position.z) * Math.min(1, dt * 0.9);
       if (this.activity.type === 'combat' && this.activity.target === yeti) {
         this.activity = { type: 'idle' };
-        setPlayerTool(this.player, null);
+        this.syncHeldTool();
         resetPlayerPose(this.player);
         this.hud.hideTarget();
       }
-      animateYetiWalk(yeti.mesh, this.animTime, true, 0.7);
+      const leashSpeed = dt > 1e-5 ? Math.hypot(yeti.mesh.position.x - ox, yeti.mesh.position.z - oz) / dt : 0;
+      animateYetiWalk(yeti.mesh, this.tickMonsterGait('yeti', leashSpeed, dt), true, 0.7);
       return;
     }
 
@@ -1633,7 +1899,11 @@ export class Game {
         animateYetiSwipe(yeti.mesh, 0);
       }
     } else {
-      animateYetiWalk(yeti.mesh, this.animTime, moving, Math.max(this.yetiMoveBlend, moving ? 0.4 : 0));
+      const walkBlend = Math.max(this.yetiMoveBlend, moving ? 0.4 : 0);
+      const gait = moving
+        ? this.tickMonsterGait('yeti', 2.35 * this.yetiMoveBlend, dt)
+        : this.animTime;
+      animateYetiWalk(yeti.mesh, gait, moving, walkBlend);
       this.yetiAttackCd -= dt;
       if (dist <= YETI_ATTACK_RANGE + 0.4 && this.yetiAttackCd <= 0) {
         this.yetiAttackCd = 2.55;
@@ -1649,7 +1919,7 @@ export class Game {
     if (dist > YETI_ATTACK_RANGE + 0.65) return;
     const def = this.save.skills.defence.level;
     const raw = YETI_DMG_MIN + Math.floor(Math.random() * (YETI_DMG_MAX - YETI_DMG_MIN + 1));
-    const mitigated = Math.max(2, raw - Math.floor(def / 5));
+    const mitigated = Math.max(1, raw - Math.floor(def / 5) - armorMitigation(this.save));
     this.save.hp = Math.max(0, this.save.hp - mitigated);
     this.vfx.spawnClawSlash(this.player.position.clone(), 14);
     this.vfx.spawnIceBurst(this.player.position.clone(), 16);
@@ -1671,7 +1941,7 @@ export class Game {
       this.player.position.set(0, 0, 2);
       this.yetiAggroed = false;
       this.activity = { type: 'idle' };
-      setPlayerTool(this.player, null);
+      this.syncHeldTool();
       this.hud.hideTarget();
       this.hud.chat('You fall! You wake by the Thornrest campfire, battered but alive.', 'combat');
       yeti.mesh.position.set(YETI_HOME.x, 0, YETI_HOME.z);
@@ -1740,15 +2010,18 @@ export class Game {
       this.orcAggroed = false;
       this.orcSwipeT = 0;
       this.hud.chat('The Orc Scout loses interest and returns to the trail.', 'system');
+      const ox = orc.mesh.position.x;
+      const oz = orc.mesh.position.z;
       orc.mesh.position.x += (ORC_HOME.x - orc.mesh.position.x) * Math.min(1, dt * 1.1);
       orc.mesh.position.z += (ORC_HOME.z - orc.mesh.position.z) * Math.min(1, dt * 1.1);
       if (this.activity.type === 'combat' && this.activity.target === orc) {
         this.activity = { type: 'idle' };
-        setPlayerTool(this.player, null);
+        this.syncHeldTool();
         resetPlayerPose(this.player);
         this.hud.hideTarget();
       }
-      animateOrcWalk(orc.mesh, this.animTime, true, 0.75);
+      const leashSpeed = dt > 1e-5 ? Math.hypot(orc.mesh.position.x - ox, orc.mesh.position.z - oz) / dt : 0;
+      animateOrcWalk(orc.mesh, this.tickMonsterGait('orc', leashSpeed, dt), true, 0.75);
       return;
     }
 
@@ -1776,7 +2049,11 @@ export class Game {
         animateOrcSpear(orc.mesh, 0);
       }
     } else {
-      animateOrcWalk(orc.mesh, this.animTime, moving, Math.max(this.orcMoveBlend, moving ? 0.45 : 0));
+      const walkBlend = Math.max(this.orcMoveBlend, moving ? 0.45 : 0);
+      const gait = moving
+        ? this.tickMonsterGait('orc', 3.2 * this.orcMoveBlend, dt)
+        : this.animTime;
+      animateOrcWalk(orc.mesh, gait, moving, walkBlend);
       this.orcAttackCd -= dt;
       if (dist <= ORC_ATTACK_RANGE + 0.4 && this.orcAttackCd <= 0) {
         this.orcAttackCd = 2.05;
@@ -1792,7 +2069,7 @@ export class Game {
     if (dist > ORC_ATTACK_RANGE + 0.65) return;
     const def = this.save.skills.defence.level;
     const raw = ORC_DMG_MIN + Math.floor(Math.random() * (ORC_DMG_MAX - ORC_DMG_MIN + 1));
-    const mitigated = Math.max(2, raw - Math.floor(def / 5));
+    const mitigated = Math.max(1, raw - Math.floor(def / 5) - armorMitigation(this.save));
     this.save.hp = Math.max(0, this.save.hp - mitigated);
     this.vfx.spawnSpearThrust(this.player.position.clone(), 14);
     this.vfx.spawnHitSparks(this.player.position.clone().setY(1.1), 14);
@@ -1814,7 +2091,7 @@ export class Game {
       this.orcAggroed = false;
       this.yetiAggroed = false;
       this.activity = { type: 'idle' };
-      setPlayerTool(this.player, null);
+      this.syncHeldTool();
       this.hud.hideTarget();
       this.hud.chat('You fall! You wake by the Thornrest campfire, battered but alive.', 'combat');
       orc.mesh.position.set(ORC_HOME.x, 0, ORC_HOME.z);
@@ -1834,8 +2111,19 @@ export class Game {
     this.activity = { type: 'idle' };
     this.hud.hideTarget();
     this.combatCamPull = Math.max(0.15, this.combatCamPull * 0.5);
-    // Keep sword for a beat while pose eases — reset next frames via abort settle
-    setPlayerTool(this.player, 'sword');
+    this.syncHeldTool();
+  }
+
+  /** Advance a monster gait from actual ground speed so planted feet do not skate. */
+  private tickMonsterGait(kind: 'yeti' | 'orc', speed: number, dt: number): number {
+    const stepLen = kind === 'yeti' ? YETI_STEP_LENGTH : ORC_STEP_LENGTH;
+    const minCadence = kind === 'yeti' ? 2.4 : 4.2;
+    const cur = kind === 'yeti' ? this.yetiGait : this.orcGait;
+    if (speed < 0.08) return cur;
+    const next = cur + Math.max(minCadence * 0.5, (Math.PI * speed) / stepLen) * dt;
+    if (kind === 'yeti') this.yetiGait = next;
+    else this.orcGait = next;
+    return next;
   }
 
   private sitOnGround(obj: THREE.Object3D, extraY = 0): void {
@@ -1845,18 +2133,30 @@ export class Game {
   private snapMoversToGround(): void {
     const dying = new Set(this.deathAnims.map((d) => d.mesh));
     this.sitOnGround(this.player, Number(this.player.userData.locomotionY) || 0);
-    if (this.yetiTarget && !dying.has(this.yetiTarget.mesh)) this.sitOnGround(this.yetiTarget.mesh);
-    if (this.orcTarget && !dying.has(this.orcTarget.mesh)) this.sitOnGround(this.orcTarget.mesh);
+    if (this.yetiTarget && !dying.has(this.yetiTarget.mesh)) {
+      this.sitOnGround(this.yetiTarget.mesh, Number(this.yetiTarget.mesh.userData.locomotionY) || 0);
+    }
+    if (this.orcTarget && !dying.has(this.orcTarget.mesh)) {
+      this.sitOnGround(this.orcTarget.mesh, Number(this.orcTarget.mesh.userData.locomotionY) || 0);
+    }
     if (this.dummyTarget && !dying.has(this.dummyTarget.mesh)) this.sitOnGround(this.dummyTarget.mesh);
     if (this.moveMarker.visible) this.sitOnGround(this.moveMarker, 0.06);
+  }
+
+  private nudgeZoom(dir: number, step = 0.12): void {
+    const next = this.camZoomTarget * Math.exp(dir * step);
+    this.camZoomTarget = Math.min(CAM_ZOOM_MAX, Math.max(CAM_ZOOM_MIN, next));
   }
 
   private updateCamera(dt: number): void {
     // Combat framing: lift + slight pull-back so pine canopy doesn't bury telegraphs
     const pull = Math.min(1, this.combatCamPull);
+    const ease = 1 - Math.exp(-10 * dt);
+    this.camZoom += (this.camZoomTarget - this.camZoom) * ease;
+    const z = this.camZoom;
     const ox = this.camOffset.x;
-    const oy = this.camOffset.y + pull * 1.55;
-    const oz = this.camOffset.z + pull * 0.85;
+    const oy = this.camOffset.y * z + pull * 1.55;
+    const oz = this.camOffset.z * z + pull * 0.85;
     const desired = this.camSmooth;
     desired.set(
       this.player.position.x + ox,
@@ -1943,11 +2243,13 @@ export class Game {
       else markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#c43c3c' });
     }
     markers.push({ x: -1.2, z: -0.5, color: '#ff8844' });
+    markers.push({ x: 2.2, z: 0.35, color: '#8ec8ff' });
     this.hud.drawMinimap(this.player.position.x, this.player.position.z, this.player.rotation.y, markers);
   }
 
   private refreshUI(): void {
     this.hud.setInventory(this.save.inventory);
+    this.hud.setEquipment(this.save);
     this.hud.setSkills(this.save);
     this.hud.setOrbs(this.save.hp, this.save.maxHp, this.save.focus, this.save.stamina);
   }
