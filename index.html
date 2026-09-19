@@ -51,10 +51,23 @@
           </div>
         </div>
 
-        <!-- Skills toggle button -->
-        <button type="button" id="btn-skills" title="Skills (K)">⚔ Skills</button>
-        <button type="button" id="btn-gear" title="Hero gear (C)">🛡 Gear</button>
-        <button type="button" id="btn-studio" title="Model Studio (V)">◈ Studio</button>
+        <nav id="hud-nav" aria-label="Hero menu">
+          <button type="button" id="btn-skills" title="Skills (K)" aria-expanded="false" aria-controls="skills-panel">
+            <span class="nav-ico" aria-hidden="true">⚔</span>
+            <span class="nav-txt">Skills</span>
+            <kbd class="nav-key">K</kbd>
+          </button>
+          <button type="button" id="btn-gear" title="Hero gear (C)" aria-expanded="false" aria-controls="gear-panel">
+            <span class="nav-ico" aria-hidden="true">🛡</span>
+            <span class="nav-txt">Gear</span>
+            <kbd class="nav-key">C</kbd>
+          </button>
+          <button type="button" id="btn-studio" title="Model Studio (V)">
+            <span class="nav-ico" aria-hidden="true">◈</span>
+            <span class="nav-txt">Studio</span>
+            <kbd class="nav-key">V</kbd>
+          </button>
+        </nav>
 
         <!-- Hero gear / equipment -->
         <div id="gear-panel" class="panel" hidden>
@@ -109,7 +122,7 @@
               </button>
             </div>
           </div>
-          <div id="gear-inspect">Click a slot to unequip · Click inventory to equip</div>
+          <div id="gear-inspect">Click a filled slot to unequip. Click an inventory item to equip it.</div>
         </div>
 
         <div id="forge-panel" class="panel" hidden>
@@ -130,23 +143,37 @@
           <div id="skills-list"></div>
         </div>
 
-        <!-- Chat bottom-left -->
-        <div id="chat">
+        <div id="chat" class="panel" aria-label="Game log">
+          <div class="chat-head">Log</div>
           <div id="chat-log"></div>
-          <div id="chat-tabs">
-            <span class="chat-tab active">Game</span>
-            <span class="chat-tab">Public</span>
-            <span class="chat-tab">Private</span>
-          </div>
         </div>
 
-        <!-- Action bar bottom-center -->
-        <div id="action-bar" aria-label="Action bar">
-          <button class="ab-slot" data-action="attack" title="Basic Attack (1)"><span class="ab-icon">⚔</span><span class="ab-key">1</span></button>
-          <button class="ab-slot" data-action="chop" title="Chop Tree (2)"><span class="ab-icon">🪓</span><span class="ab-key">2</span></button>
-          <button class="ab-slot" data-action="mine" title="Mine Rock (3)"><span class="ab-icon">⛏</span><span class="ab-key">3</span></button>
-          <button class="ab-slot" data-action="eat" title="Eat Food (4)"><span class="ab-icon">🍖</span><span class="ab-key">4</span></button>
-          <button class="ab-slot" data-action="examine" title="Examine (5)"><span class="ab-icon">👁</span><span class="ab-key">5</span></button>
+        <div id="action-bar" aria-label="Actions">
+          <button class="ab-slot" data-action="attack" title="Attack (1)">
+            <span class="ab-icon" aria-hidden="true">⚔</span>
+            <span class="ab-name">Attack</span>
+            <span class="ab-key">1</span>
+          </button>
+          <button class="ab-slot" data-action="chop" title="Chop tree (2)">
+            <span class="ab-icon" aria-hidden="true">🪓</span>
+            <span class="ab-name">Chop</span>
+            <span class="ab-key">2</span>
+          </button>
+          <button class="ab-slot" data-action="mine" title="Mine rock (3)">
+            <span class="ab-icon" aria-hidden="true">⛏</span>
+            <span class="ab-name">Mine</span>
+            <span class="ab-key">3</span>
+          </button>
+          <button class="ab-slot" data-action="eat" title="Eat food (4)">
+            <span class="ab-icon" aria-hidden="true">🍖</span>
+            <span class="ab-name">Eat</span>
+            <span class="ab-key">4</span>
+          </button>
+          <button class="ab-slot" data-action="examine" title="Examine (5)">
+            <span class="ab-icon" aria-hidden="true">👁</span>
+            <span class="ab-name">Look</span>
+            <span class="ab-key">5</span>
+          </button>
         </div>
 
         <!-- Inventory toggle (narrow viewports) -->
@@ -162,6 +189,7 @@
             </span>
           </div>
           <div id="inv-grid"></div>
+          <div id="inv-inspect">Click an item to equip or eat it.</div>
         </div>
 
         <!-- Progress bar (gathering/combat) -->
@@ -172,11 +200,12 @@
 
         <!-- Target info -->
         <div id="target-info" hidden>
+          <span class="target-kicker">Target</span>
           <span id="target-name"></span>
           <div class="bar thin"><div id="target-hp"></div></div>
         </div>
 
-        <div id="touch-hint">Tap ground to move · Tap trees, rocks &amp; dummy to interact</div>
+        <div id="touch-hint">Tap the ground to walk · Pinch to zoom · Use the bar to attack, chop, mine, or eat</div>
       </div>
 
       <div id="studio" hidden>

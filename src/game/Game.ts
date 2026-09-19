@@ -275,14 +275,10 @@ export class Game {
     this.hud.onForgeCraft = (id) => this.craftAtForge(id);
 
     this.refreshUI();
-    this.hud.chat('Welcome to Thornrest Camp in the Whisperwood.', 'system');
-    this.hud.chat('Tap the ground to walk. Chop trees, mine rocks, or spar with the training dummy.', 'system');
-    this.hud.chat('A Frost Yeti stalks the north-east clearing — keep your distance until you are ready.', 'combat');
-    this.hud.chat('An Orc Scout prowls the south-west trail — spear ready, leather and tooth to loot.', 'combat');
-    this.hud.chat('The camp forge will work frost-yeti hide, fur, bone, and claws into a matching set.', 'system');
-    this.hud.chat('Open Gear (C) to inspect your hero and equip or unequip items.', 'system');
-    this.hud.chat('Scroll the wheel or use + / − to zoom the camera.', 'system');
-    this.hud.chat('Your progress is saved in this browser.', 'system');
+    this.hud.chat('Welcome to Thornrest Camp.', 'system');
+    this.hud.chat('Tap the ground to walk. Use the bar to attack, chop, mine, or eat.', 'system');
+    this.hud.chat('Open Gear to dress the hunter. The forge by the fire works yeti parts.', 'system');
+    this.hud.chat('A Frost Yeti hunts the north-east snow. An Orc Scout prowls the south-west trail.', 'combat');
 
     window.addEventListener('resize', () => this.onResize());
     this.animate();
@@ -636,8 +632,7 @@ export class Game {
       if (e.key === '-' || e.key === '_') this.nudgeZoom(1, 0.16);
       if (e.key === '=' || e.key === '+') this.nudgeZoom(-1, 0.16);
       if (e.key.toLowerCase() === 'k') {
-        const panel = document.getElementById('skills-panel');
-        if (panel) panel.hidden = !panel.hidden;
+        this.hud.setSkillsOpen(!this.hud.isSkillsOpen());
       }
       if (e.key.toLowerCase() === 'c') {
         this.hud.setGearOpen(!this.hud.isGearOpen());

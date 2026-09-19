@@ -98,12 +98,8 @@ export class HUD {
       });
     });
 
-    el('btn-skills').addEventListener('click', () => {
-      this.skillsPanel.hidden = !this.skillsPanel.hidden;
-    });
-    el('skills-close').addEventListener('click', () => {
-      this.skillsPanel.hidden = true;
-    });
+    el('btn-skills').addEventListener('click', () => this.setSkillsOpen(this.skillsPanel.hidden));
+    el('skills-close').addEventListener('click', () => this.setSkillsOpen(false));
 
     this.btnInventory.addEventListener('click', () => {
       this.setInventoryOpen(this.inventory.hidden);
@@ -147,6 +143,7 @@ export class HUD {
     this.gearPanel.hidden = !open;
     this.btnGear.setAttribute('aria-expanded', open ? 'true' : 'false');
     if (open) {
+      this.closeSidePanels('gear');
       this.heroPane.resize();
       this.heroPane.start();
     } else {
@@ -158,9 +155,35 @@ export class HUD {
     return !this.gearPanel.hidden;
   }
 
+  setSkillsOpen(open: boolean): void {
+    this.skillsPanel.hidden = !open;
+    el('btn-skills').setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) this.closeSidePanels('skills');
+  }
+
+  isSkillsOpen(): boolean {
+    return !this.skillsPanel.hidden;
+  }
+
   setForgeOpen(open: boolean, save?: SaveData): void {
     this.forgePanel.hidden = !open;
-    if (open && save) this.setForgeRecipes(save);
+    if (open) {
+      this.closeSidePanels('forge');
+      if (save) this.setForgeRecipes(save);
+    }
+  }
+
+  private closeSidePanels(keep: 'gear' | 'skills' | 'forge'): void {
+    if (keep !== 'gear') {
+      this.gearPanel.hidden = true;
+      this.btnGear.setAttribute('aria-expanded', 'false');
+      this.heroPane.stop();
+    }
+    if (keep !== 'skills') {
+      this.skillsPanel.hidden = true;
+      el('btn-skills').setAttribute('aria-expanded', 'false');
+    }
+    if (keep !== 'forge') this.forgePanel.hidden = true;
   }
 
   isForgeOpen(): boolean {
@@ -316,12 +339,18 @@ export class HUD {
       row.className = 'skill-row';
       const next = xpForLevel(sk.level + 1);
       const prev = xpForLevel(sk.level);
-      const pct = sk.level >= 99 ? 100 : ((sk.xp - prev) / (next - prev)) * 100;
+      const into = Math.max(0, sk.xp - prev);
+      const span = Math.max(1, next - prev);
+      const pct = sk.level >= 99 ? 100 : (into / span) * 100;
+      const xpLabel = sk.level >= 99 ? 'Max' : `${Math.floor(into)} / ${span}`;
 
       row.innerHTML = `
         <div class="skill-icon">${meta.icon}</div>
         <div class="skill-meta">
-          <div class="skill-name">${meta.name}</div>
+          <div class="skill-top">
+            <div class="skill-name">${meta.name}</div>
+            <div class="skill-xp-num">${xpLabel}</div>
+          </div>
           <div class="skill-xp"><div style="width:${pct}%"></div></div>
         </div>
         <div class="skill-lvl">${sk.level}</div>
@@ -436,7 +465,7 @@ export class HUD {
     ctx.closePath();
     ctx.fill();
     ctx.fillStyle = '#f0d070';
-    ctx.font = 'bold 11px Segoe UI, system-ui, sans-serif';
+    ctx.font = 'bold 11px Liberation Sans, Noto Sans, DejaVu Sans, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('N', cx, 26);
   }
