@@ -237,17 +237,14 @@ export class HUD {
       if (!btn) continue;
       const itemId = save.equipped[id];
       const canvas = btn.querySelector('canvas.item-icon') as HTMLCanvasElement | null;
-      const empty = btn.querySelector('.gear-empty') as HTMLElement | null;
       btn.classList.toggle('filled', !!itemId);
       if (itemId && canvas) {
         paintItemIcon(canvas, itemId);
         canvas.hidden = false;
-        if (empty) empty.hidden = true;
         const meta = ITEM_META[itemId];
         btn.title = `${label}: ${meta?.name ?? itemId} (click to unequip)`;
       } else {
         if (canvas) canvas.hidden = true;
-        if (empty) empty.hidden = false;
         btn.title = `${label}: empty`;
       }
     }
