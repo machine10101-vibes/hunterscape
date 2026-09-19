@@ -1,13 +1,16 @@
 import type { Texture } from 'three';
 import {
+  COMBAT_SKILLS,
   EQUIP_SLOTS,
   ITEM_META,
   SKILL_META,
   YETI_RECIPES,
   canCraft,
+  combatSkillUnlocked,
   countItem,
   ownsItem,
   xpForLevel,
+  type CombatSkillId,
   type EquipSlot,
   type ItemStack,
   type SaveData,
@@ -115,17 +118,61 @@ export class HUD {
       (this.narrowMq as MediaQueryList).addListener(syncViewport);
     }
     this.syncInventoryForViewport();
+    this.buildSkillBar();
 
-    document.querySelectorAll('.ab-slot').forEach((btn) => {
+    setTimeout(() => this.touchHint.classList.add('fade'), 8000);
+  }
+
+  private buildSkillBar(): void {
+    const slots = el('skill-slots');
+    slots.innerHTML = '';
+    for (const skill of COMBAT_SKILLS) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ab-slot';
+      btn.dataset.skill = skill.id;
+      btn.innerHTML = `
+        <span class="ab-icon" aria-hidden="true">${skill.icon}</span>
+        <span class="ab-name">${skill.name}</span>
+        <kbd class="ab-key">${skill.key}</kbd>
+        <span class="ab-cost"></span>
+        <span class="ab-lock" aria-hidden="true"></span>
+        <span class="ab-cd" hidden></span>
+      `;
       btn.addEventListener('click', () => {
-        const action = (btn as HTMLElement).dataset.action;
-        if (action) this.onAction?.(action);
+        this.onAction?.(skill.id);
         btn.classList.add('active');
         setTimeout(() => btn.classList.remove('active'), 120);
       });
-    });
+      slots.appendChild(btn);
+    }
+  }
 
-    setTimeout(() => this.touchHint.classList.add('fade'), 8000);
+  setSkillBar(save: SaveData, cds: Record<CombatSkillId, number>, guardLeft: number): void {
+    for (const skill of COMBAT_SKILLS) {
+      const btn = document.querySelector(`.ab-slot[data-skill="${skill.id}"]`) as HTMLButtonElement | null;
+      if (!btn) continue;
+      const known = combatSkillUnlocked(save, skill);
+      const cd = cds[skill.id] ?? 0;
+      const costEl = btn.querySelector('.ab-cost') as HTMLElement | null;
+      const cdEl = btn.querySelector('.ab-cd') as HTMLElement | null;
+      btn.classList.toggle('locked', !known);
+      btn.classList.toggle('cooling', cd > 0);
+      btn.classList.toggle('guarding', skill.id === 'guard' && guardLeft > 0);
+      if (costEl) {
+        costEl.textContent = skill.costKind ? String(skill.cost) : '';
+        costEl.className = `ab-cost${skill.costKind ? ` ${skill.costKind}` : ''}`;
+      }
+      if (cdEl) {
+        const pct = skill.cooldown > 0 ? Math.min(100, (cd / skill.cooldown) * 100) : 0;
+        cdEl.hidden = pct <= 0;
+        cdEl.style.height = `${pct}%`;
+      }
+      const unlock = `${SKILL_META[skill.unlockSkill].name} ${skill.unlockLevel}`;
+      btn.title = known
+        ? `${skill.name} (${skill.key}) — ${skill.blurb}${skill.costKind ? ` · ${skill.cost} ${skill.costKind}` : ''}`
+        : `${skill.name} locked — learn at ${unlock}`;
+    }
   }
 
   /** Narrow (≤480px): inventory closed by default. Desktop: open once, user may close. */
@@ -329,6 +376,10 @@ export class HUD {
 
   setSkills(save: SaveData): void {
     this.skillsList.innerHTML = '';
+    const trainHead = document.createElement('div');
+    trainHead.className = 'skills-kicker';
+    trainHead.textContent = 'Training';
+    this.skillsList.appendChild(trainHead);
     (Object.keys(SKILL_META) as SkillId[]).forEach((id) => {
       const sk = save.skills[id];
       const meta = SKILL_META[id];
@@ -354,6 +405,29 @@ export class HUD {
       `;
       this.skillsList.appendChild(row);
     });
+
+    const artHead = document.createElement('div');
+    artHead.className = 'skills-kicker';
+    artHead.textContent = 'Combat arts';
+    this.skillsList.appendChild(artHead);
+    for (const skill of COMBAT_SKILLS) {
+      const known = combatSkillUnlocked(save, skill);
+      const row = document.createElement('div');
+      row.className = `skill-row art-row${known ? ' known' : ''}`;
+      const unlock = `${SKILL_META[skill.unlockSkill].name} ${skill.unlockLevel}`;
+      row.innerHTML = `
+        <div class="skill-icon">${skill.icon}</div>
+        <div class="skill-meta">
+          <div class="skill-top">
+            <div class="skill-name">${skill.name}</div>
+            <div class="skill-xp-num">${known ? 'Known' : unlock}</div>
+          </div>
+          <div class="skill-art-blurb">${skill.blurb}</div>
+        </div>
+        <div class="skill-lvl">${skill.key}</div>
+      `;
+      this.skillsList.appendChild(row);
+    }
   }
 
   showProgress(label: string, ratio: number): void {

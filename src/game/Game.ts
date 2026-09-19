@@ -62,14 +62,17 @@ import {
 import { VFX } from '../rendering/vfx';
 import { loadSave, writeSave } from './Persistence';
 import {
+  COMBAT_SKILLS,
   ITEM_META,
   YETI_RECIPES,
   armorMitigation,
   canCraft,
+  combatSkillUnlocked,
   countItem,
   levelFromXp,
   weaponDamageBonus,
   weaponReachBonus,
+  type CombatSkillId,
   type EquipSlot,
   type SaveData,
   type SkillId,
@@ -99,6 +102,7 @@ type Activity =
       swingT: number;
       swingDur: number;
       hitDone: boolean;
+      swingSkill: CombatSkillId;
     };
 
 interface DeathAnim {
@@ -214,6 +218,15 @@ export class Game {
   private pendingCombatTarget: WorldObject | null = null;
   private pendingCombatChat = '';
   private pendingForge = false;
+  private queuedSkill: CombatSkillId | null = null;
+  private guardLeft = 0;
+  private skillCd: Record<CombatSkillId, number> = {
+    strike: 0,
+    lunge: 0,
+    smash: 0,
+    guard: 0,
+    rend: 0,
+  };
 
   constructor(canvas: HTMLCanvasElement) {
     this.save = loadSave();
@@ -276,8 +289,8 @@ export class Game {
 
     this.refreshUI();
     this.hud.chat('Welcome to Thornrest Camp.', 'system');
-    this.hud.chat('Tap the ground to walk. Use the bar to attack, chop, mine, or eat.', 'system');
-    this.hud.chat('Open Gear to dress the hunter. The forge by the fire works yeti parts.', 'system');
+    this.hud.chat('The skill bar holds combat arts. Train Attack, Strength, and Defence to learn more.', 'system');
+    this.hud.chat('Tap trees and rocks to chop and mine. Eat rations from your inventory.', 'system');
     this.hud.chat('A Frost Yeti hunts the north-east snow. An Orc Scout prowls the south-west trail.', 'combat');
 
     window.addEventListener('resize', () => this.onResize());
@@ -624,11 +637,8 @@ export class Game {
     window.addEventListener('keydown', (e) => {
       if (this.studio.isOpen()) return;
       this.keys.add(e.key.toLowerCase());
-      if (e.key === '1') this.handleAction('attack');
-      if (e.key === '2') this.handleAction('chop');
-      if (e.key === '3') this.handleAction('mine');
-      if (e.key === '4') this.handleAction('eat');
-      if (e.key === '5') this.handleAction('examine');
+      const art = COMBAT_SKILLS.find((s) => s.key === e.key);
+      if (art) this.handleCombatSkill(art.id);
       if (e.key === '-' || e.key === '_') this.nudgeZoom(1, 0.16);
       if (e.key === '=' || e.key === '+') this.nudgeZoom(-1, 0.16);
       if (e.key.toLowerCase() === 'k') {
@@ -779,6 +789,7 @@ export class Game {
       swingT: 0,
       swingDur: PLAYER_ATTACK_DURATION,
       hitDone: false,
+      swingSkill: this.queuedSkill ?? 'strike',
     };
     this.syncHeldTool();
     this.hud.showTarget(this.combatName(obj), obj.hp / obj.maxHp);
@@ -853,63 +864,82 @@ export class Game {
   }
 
   private handleAction(action: string): void {
-    switch (action) {
-      case 'attack': {
-        if (!this.save.equipped.weapon) {
-          this.hud.chat('Equip a weapon from the Gear window first.', 'system');
-          this.hud.setGearOpen(true);
-          return;
-        }
-        const target = this.nearestCombatTarget();
-        if (!target) {
-          this.hud.chat('No enemies nearby to attack.', 'system');
-          return;
-        }
-        const range = this.playerAttackRange(target);
-        const d = this.distTo(target);
-        if (d > range + 2) {
-          this.hud.chat(`${this.combatName(target)} is too far. Walk closer.`, 'system');
-          this.pendingGather = null;
-          const dx = target.mesh.position.x - this.player.position.x;
-          const dz = target.mesh.position.z - this.player.position.z;
-          const dist = Math.hypot(dx, dz) || 1;
-          this.startMove(
-            target.mesh.position.x - (dx / dist) * (range * 0.78),
-            target.mesh.position.z - (dz / dist) * (range * 0.78),
-          );
-          this.pendingCombat = true;
-          this.pendingCombatTarget = target;
-          this.pendingCombatChat = `You ready your ${this.weaponName()} against the ${this.combatName(target)}!`;
-          return;
-        }
-        this.interactWith(target);
-        break;
-      }
-      case 'chop': {
-        const tree = this.nearest('tree');
-        if (!tree) {
-          this.hud.chat('No trees nearby.', 'system');
-          return;
-        }
-        this.interactWith(tree);
-        break;
-      }
-      case 'mine': {
-        const rock = this.nearest('rock');
-        if (!rock) {
-          this.hud.chat('No rocks nearby.', 'system');
-          return;
-        }
-        this.interactWith(rock);
-        break;
-      }
-      case 'eat':
-        this.eatFood();
-        break;
-      case 'examine':
-        this.examineNearest();
-        break;
+    const art = COMBAT_SKILLS.find((s) => s.id === action);
+    if (art) this.handleCombatSkill(art.id);
+  }
+
+  private handleCombatSkill(id: CombatSkillId): void {
+    const skill = COMBAT_SKILLS.find((s) => s.id === id);
+    if (!skill) return;
+    if (!combatSkillUnlocked(this.save, skill)) {
+      const need = this.save.skills[skill.unlockSkill];
+      this.hud.chat(
+        `You have not learned ${skill.name} yet. Raise ${SKILL_SHORT[skill.unlockSkill]} to ${skill.unlockLevel} (now ${need.level}).`,
+        'system',
+      );
+      this.hud.setSkillsOpen(true);
+      return;
     }
+    if (this.skillCd[id] > 0) {
+      this.hud.chat(`${skill.name} is not ready.`, 'system');
+      return;
+    }
+
+    if (id === 'guard') {
+      if (!this.trySpendSkill(skill)) return;
+      this.guardLeft = skill.guardSec;
+      this.skillCd.guard = skill.cooldown;
+      this.grantXp('defence', 6);
+      this.hud.chat('You raise a firm guard.', 'combat');
+      this.refreshUI();
+      return;
+    }
+
+    if (!this.save.equipped.weapon) {
+      this.hud.chat('Equip a weapon from the Gear window first.', 'system');
+      this.hud.setGearOpen(true);
+      return;
+    }
+    this.queuedSkill = id;
+    const target = this.nearestCombatTarget();
+    if (!target) {
+      this.hud.chat('No enemies nearby to use that art.', 'system');
+      this.queuedSkill = null;
+      return;
+    }
+    if (this.activity.type === 'combat' && this.activity.target === target) {
+      this.hud.chat(`You ready ${skill.name}.`, 'combat');
+      return;
+    }
+    const range = this.playerAttackRange(target);
+    const d = this.distTo(target);
+    if (d > range + 2) {
+      this.pendingGather = null;
+      const dx = target.mesh.position.x - this.player.position.x;
+      const dz = target.mesh.position.z - this.player.position.z;
+      const dist = Math.hypot(dx, dz) || 1;
+      this.startMove(
+        target.mesh.position.x - (dx / dist) * (range * 0.78),
+        target.mesh.position.z - (dz / dist) * (range * 0.78),
+      );
+      this.pendingCombat = true;
+      this.pendingCombatTarget = target;
+      this.pendingCombatChat = `You ready ${skill.name} against the ${this.combatName(target)}!`;
+      return;
+    }
+    this.beginCombat(target, `You ready ${skill.name} against the ${this.combatName(target)}!`);
+  }
+
+  private trySpendSkill(skill: (typeof COMBAT_SKILLS)[number]): boolean {
+    if (!skill.costKind || skill.cost <= 0) return true;
+    const pool = skill.costKind === 'stamina' ? this.save.stamina : this.save.focus;
+    if (pool < skill.cost) {
+      this.hud.chat(`Not enough ${skill.costKind} for ${skill.name}.`, 'system');
+      return false;
+    }
+    if (skill.costKind === 'stamina') this.save.stamina -= skill.cost;
+    else this.save.focus -= skill.cost;
+    return true;
   }
 
   private nearest(kind: InteractKind): WorldObject | null {
@@ -1140,17 +1170,22 @@ export class Game {
     const old = sk.level;
     sk.xp += amount;
     sk.level = levelFromXp(sk.xp);
-    this.hud.chat(`+${amount} ${skill} XP`, 'xp');
+    this.hud.chat(`+${amount} ${SKILL_SHORT[skill]} XP`, 'xp');
     this.vfx.spawnXp(
       this.player.position,
       amount,
       SKILL_SHORT[skill],
     );
     if (sk.level > old) {
-      this.hud.chat(`Congratulations! Your ${skill} level is now ${sk.level}.`, 'xp');
+      this.hud.chat(`Congratulations! Your ${SKILL_SHORT[skill]} level is now ${sk.level}.`, 'xp');
       if (skill === 'constitution') {
         this.save.maxHp = 100 + (sk.level - 10) * 10;
         this.save.hp = Math.min(this.save.hp + 10, this.save.maxHp);
+      }
+      for (const art of COMBAT_SKILLS) {
+        if (art.unlockSkill === skill && art.unlockLevel > old && art.unlockLevel <= sk.level) {
+          this.hud.chat(`You learn ${art.name}! It is ready on the skill bar.`, 'xp');
+        }
       }
     }
   }
@@ -1158,6 +1193,11 @@ export class Game {
   private update(dt: number): void {
     this.save.stamina = Math.min(100, this.save.stamina + dt * 4);
     this.save.focus = Math.min(100, this.save.focus + dt * 2);
+    this.guardLeft = Math.max(0, this.guardLeft - dt);
+    for (const id of Object.keys(this.skillCd) as CombatSkillId[]) {
+      this.skillCd[id] = Math.max(0, this.skillCd[id] - dt);
+    }
+    this.hud.setSkillBar(this.save, this.skillCd, this.guardLeft);
     if (this.save.hp < this.save.maxHp) {
       this.save.hp = Math.min(this.save.maxHp, this.save.hp + dt * 1.5);
     }
@@ -1532,7 +1572,7 @@ export class Game {
               // Connect only if still roughly in reach (forgiving)
               if (this.distTo(target) <= range + 0.95) {
                 act.hitDone = true;
-                this.swingAtTarget(target);
+                this.swingAtTarget(target, act.swingSkill);
               }
             }
             if (prog >= 1) {
@@ -1547,6 +1587,8 @@ export class Game {
             // Idle combat stance breath while waiting
             animatePlayerIdle(this.player, this.animTime, true);
             if (act.cooldown <= 0 && this.distTo(target) <= softLeash + 0.2) {
+              const next = this.takeQueuedSwing();
+              act.swingSkill = next;
               act.swingT = 0.001;
               act.swingDur = PLAYER_ATTACK_DURATION;
               act.hitDone = false;
@@ -1630,16 +1672,37 @@ export class Game {
     this.persist();
   }
 
-  private swingAtTarget(target: WorldObject): void {
+  private takeQueuedSwing(): CombatSkillId {
+    let id: CombatSkillId = this.queuedSkill ?? 'strike';
+    this.queuedSkill = null;
+    const skill = COMBAT_SKILLS.find((s) => s.id === id) ?? COMBAT_SKILLS[0];
+    if (id !== 'strike') {
+      if (this.skillCd[id] > 0 || !combatSkillUnlocked(this.save, skill) || !this.trySpendSkill(skill)) {
+        id = 'strike';
+      }
+    }
+    const used = COMBAT_SKILLS.find((s) => s.id === id) ?? COMBAT_SKILLS[0];
+    this.skillCd[id] = used.cooldown;
+    return id;
+  }
+
+  private swingAtTarget(target: WorldObject, skillId: CombatSkillId = 'strike'): void {
+    const art = COMBAT_SKILLS.find((s) => s.id === skillId) ?? COMBAT_SKILLS[0];
     const atk = this.save.skills.attack.level;
     const str = this.save.skills.strength.level;
-    const hitChance = 0.65 + atk * 0.01;
+    const hitChance = 0.65 + atk * 0.01 + art.accBonus;
     const label = this.combatName(target);
     if (Math.random() > hitChance) {
-      this.hud.chat(`You swing and miss the ${label}.`, 'combat');
+      this.hud.chat(`You miss the ${label} with ${art.name}.`, 'combat');
       return;
     }
-    const dmg = 3 + weaponDamageBonus(this.save.equipped.weapon) + Math.floor(Math.random() * (4 + str));
+    const dmg = Math.max(
+      1,
+      Math.floor(
+        (3 + weaponDamageBonus(this.save.equipped.weapon) + Math.floor(Math.random() * (4 + str)) + art.hitBonus) *
+          art.hitMult,
+      ),
+    );
     target.hp -= dmg;
     const xpAtk = target.kind === 'yeti' ? 18 : target.kind === 'orc' ? 15 : 12;
     const xpStr = target.kind === 'yeti' ? 14 : target.kind === 'orc' ? 12 : 8;
@@ -1676,14 +1739,14 @@ export class Game {
       const recoil = Math.random() < 0.15 ? 1 : 0;
       if (recoil) {
         this.save.hp = Math.max(1, this.save.hp - recoil);
-        this.hud.chat(`You hit the dummy for ${dmg}. Splinter grazes you (-${recoil}).`, 'combat');
+        this.hud.chat(`You hit the dummy with ${art.name} for ${dmg}. Splinter grazes you (-${recoil}).`, 'combat');
       } else {
-        this.hud.chat(`You hit the training dummy for ${dmg} damage.`, 'combat');
+        this.hud.chat(`You hit the training dummy with ${art.name} for ${dmg} damage.`, 'combat');
       }
     } else if (target.kind === 'orc') {
-      this.hud.chat(`You strike the Orc Scout for ${dmg} damage!`, 'combat');
+      this.hud.chat(`You ${art.name.toLowerCase()} the Orc Scout for ${dmg} damage!`, 'combat');
     } else {
-      this.hud.chat(`You strike the Frost Yeti for ${dmg} damage!`, 'combat');
+      this.hud.chat(`You ${art.name.toLowerCase()} the Frost Yeti for ${dmg} damage!`, 'combat');
     }
 
     if (target.hp <= 0) {
@@ -1912,9 +1975,8 @@ export class Game {
   private yetiMeleeHit(yeti: WorldObject): void {
     const dist = this.distTo(yeti);
     if (dist > YETI_ATTACK_RANGE + 0.65) return;
-    const def = this.save.skills.defence.level;
     const raw = YETI_DMG_MIN + Math.floor(Math.random() * (YETI_DMG_MAX - YETI_DMG_MIN + 1));
-    const mitigated = Math.max(1, raw - Math.floor(def / 5) - armorMitigation(this.save));
+    const mitigated = this.mitigateIncoming(raw);
     this.save.hp = Math.max(0, this.save.hp - mitigated);
     this.vfx.spawnClawSlash(this.player.position.clone(), 14);
     this.vfx.spawnIceBurst(this.player.position.clone(), 16);
@@ -2062,9 +2124,8 @@ export class Game {
   private orcMeleeHit(orc: WorldObject): void {
     const dist = this.distTo(orc);
     if (dist > ORC_ATTACK_RANGE + 0.65) return;
-    const def = this.save.skills.defence.level;
     const raw = ORC_DMG_MIN + Math.floor(Math.random() * (ORC_DMG_MAX - ORC_DMG_MIN + 1));
-    const mitigated = Math.max(1, raw - Math.floor(def / 5) - armorMitigation(this.save));
+    const mitigated = this.mitigateIncoming(raw);
     this.save.hp = Math.max(0, this.save.hp - mitigated);
     this.vfx.spawnSpearThrust(this.player.position.clone(), 14);
     this.vfx.spawnHitSparks(this.player.position.clone().setY(1.1), 14);
@@ -2242,11 +2303,19 @@ export class Game {
     this.hud.drawMinimap(this.player.position.x, this.player.position.z, this.player.rotation.y, markers);
   }
 
+  private mitigateIncoming(raw: number): number {
+    const def = this.save.skills.defence.level;
+    let mit = Math.floor(def / 5) + armorMitigation(this.save);
+    if (this.guardLeft > 0) mit += 4;
+    return Math.max(1, raw - mit);
+  }
+
   private refreshUI(): void {
     this.hud.setInventory(this.save.inventory);
     this.hud.setEquipment(this.save);
     this.hud.setSkills(this.save);
     this.hud.setOrbs(this.save.hp, this.save.maxHp, this.save.focus, this.save.stamina);
+    this.hud.setSkillBar(this.save, this.skillCd, this.guardLeft);
   }
 
   private persist(): void {

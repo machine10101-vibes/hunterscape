@@ -140,32 +140,9 @@
           <div id="chat-log"></div>
         </div>
 
-        <div id="action-bar" aria-label="Actions">
-          <button class="ab-slot" data-action="attack" title="Attack (1)">
-            <span class="ab-icon" aria-hidden="true">⚔</span>
-            <span class="ab-name">Attack</span>
-            <span class="ab-key">1</span>
-          </button>
-          <button class="ab-slot" data-action="chop" title="Chop tree (2)">
-            <span class="ab-icon" aria-hidden="true">🪓</span>
-            <span class="ab-name">Chop</span>
-            <span class="ab-key">2</span>
-          </button>
-          <button class="ab-slot" data-action="mine" title="Mine rock (3)">
-            <span class="ab-icon" aria-hidden="true">⛏</span>
-            <span class="ab-name">Mine</span>
-            <span class="ab-key">3</span>
-          </button>
-          <button class="ab-slot" data-action="eat" title="Eat food (4)">
-            <span class="ab-icon" aria-hidden="true">🍖</span>
-            <span class="ab-name">Eat</span>
-            <span class="ab-key">4</span>
-          </button>
-          <button class="ab-slot" data-action="examine" title="Examine (5)">
-            <span class="ab-icon" aria-hidden="true">👁</span>
-            <span class="ab-name">Look</span>
-            <span class="ab-key">5</span>
-          </button>
+        <div id="action-bar" aria-label="Combat skills">
+          <div class="ab-kicker">Arts</div>
+          <div id="skill-slots"></div>
         </div>
 
         <!-- Inventory toggle (narrow viewports) -->
@@ -197,7 +174,7 @@
           <div class="bar thin"><div id="target-hp"></div></div>
         </div>
 
-        <div id="touch-hint">Tap the ground to walk · Pinch to zoom · Use the bar to attack, chop, mine, or eat</div>
+        <div id="touch-hint">Tap the ground to walk · Pinch to zoom · Use the skill bar in a fight</div>
       </div>
 
       <div id="studio" hidden>
