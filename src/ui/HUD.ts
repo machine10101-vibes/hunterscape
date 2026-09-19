@@ -1,13 +1,16 @@
 import type { Texture } from 'three';
 import {
+  COMBAT_SKILLS,
   EQUIP_SLOTS,
   ITEM_META,
   SKILL_META,
   YETI_RECIPES,
   canCraft,
+  combatSkillUnlocked,
   countItem,
   ownsItem,
   xpForLevel,
+  type CombatSkillId,
   type EquipSlot,
   type ItemStack,
   type SaveData,
@@ -98,12 +101,8 @@ export class HUD {
       });
     });
 
-    el('btn-skills').addEventListener('click', () => {
-      this.skillsPanel.hidden = !this.skillsPanel.hidden;
-    });
-    el('skills-close').addEventListener('click', () => {
-      this.skillsPanel.hidden = true;
-    });
+    el('btn-skills').addEventListener('click', () => this.setSkillsOpen(this.skillsPanel.hidden));
+    el('skills-close').addEventListener('click', () => this.setSkillsOpen(false));
 
     this.btnInventory.addEventListener('click', () => {
       this.setInventoryOpen(this.inventory.hidden);
@@ -119,17 +118,61 @@ export class HUD {
       (this.narrowMq as MediaQueryList).addListener(syncViewport);
     }
     this.syncInventoryForViewport();
+    this.buildSkillBar();
 
-    document.querySelectorAll('.ab-slot').forEach((btn) => {
+    setTimeout(() => this.touchHint.classList.add('fade'), 8000);
+  }
+
+  private buildSkillBar(): void {
+    const slots = el('skill-slots');
+    slots.innerHTML = '';
+    for (const skill of COMBAT_SKILLS) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ab-slot';
+      btn.dataset.skill = skill.id;
+      btn.innerHTML = `
+        <span class="ab-icon" aria-hidden="true">${skill.icon}</span>
+        <span class="ab-name">${skill.name}</span>
+        <kbd class="ab-key">${skill.key}</kbd>
+        <span class="ab-cost"></span>
+        <span class="ab-lock" aria-hidden="true"></span>
+        <span class="ab-cd" hidden></span>
+      `;
       btn.addEventListener('click', () => {
-        const action = (btn as HTMLElement).dataset.action;
-        if (action) this.onAction?.(action);
+        this.onAction?.(skill.id);
         btn.classList.add('active');
         setTimeout(() => btn.classList.remove('active'), 120);
       });
-    });
+      slots.appendChild(btn);
+    }
+  }
 
-    setTimeout(() => this.touchHint.classList.add('fade'), 8000);
+  setSkillBar(save: SaveData, cds: Record<CombatSkillId, number>, guardLeft: number): void {
+    for (const skill of COMBAT_SKILLS) {
+      const btn = document.querySelector(`.ab-slot[data-skill="${skill.id}"]`) as HTMLButtonElement | null;
+      if (!btn) continue;
+      const known = combatSkillUnlocked(save, skill);
+      const cd = cds[skill.id] ?? 0;
+      const costEl = btn.querySelector('.ab-cost') as HTMLElement | null;
+      const cdEl = btn.querySelector('.ab-cd') as HTMLElement | null;
+      btn.classList.toggle('locked', !known);
+      btn.classList.toggle('cooling', cd > 0);
+      btn.classList.toggle('guarding', skill.id === 'guard' && guardLeft > 0);
+      if (costEl) {
+        costEl.textContent = skill.costKind ? String(skill.cost) : '';
+        costEl.className = `ab-cost${skill.costKind ? ` ${skill.costKind}` : ''}`;
+      }
+      if (cdEl) {
+        const pct = skill.cooldown > 0 ? Math.min(100, (cd / skill.cooldown) * 100) : 0;
+        cdEl.hidden = pct <= 0;
+        cdEl.style.height = `${pct}%`;
+      }
+      const unlock = `${SKILL_META[skill.unlockSkill].name} ${skill.unlockLevel}`;
+      btn.title = known
+        ? `${skill.name} (${skill.key}) — ${skill.blurb}${skill.costKind ? ` · ${skill.cost} ${skill.costKind}` : ''}`
+        : `${skill.name} locked — learn at ${unlock}`;
+    }
   }
 
   /** Narrow (≤480px): inventory closed by default. Desktop: open once, user may close. */
@@ -147,6 +190,7 @@ export class HUD {
     this.gearPanel.hidden = !open;
     this.btnGear.setAttribute('aria-expanded', open ? 'true' : 'false');
     if (open) {
+      this.closeSidePanels('gear');
       this.heroPane.resize();
       this.heroPane.start();
     } else {
@@ -158,9 +202,35 @@ export class HUD {
     return !this.gearPanel.hidden;
   }
 
+  setSkillsOpen(open: boolean): void {
+    this.skillsPanel.hidden = !open;
+    el('btn-skills').setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) this.closeSidePanels('skills');
+  }
+
+  isSkillsOpen(): boolean {
+    return !this.skillsPanel.hidden;
+  }
+
   setForgeOpen(open: boolean, save?: SaveData): void {
     this.forgePanel.hidden = !open;
-    if (open && save) this.setForgeRecipes(save);
+    if (open) {
+      this.closeSidePanels('forge');
+      if (save) this.setForgeRecipes(save);
+    }
+  }
+
+  private closeSidePanels(keep: 'gear' | 'skills' | 'forge'): void {
+    if (keep !== 'gear') {
+      this.gearPanel.hidden = true;
+      this.btnGear.setAttribute('aria-expanded', 'false');
+      this.heroPane.stop();
+    }
+    if (keep !== 'skills') {
+      this.skillsPanel.hidden = true;
+      el('btn-skills').setAttribute('aria-expanded', 'false');
+    }
+    if (keep !== 'forge') this.forgePanel.hidden = true;
   }
 
   isForgeOpen(): boolean {
@@ -214,17 +284,14 @@ export class HUD {
       if (!btn) continue;
       const itemId = save.equipped[id];
       const canvas = btn.querySelector('canvas.item-icon') as HTMLCanvasElement | null;
-      const empty = btn.querySelector('.gear-empty') as HTMLElement | null;
       btn.classList.toggle('filled', !!itemId);
       if (itemId && canvas) {
         paintItemIcon(canvas, itemId);
         canvas.hidden = false;
-        if (empty) empty.hidden = true;
         const meta = ITEM_META[itemId];
         btn.title = `${label}: ${meta?.name ?? itemId} (click to unequip)`;
       } else {
         if (canvas) canvas.hidden = true;
-        if (empty) empty.hidden = false;
         btn.title = `${label}: empty`;
       }
     }
@@ -309,6 +376,10 @@ export class HUD {
 
   setSkills(save: SaveData): void {
     this.skillsList.innerHTML = '';
+    const trainHead = document.createElement('div');
+    trainHead.className = 'skills-kicker';
+    trainHead.textContent = 'Training';
+    this.skillsList.appendChild(trainHead);
     (Object.keys(SKILL_META) as SkillId[]).forEach((id) => {
       const sk = save.skills[id];
       const meta = SKILL_META[id];
@@ -316,18 +387,50 @@ export class HUD {
       row.className = 'skill-row';
       const next = xpForLevel(sk.level + 1);
       const prev = xpForLevel(sk.level);
-      const pct = sk.level >= 99 ? 100 : ((sk.xp - prev) / (next - prev)) * 100;
+      const into = Math.max(0, sk.xp - prev);
+      const span = Math.max(1, next - prev);
+      const pct = sk.level >= 99 ? 100 : (into / span) * 100;
+      const xpLabel = sk.level >= 99 ? 'Max' : `${Math.floor(into)} / ${span}`;
 
       row.innerHTML = `
         <div class="skill-icon">${meta.icon}</div>
         <div class="skill-meta">
-          <div class="skill-name">${meta.name}</div>
+          <div class="skill-top">
+            <div class="skill-name">${meta.name}</div>
+            <div class="skill-xp-num">${xpLabel}</div>
+          </div>
           <div class="skill-xp"><div style="width:${pct}%"></div></div>
         </div>
         <div class="skill-lvl">${sk.level}</div>
       `;
       this.skillsList.appendChild(row);
     });
+
+    const artHead = document.createElement('div');
+    artHead.className = 'skills-kicker';
+    artHead.textContent = 'Combat arts';
+    this.skillsList.appendChild(artHead);
+    const artGrid = document.createElement('div');
+    artGrid.className = 'art-grid';
+    for (const skill of COMBAT_SKILLS) {
+      const known = combatSkillUnlocked(save, skill);
+      const row = document.createElement('div');
+      row.className = `skill-row art-row${known ? ' known' : ''}`;
+      const unlock = `${SKILL_META[skill.unlockSkill].name} ${skill.unlockLevel}`;
+      row.title = skill.blurb;
+      row.innerHTML = `
+        <div class="skill-icon">${skill.icon}</div>
+        <div class="skill-meta">
+          <div class="skill-top">
+            <div class="skill-name">${skill.name}</div>
+            <div class="skill-xp-num">${known ? 'Known' : unlock}</div>
+          </div>
+        </div>
+        <div class="skill-lvl">${skill.key}</div>
+      `;
+      artGrid.appendChild(row);
+    }
+    this.skillsList.appendChild(artGrid);
   }
 
   showProgress(label: string, ratio: number): void {
@@ -436,7 +539,7 @@ export class HUD {
     ctx.closePath();
     ctx.fill();
     ctx.fillStyle = '#f0d070';
-    ctx.font = 'bold 11px Segoe UI, system-ui, sans-serif';
+    ctx.font = 'bold 11px Liberation Sans, Noto Sans, DejaVu Sans, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('N', cx, 26);
   }

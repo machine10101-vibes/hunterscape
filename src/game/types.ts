@@ -60,6 +60,119 @@ export const SKILL_META: Record<
   mining: { name: 'Mining', icon: '⛏' },
 };
 
+export type CombatSkillId = 'strike' | 'lunge' | 'smash' | 'guard' | 'rend';
+
+export interface CombatSkill {
+  id: CombatSkillId;
+  name: string;
+  icon: string;
+  blurb: string;
+  key: string;
+  unlockSkill: SkillId;
+  unlockLevel: number;
+  costKind: 'stamina' | 'focus' | null;
+  cost: number;
+  cooldown: number;
+  hitMult: number;
+  hitBonus: number;
+  accBonus: number;
+  guardSec: number;
+  guardMit: number;
+}
+
+/** Learnable combat arts shown on the bottom skill bar. */
+export const COMBAT_SKILLS: CombatSkill[] = [
+  {
+    id: 'strike',
+    name: 'Strike',
+    icon: '⚔',
+    blurb: 'A practiced weapon blow. Always known.',
+    key: '1',
+    unlockSkill: 'attack',
+    unlockLevel: 1,
+    costKind: null,
+    cost: 0,
+    cooldown: 0.85,
+    hitMult: 1,
+    hitBonus: 0,
+    accBonus: 0,
+    guardSec: 0,
+    guardMit: 0,
+  },
+  {
+    id: 'lunge',
+    name: 'Lunge',
+    icon: '🗡',
+    blurb: 'A reaching thrust that finds gaps in the guard.',
+    key: '2',
+    unlockSkill: 'attack',
+    unlockLevel: 2,
+    costKind: 'stamina',
+    cost: 12,
+    cooldown: 3.2,
+    hitMult: 1.1,
+    hitBonus: 1,
+    accBonus: 0.12,
+    guardSec: 0,
+    guardMit: 0,
+  },
+  {
+    id: 'smash',
+    name: 'Smash',
+    icon: '🔨',
+    blurb: 'A heavy swing that spends strength for raw force.',
+    key: '3',
+    unlockSkill: 'strength',
+    unlockLevel: 3,
+    costKind: 'stamina',
+    cost: 18,
+    cooldown: 5,
+    hitMult: 1.35,
+    hitBonus: 3,
+    accBonus: -0.04,
+    guardSec: 0,
+    guardMit: 0,
+  },
+  {
+    id: 'guard',
+    name: 'Guard',
+    icon: '🛡',
+    blurb: 'Brace and turn the next blows. Costs focus, not a swing.',
+    key: '4',
+    unlockSkill: 'defence',
+    unlockLevel: 2,
+    costKind: 'focus',
+    cost: 10,
+    cooldown: 8,
+    hitMult: 1,
+    hitBonus: 0,
+    accBonus: 0,
+    guardSec: 4.5,
+    guardMit: 4,
+  },
+  {
+    id: 'rend',
+    name: 'Rend',
+    icon: '💥',
+    blurb: 'A vicious cut that opens a wound once Attack is honed.',
+    key: '5',
+    unlockSkill: 'attack',
+    unlockLevel: 4,
+    costKind: 'stamina',
+    cost: 22,
+    cooldown: 7,
+    hitMult: 1.55,
+    hitBonus: 4,
+    accBonus: 0.04,
+    guardSec: 0,
+    guardMit: 0,
+  },
+];
+
+export function combatSkillUnlocked(save: SaveData, skill: CombatSkill): boolean {
+  return save.skills[skill.unlockSkill].level >= skill.unlockLevel;
+}
+
 export const ITEM_META: Record<
   string,
   { name: string; icon: string; stackable: boolean; slot?: EquipSlot }
