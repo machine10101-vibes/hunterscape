@@ -925,6 +925,7 @@ export class Game {
       this.pendingCombat = true;
       this.pendingCombatTarget = target;
       this.pendingCombatChat = `You ready ${skill.name} against the ${this.combatName(target)}!`;
+      this.hud.chat(`You close in to use ${skill.name}…`, 'combat');
       return;
     }
     this.beginCombat(target, `You ready ${skill.name} against the ${this.combatName(target)}!`);

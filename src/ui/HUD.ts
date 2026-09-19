@@ -410,11 +410,14 @@ export class HUD {
     artHead.className = 'skills-kicker';
     artHead.textContent = 'Combat arts';
     this.skillsList.appendChild(artHead);
+    const artGrid = document.createElement('div');
+    artGrid.className = 'art-grid';
     for (const skill of COMBAT_SKILLS) {
       const known = combatSkillUnlocked(save, skill);
       const row = document.createElement('div');
       row.className = `skill-row art-row${known ? ' known' : ''}`;
       const unlock = `${SKILL_META[skill.unlockSkill].name} ${skill.unlockLevel}`;
+      row.title = skill.blurb;
       row.innerHTML = `
         <div class="skill-icon">${skill.icon}</div>
         <div class="skill-meta">
@@ -422,12 +425,12 @@ export class HUD {
             <div class="skill-name">${skill.name}</div>
             <div class="skill-xp-num">${known ? 'Known' : unlock}</div>
           </div>
-          <div class="skill-art-blurb">${skill.blurb}</div>
         </div>
         <div class="skill-lvl">${skill.key}</div>
       `;
-      this.skillsList.appendChild(row);
+      artGrid.appendChild(row);
     }
+    this.skillsList.appendChild(artGrid);
   }
 
   showProgress(label: string, ratio: number): void {
