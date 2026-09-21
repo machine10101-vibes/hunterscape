@@ -115,6 +115,46 @@ function blendPose(a: BodyPose, b: BodyPose, t: number): BodyPose {
   return out;
 }
 
+/**
+ * Same lerp as blendPose, but hips open first, then the chest, then the sword
+ * arm. A single Euler mix of the whole body makes the blade and the torso
+ * arrive together, which reads as a stick rather than a cut.
+ */
+function blendPoseChain(a: BodyPose, b: BodyPose, t: number): BodyPose {
+  const u = Math.max(0, Math.min(1, t));
+  const tHip = easeInOut(Math.min(1, u / 0.72));
+  const tSpine = easeInOut(Math.max(0, Math.min(1, (u - 0.06) / 0.78)));
+  const tArm = Math.pow(Math.max(0, Math.min(1, (u - 0.1) / 0.9)), 1.45);
+  const tOff = easeInOut(Math.max(0, Math.min(1, (u - 0.04) / 0.86)));
+  const when: Partial<Record<Joint, number>> = {
+    playerHips: tHip,
+    legL: tHip,
+    legR: tHip,
+    shinL: tHip,
+    shinR: tHip,
+    footL: tHip,
+    footR: tHip,
+    playerTorso: tSpine,
+    playerHead: tSpine,
+    clavL: tSpine,
+    clavR: tSpine,
+    armR: tArm,
+    forearmR: tArm,
+    handR: tArm,
+    armL: tOff,
+    forearmL: tOff,
+    handL: tOff,
+  };
+  const out: BodyPose = {};
+  for (const j of JOINTS) {
+    if (a[j] || b[j]) out[j] = mixRot(a[j], b[j], when[j] ?? u);
+  }
+  out.gripR = mix(a.gripR ?? 0.25, b.gripR ?? 0.25, tArm);
+  out.gripL = mix(a.gripL ?? 0.25, b.gripL ?? 0.25, tOff);
+  out.lift = mix(a.lift ?? 0, b.lift ?? 0, tHip);
+  return out;
+}
+
 function applyBodyPose(player: THREE.Group, pose: BodyPose): void {
   for (const j of JOINTS) {
     const r = pose[j] ?? ZERO;
@@ -575,9 +615,13 @@ export function animatePlayerWalk(
         rot(get(player, 'forearmR'), -0.88 - bounce * 0.22, -0.08, 0.04);
         rot(get(player, 'handR'), 0.18 + bounce * 0.12, -1.12, -0.18);
       } else {
-        rot(get(player, 'armR'), 0.22 + bounce * 0.35, 0.08, 0.14);
-        rot(get(player, 'forearmR'), -0.62 - bounce * 0.4, -0.06, 0.04);
-        rot(get(player, 'handR'), 0.18 + bounce * 0.2, -1.18, -0.26);
+        // Carry the solved guard. Pumping the forearm like a club drops the
+        // blade across the thigh and reads as a hammer walk.
+        const g = SWORD_GUARD;
+        rot(get(player, 'clavR'), g.clavR![0] - hipR * shoulderTwist * 0.35 * blend, g.clavR![1], g.clavR![2]);
+        rot(get(player, 'armR'), g.armR![0] + bounce * 0.1, g.armR![1], g.armR![2]);
+        rot(get(player, 'forearmR'), g.forearmR![0] - bounce * 0.06, g.forearmR![1], g.forearmR![2]);
+        rot(get(player, 'handR'), ...(g.handR as Rot3));
       }
       setHandGrip(get(player, 'handR'), 0.96);
       if (shield) {
@@ -593,10 +637,12 @@ export function animatePlayerWalk(
         rot(get(player, 'handL'), ...(g.handL as Rot3));
         setHandGrip(get(player, 'handL'), g.gripL ?? 0.86);
       } else {
-        rot(get(player, 'armL'), -hipL * mix(0.55, 1.05, run) * blend + 0.1, 0.06, -0.06);
-        rot(get(player, 'forearmL'), mix(-0.28, -1.35, run) - Math.max(0, hipL) * 0.2, 0.04, 0);
-        rot(get(player, 'handL'), 0.06, 0.04, 0.04);
-        setHandGrip(get(player, 'handL'), 0.22);
+        const g = SWORD_GUARD;
+        rot(get(player, 'clavL'), g.clavL![0] - hipL * shoulderTwist * 0.3 * blend, g.clavL![1], g.clavL![2]);
+        rot(get(player, 'armL'), g.armL![0] - hipL * mix(0.1, 0.18, run) * blend, g.armL![1], g.armL![2]);
+        rot(get(player, 'forearmL'), g.forearmL![0] - Math.max(0, hipL) * 0.08, g.forearmL![1], g.forearmL![2]);
+        rot(get(player, 'handL'), ...(g.handL as Rot3));
+        setHandGrip(get(player, 'handL'), g.gripL ?? 0.3);
       }
     }
   } else {
@@ -616,9 +662,9 @@ export function animatePlayerWalk(
     setHandGrip(get(player, 'handR'), mix(0.28, 0.72, run));
   }
 
-  const lean = mix(0.03, 0.26, run) * blend;
+  const lean = mix(0.03, combat ? 0.14 : 0.26, run) * blend;
   if (torso) {
-    torso.rotation.y = -hipL * mix(0.1, 0.2, run) * blend;
+    torso.rotation.y = -hipL * mix(0.1, combat ? 0.12 : 0.2, run) * blend;
     torso.rotation.x = lean;
     torso.rotation.z = hipL * 0.03 * blend;
     torso.position.x = -hipL * 0.01 * blend;
@@ -637,12 +683,14 @@ export function animatePlayerWalk(
 }
 
 /**
- * Sword slash: guard → coil → cut → follow-through → guard.
+ * Sword slash: guard → chamber → coil → apex → cut → follow → recover → guard.
  *
- * The blade is never rotated on its own; it is welded into the fist, so the arc
- * is produced by hip and chest rotation, shoulder drive, elbow extension and a
- * wrist snap that lands a beat after the elbow. Fingers clamp through contact
- * and ease off on the follow-through.
+ * The blade is welded into the fist, so the arc is body-driven. Extra
+ * keyframes keep the tip in front of the hunter (world +Z) — a single
+ * over-shoulder coil with Z behind the hips lerps the Euler path through
+ * the spine and reads as a wrap-around club. Hips open before the chest,
+ * and the chest before the sword arm, so the cut has a kinetic chain
+ * instead of every joint arriving on the same frame.
  */
 export function animatePlayerAttack(player: THREE.Group, progress: number): void {
   const p = Math.max(0, Math.min(1, progress));
@@ -661,20 +709,42 @@ export function animatePlayerAttack(player: THREE.Group, progress: number): void
         }
       : pose;
 
-  // Coil: sword goes up over the right shoulder, hips and chest wind back.
-  // Solved against the sword's own tip so the blade stays in front of the
-  // hunter instead of wrapping behind his back or pointing at the camera.
+  // Gather: blade rises to high-right but stays in front of the chest.
+  const chamber: BodyPose = {
+    playerHips: [0.04, -0.22, -0.04],
+    playerTorso: [0.02, -0.34, -0.05],
+    playerHead: [-0.06, 0.26, 0.04],
+    clavR: [0.04, -0.18, -0.18],
+    clavL: [0.06, 0.12, 0.12],
+    armR: [-0.515, 0.621, 0.65],
+    forearmR: [-2.271, 0.011, 0.06],
+    handR: [0.748, -1.373, -0.36],
+    armL: [-0.62, 0.18, -0.28],
+    forearmL: [-1.1, 0.12, 0.06],
+    handL: [0.1, 0.16, 0.1],
+    legL: [-0.24, 0.07, 0.05],
+    shinL: [0.3, 0, 0],
+    footL: [0.04, 0.1, 0],
+    legR: [0.14, -0.05, -0.05],
+    shinR: [0.2, 0, 0],
+    footR: [0.08, -0.08, 0],
+    gripR: 0.96,
+    gripL: 0.3,
+    lift: 0.03,
+  };
+
+  // Full coil: high over the right shoulder, tip still in front (+Z).
   const windup: BodyPose = {
-    playerHips: [0.04, -0.32, -0.05],
-    playerTorso: [-0.12, -0.55, -0.08],
-    playerHead: [-0.1, 0.32, 0.06],
-    clavR: [-0.16, -0.28, -0.32],
+    playerHips: [0.04, -0.36, -0.05],
+    playerTorso: [-0.08, -0.52, -0.08],
+    playerHead: [-0.08, 0.34, 0.06],
+    clavR: [-0.12, -0.24, -0.28],
     clavL: [0.08, 0.16, 0.16],
-    armR: [-2.23, -0.47, 1.1],
-    forearmR: [-1.77, 0.14, 0],
-    handR: [0.8, -1.9, -0.8],
-    armL: [-0.55, 0.2, -0.28],
-    forearmL: [-1.05, 0.12, 0.08],
+    armR: [-0.907, 0.359, 0.65],
+    forearmR: [-2.3, 0.3, 0.06],
+    handR: [0.75, -1.508, -0.5],
+    armL: [-0.52, 0.2, -0.26],
+    forearmL: [-1.02, 0.12, 0.08],
     handL: [0.1, 0.16, 0.1],
     legL: [-0.28, 0.08, 0.06],
     shinL: [0.32, 0, 0],
@@ -682,24 +752,47 @@ export function animatePlayerAttack(player: THREE.Group, progress: number): void
     legR: [0.16, -0.06, -0.05],
     shinR: [0.22, 0, 0],
     footR: [0.1, -0.1, 0],
-    gripR: 0.96,
+    gripR: 0.98,
     gripL: 0.3,
     lift: 0.04,
   };
 
-  // Contact: a diagonal cut, high-right to low-left, blade across the body
-  // at chest height with the edge leading.
+  // Hips have started to open; the blade is still high and coming across.
+  const apex: BodyPose = {
+    playerHips: [0.02, -0.08, 0.0],
+    playerTorso: [0.04, -0.16, -0.02],
+    playerHead: [-0.02, 0.22, 0.02],
+    clavR: [0.02, -0.08, -0.1],
+    clavL: [0.06, 0.1, 0.12],
+    armR: [-0.988, -0.016, 0.65],
+    forearmR: [-1.645, -0.3, 0.06],
+    handR: [0.75, -1.9, -0.5],
+    armL: [-0.42, 0.16, -0.08],
+    forearmL: [-0.88, 0.1, 0.06],
+    handL: [0.08, 0.12, 0.1],
+    legL: [-0.34, 0.07, 0.02],
+    shinL: [0.26, 0, 0],
+    footL: [0.06, 0.1, 0],
+    legR: [0.2, -0.05, 0.0],
+    shinR: [0.3, 0, 0],
+    footR: [0.04, -0.08, 0],
+    gripR: 1.04,
+    gripL: 0.32,
+    lift: 0.05,
+  };
+
+  // Contact: diagonal high-right to low-left, blade across the chest, edge leading.
   const strike: BodyPose = {
-    playerHips: [0.0, 0.26, 0.06],
-    playerTorso: [0.22, 0.48, 0.1],
-    playerHead: [0.1, 0.2, -0.08],
-    clavR: [0.18, 0.14, 0.12],
+    playerHips: [0.0, 0.24, 0.06],
+    playerTorso: [0.18, 0.42, 0.1],
+    playerHead: [0.08, 0.18, -0.06],
+    clavR: [0.16, 0.12, 0.1],
     clavL: [0.04, 0.06, 0.1],
-    armR: [-1.7, -0.48, -0.74],
-    forearmR: [-0.65, -0.5, 0],
-    handR: [0.72, -1.9, -0.25],
-    armL: [-0.35, 0.14, 0.22],
-    forearmL: [-0.7, 0.08, 0.06],
+    armR: [-1.848, -0.7, -0.6],
+    forearmR: [-0.163, -0.3, 0.06],
+    handR: [0.701, -1.9, 0.021],
+    armL: [-0.32, 0.14, 0.2],
+    forearmL: [-0.68, 0.08, 0.06],
     handL: [0.08, 0.08, 0.12],
     legL: [-0.4, 0.06, -0.04],
     shinL: [0.22, 0, 0],
@@ -712,32 +805,62 @@ export function animatePlayerAttack(player: THREE.Group, progress: number): void
     lift: 0.05,
   };
 
+  // Through the target, still in front — never wrapping behind the left hip.
   const follow: BodyPose = {
     ...strike,
-    playerHips: [-0.02, 0.32, 0.06],
-    playerTorso: [0.18, 0.62, 0.12],
-    playerHead: [0.12, 0.28, -0.08],
-    clavR: [0.2, 0.18, 0.12],
+    playerHips: [-0.02, 0.3, 0.06],
+    playerTorso: [0.14, 0.56, 0.12],
+    playerHead: [0.1, 0.26, -0.06],
+    clavR: [0.18, 0.16, 0.12],
     clavL: [0.04, 0.08, 0.12],
-    armR: [-1.56, -1.0, -0.9],
-    forearmR: [-0.98, -0.5, 0],
-    handR: [0.78, -1.9, 0.04],
-    armL: [-0.2, 0.16, 0.26],
+    armR: [-0.771, -0.7, -0.6],
+    forearmR: [-0.604, -0.3, 0.06],
+    handR: [0.75, -1.9, -0.109],
+    armL: [-0.22, 0.16, 0.24],
     forearmL: [-0.55, 0.08, 0.06],
     gripR: 0.98,
     lift: 0.03,
   };
 
+  // Rise on the left-front so the recover lerp does not cut back through the ribs.
+  const recover: BodyPose = {
+    playerHips: [0.02, 0.1, 0.04],
+    playerTorso: [0.1, 0.18, 0.06],
+    playerHead: [0.02, 0.16, -0.04],
+    clavR: [0.12, 0.0, 0.02],
+    clavL: [0.04, 0.08, 0.1],
+    armR: [-0.537, -0.656, 0.184],
+    forearmR: [-1.397, 0.062, 0.06],
+    handR: [0.501, -1.379, -0.231],
+    armL: [-0.48, 0.16, -0.12],
+    forearmL: [-0.92, 0.1, 0.04],
+    handL: [0.1, 0.14, 0.1],
+    legL: [-0.28, 0.06, 0.04],
+    shinL: [0.26, 0, 0],
+    footL: [0.06, 0.08, 0],
+    legR: [0.16, -0.04, -0.02],
+    shinR: [0.24, 0, 0],
+    footR: [0.04, -0.06, 0],
+    gripR: 0.96,
+    gripL: 0.3,
+    lift: 0.02,
+  };
+
   let pose: BodyPose;
-  if (p < 0.36) {
-    pose = blendPose(guard, holdOff(windup), easeInOut(p / 0.36));
-  } else if (p < 0.52) {
-    // Squared ease: slow off the coil, fastest at contact.
-    pose = blendPose(holdOff(windup), holdOff(strike), Math.pow((p - 0.36) / 0.16, 2.1));
-  } else if (p < 0.64) {
-    pose = blendPose(holdOff(strike), holdOff(follow), smooth((p - 0.52) / 0.12));
+  if (p < 0.2) {
+    pose = blendPose(guard, holdOff(chamber), easeInOut(p / 0.2));
+  } else if (p < 0.38) {
+    pose = blendPose(holdOff(chamber), holdOff(windup), easeInOut((p - 0.2) / 0.18));
+  } else if (p < 0.5) {
+    pose = blendPoseChain(holdOff(windup), holdOff(apex), Math.pow((p - 0.38) / 0.12, 1.35));
+  } else if (p < 0.6) {
+    pose = blendPoseChain(holdOff(apex), holdOff(strike), Math.pow((p - 0.5) / 0.1, 1.8));
+  } else if (p < 0.72) {
+    pose = blendPose(holdOff(strike), holdOff(follow), smooth((p - 0.6) / 0.12));
+  } else if (p < 0.84) {
+    pose = blendPose(holdOff(follow), holdOff(recover), easeInOut((p - 0.72) / 0.12));
   } else {
-    pose = blendPose(holdOff(follow), guard, easeInOut((p - 0.64) / 0.36));
+    pose = blendPose(holdOff(recover), guard, easeInOut((p - 0.84) / 0.16));
   }
 
   applyBodyPose(player, pose);
@@ -1338,17 +1461,17 @@ export function animateDeath(mesh: THREE.Group, kind: 'yeti' | 'orc' | 'dummy', 
 }
 
 /** Attack phase helpers — longer windups, clearer connect */
-export const PLAYER_ATTACK_CONNECT_START = 0.44;
-export const PLAYER_ATTACK_CONNECT_END = 0.56;
+export const PLAYER_ATTACK_CONNECT_START = 0.5;
+export const PLAYER_ATTACK_CONNECT_END = 0.6;
 export const YETI_ATTACK_CONNECT_START = 0.48;
 export const YETI_ATTACK_CONNECT_END = 0.62;
 export const ORC_ATTACK_CONNECT_START = 0.45;
 export const ORC_ATTACK_CONNECT_END = 0.58;
-export const PLAYER_ATTACK_DURATION = 0.78;
+export const PLAYER_ATTACK_DURATION = 0.92;
 export const YETI_ATTACK_DURATION = 1.05;
 export const ORC_ATTACK_DURATION = 0.82;
 
 /** Windup ends (for telegraph lifetime) */
-export const PLAYER_ATTACK_WINDUP_END = 0.36;
+export const PLAYER_ATTACK_WINDUP_END = 0.38;
 export const YETI_ATTACK_WINDUP_END = 0.42;
 export const ORC_ATTACK_WINDUP_END = 0.4;
