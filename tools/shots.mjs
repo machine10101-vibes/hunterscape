@@ -27,6 +27,7 @@ const DEFAULT = [
   { name: 'slash-20', o: { pose: 'slash', t: 0.2, az: 0.8 } },
   { name: 'slash-38', o: { pose: 'slash', t: 0.38, az: 0.8 } },
   { name: 'slash-50', o: { pose: 'slash', t: 0.5, az: 0.8 } },
+  { name: 'slash-58', o: { pose: 'slash', t: 0.58, az: 0.8 } },
   { name: 'slash-60', o: { pose: 'slash', t: 0.6, az: 0.8 } },
   { name: 'slash-72', o: { pose: 'slash', t: 0.72, az: 0.8 } },
   { name: 'slash-84', o: { pose: 'slash', t: 0.84, az: 0.8 } },

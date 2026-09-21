@@ -662,7 +662,7 @@ export function animatePlayerWalk(
     setHandGrip(get(player, 'handR'), mix(0.28, 0.72, run));
   }
 
-  const lean = mix(0.03, combat ? 0.14 : 0.26, run) * blend;
+  const lean = mix(0.03, combat ? 0.1 : 0.26, run) * blend;
   if (torso) {
     torso.rotation.y = -hipL * mix(0.1, combat ? 0.12 : 0.2, run) * blend;
     torso.rotation.x = lean;
@@ -788,9 +788,9 @@ export function animatePlayerAttack(player: THREE.Group, progress: number): void
     playerHead: [0.08, 0.18, -0.06],
     clavR: [0.16, 0.12, 0.1],
     clavL: [0.04, 0.06, 0.1],
-    armR: [-1.848, -0.7, -0.6],
-    forearmR: [-0.163, -0.3, 0.06],
-    handR: [0.701, -1.9, 0.021],
+    armR: [-1.316, -0.7, -0.24],
+    forearmR: [-1.051, -0.3, 0.06],
+    handR: [0.75, -1.9, -0.394],
     armL: [-0.32, 0.14, 0.2],
     forearmL: [-0.68, 0.08, 0.06],
     handL: [0.08, 0.08, 0.12],
@@ -854,7 +854,9 @@ export function animatePlayerAttack(player: THREE.Group, progress: number): void
   } else if (p < 0.5) {
     pose = blendPoseChain(holdOff(windup), holdOff(apex), Math.pow((p - 0.38) / 0.12, 1.35));
   } else if (p < 0.6) {
-    pose = blendPoseChain(holdOff(apex), holdOff(strike), Math.pow((p - 0.5) / 0.1, 1.8));
+    // Straight blend here so the blade actually crosses during the connect
+    // window. Chain-lag left it parked at the apex through t=0.55.
+    pose = blendPose(holdOff(apex), holdOff(strike), Math.pow((p - 0.5) / 0.1, 1.55));
   } else if (p < 0.72) {
     pose = blendPose(holdOff(strike), holdOff(follow), smooth((p - 0.6) / 0.12));
   } else if (p < 0.84) {
@@ -1461,8 +1463,8 @@ export function animateDeath(mesh: THREE.Group, kind: 'yeti' | 'orc' | 'dummy', 
 }
 
 /** Attack phase helpers — longer windups, clearer connect */
-export const PLAYER_ATTACK_CONNECT_START = 0.5;
-export const PLAYER_ATTACK_CONNECT_END = 0.6;
+export const PLAYER_ATTACK_CONNECT_START = 0.56;
+export const PLAYER_ATTACK_CONNECT_END = 0.62;
 export const YETI_ATTACK_CONNECT_START = 0.48;
 export const YETI_ATTACK_CONNECT_END = 0.62;
 export const ORC_ATTACK_CONNECT_START = 0.45;
