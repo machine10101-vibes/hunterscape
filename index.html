@@ -67,6 +67,11 @@
             <span class="nav-txt">Studio</span>
             <kbd class="nav-key">V</kbd>
           </button>
+          <button type="button" id="btn-plots" title="Land plots (P)" aria-expanded="false" aria-controls="plots">
+            <span class="nav-ico" aria-hidden="true">▣</span>
+            <span class="nav-txt">Plots</span>
+            <kbd class="nav-key">P</kbd>
+          </button>
         </nav>
 
         <!-- Hero gear / equipment -->
@@ -174,7 +179,27 @@
           <div class="bar thin"><div id="target-hp"></div></div>
         </div>
 
-        <div id="touch-hint">Tap the ground to walk · Pinch to zoom · Use the skill bar in a fight</div>
+        <div id="touch-hint">Tap the ground to walk · Pinch to zoom · Plots (P) surveys the wood</div>
+      </div>
+
+      <div id="plots" hidden>
+        <div id="plots-top">
+          <div class="studio-brand">
+            <span class="studio-kicker">Survey</span>
+            <span id="plots-name">Plot C4</span>
+          </div>
+          <span id="plots-hint">Click a square · Drag to pan · Scroll to zoom · Arrows step · Esc to close</span>
+          <button type="button" id="plots-close" aria-label="Close plots">✕</button>
+        </div>
+        <div id="plots-side">
+          <div class="panel-head">Land plots</div>
+          <div id="plots-grid" role="grid" aria-label="World plot grid"></div>
+          <p id="plots-meta">Choose a square of the wood to inspect it from above.</p>
+          <div id="plots-tools">
+            <button type="button" id="plots-frame" title="Frame this plot (F)">Frame</button>
+            <button type="button" id="plots-world" title="See the whole wood (M)">Whole wood</button>
+          </div>
+        </div>
       </div>
 
       <div id="studio" hidden>
