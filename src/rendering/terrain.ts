@@ -84,8 +84,7 @@ function grassDetail(x: number, z: number): number {
   return fbm(x * 2.4 + 12.7, z * 2.4 - 6.3, 4);
 }
 
-export function createGround(size = 48): THREE.Mesh {
-  const segments = 128;
+export function createGround(size = 48, segments = 128, cx = 0, cz = 0): THREE.Mesh {
   const geo = new THREE.PlaneGeometry(size, size, segments, segments);
   const pos = geo.attributes.position;
   const colors = new Float32Array(pos.count * 3);
@@ -103,9 +102,9 @@ export function createGround(size = 48): THREE.Mesh {
   const tmp = new THREE.Color();
 
   for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i);
+    const x = pos.getX(i) + cx;
     const localY = pos.getY(i);
-    const z = -localY; // world Z after rotation.x = -PI/2
+    const z = -localY + cz; // world Z after rotation.x = -PI/2
     pos.setZ(i, groundHeight(x, z));
 
     const pathAmt = pathAmount(x, z);
@@ -146,8 +145,9 @@ export function createGround(size = 48): THREE.Mesh {
     }),
   );
   mesh.rotation.x = -Math.PI / 2;
+  mesh.position.set(cx, 0, cz);
   mesh.receiveShadow = true;
-  mesh.name = 'ground';
+  mesh.name = cx === 0 && cz === 0 ? 'ground' : `ground_${cx}_${cz}`;
   return mesh;
 }
 

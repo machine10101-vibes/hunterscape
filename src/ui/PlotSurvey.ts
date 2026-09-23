@@ -1,49 +1,53 @@
 import * as THREE from 'three';
 import {
-  allPlots,
-  landmarksIn,
-  makePlot,
-  plotAt,
-  plotBlurb,
-  plotId,
-  plotTerrain,
+  HOME_COL,
+  HOME_ROW,
   PLOT_COLS,
+  PLOT_COUNT,
   PLOT_ROWS,
   PLOT_SIZE,
-  WORLD_HALF,
-  WORLD_SIZE,
+  homePlot,
+  isHomePlot,
+  landmarksIn,
+  makePlot,
+  parsePlotRef,
+  plotNumber,
+  plotTerrain,
   type Plot,
 } from '../game/plots';
+import { PlotWorld } from '../rendering/plotChunks';
 import { groundHeight } from '../rendering/terrain';
 
-/** Play camera sits at ~8.7 m; survey starts ~3× higher so a plot still fills the frame. */
-const SURVEY_HEIGHT = 24;
-const SURVEY_BACK = 11;
-const SURVEY_ZOOM_MIN = 0.55;
-const SURVEY_ZOOM_MAX = 4.6;
+/** Frame one 48×48 section the way the old "whole wood" view framed Thornrest. */
+const SURVEY_HEIGHT = 58;
+const SURVEY_BACK = 22;
+const SURVEY_ZOOM_MIN = 0.42;
+const SURVEY_ZOOM_MAX = 1.7;
 const SURVEY_FAR = 420;
 const PLAY_FAR = 140;
-const SKY_SURVEY_SCALE = 2.8;
+const SKY_SURVEY_SCALE = 14;
 
 /**
  * High-camera survey over the live camp scene.
  *
- * The play renderer keeps drawing the same ground, trees, and kit — this only
- * lifts the existing camera, draws a plot grid, and lets the hunter step
- * between squares. A second scene would drift from the real wood.
+ * Thornrest is one section. The other 499 are the same size, grown as you
+ * inspect them so the wood keeps the real terrain shader instead of a
+ * second map scene.
  */
 export class PlotSurvey {
   onWillOpen: (() => void) | null = null;
 
   private openFlag = false;
   private root: HTMLElement;
-  private gridEl: HTMLElement;
+  private atlas: HTMLCanvasElement;
   private nameEl: HTMLElement;
   private metaEl: HTMLElement;
+  private jumpEl: HTMLInputElement | null;
   private overlay: THREE.Group;
   private highlight: THREE.Mesh;
   private pickPlane: THREE.Mesh;
-  private labels = new Map<string, THREE.Sprite>();
+  private border: THREE.LineSegments;
+  private label: THREE.Sprite;
   private selected: Plot;
   private look = new THREE.Vector3();
   private lookTarget = new THREE.Vector3();
@@ -59,24 +63,27 @@ export class PlotSurvey {
   private pointer = new THREE.Vector2();
   private raycaster = new THREE.Raycaster();
   private gameCamera: THREE.PerspectiveCamera | null = null;
+  private world: PlotWorld;
+  private hoverId = '';
 
   constructor(private scene: THREE.Scene) {
     this.root = document.getElementById('plots') as HTMLElement;
-    this.gridEl = document.getElementById('plots-grid') as HTMLElement;
+    this.atlas = document.getElementById('plots-atlas') as HTMLCanvasElement;
     this.nameEl = document.getElementById('plots-name') as HTMLElement;
     this.metaEl = document.getElementById('plots-meta') as HTMLElement;
-    this.selected = plotAt(0, 2) ?? makePlot(4, 4);
+    this.jumpEl = document.getElementById('plots-jump') as HTMLInputElement | null;
+    this.world = new PlotWorld(scene);
+    this.selected = homePlot();
     this.look.set(this.selected.cx, 0.3, this.selected.cz);
     this.lookTarget.copy(this.look);
 
     this.overlay = new THREE.Group();
     this.overlay.name = 'plotOverlay';
     this.overlay.visible = false;
-    this.buildOverlay();
     this.scene.add(this.overlay);
 
     this.pickPlane = new THREE.Mesh(
-      new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE),
+      new THREE.PlaneGeometry(PLOT_SIZE, PLOT_SIZE),
       new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide }),
     );
     this.pickPlane.rotation.x = -Math.PI / 2;
@@ -84,11 +91,11 @@ export class PlotSurvey {
     this.overlay.add(this.pickPlane);
 
     this.highlight = new THREE.Mesh(
-      new THREE.PlaneGeometry(PLOT_SIZE - 0.16, PLOT_SIZE - 0.16),
+      new THREE.PlaneGeometry(PLOT_SIZE - 0.8, PLOT_SIZE - 0.8),
       new THREE.MeshBasicMaterial({
         color: 0xe8c46a,
         transparent: true,
-        opacity: 0.22,
+        opacity: 0.08,
         depthWrite: false,
         side: THREE.DoubleSide,
       }),
@@ -97,9 +104,14 @@ export class PlotSurvey {
     this.highlight.renderOrder = 3;
     this.overlay.add(this.highlight);
 
-    this.buildList();
+    this.border = makeSectionBorder();
+    this.overlay.add(this.border);
+    this.label = makeLabel(this.selected.id);
+    this.overlay.add(this.label);
+
     this.bindUi();
-    this.syncHighlight();
+    this.drawAtlas();
+    this.syncOverlay();
   }
 
   isOpen(): boolean {
@@ -124,8 +136,10 @@ export class PlotSurvey {
     if (hud) hud.hidden = true;
     this.overlay.visible = true;
     document.getElementById('btn-plots')?.setAttribute('aria-expanded', 'true');
-    this.syncHighlight();
+    this.world.focus(this.selected);
+    this.syncOverlay();
     this.refreshCard();
+    this.drawAtlas();
   }
 
   close(): void {
@@ -141,7 +155,6 @@ export class PlotSurvey {
     this.snappedBack = true;
   }
 
-  /** Restore the play camera's far plane and fog after leaving survey. */
   restoreCamera(camera: THREE.PerspectiveCamera): void {
     camera.far = this.savedFar;
     camera.near = 0.1;
@@ -161,11 +174,9 @@ export class PlotSurvey {
     const fog = this.scene.fog;
     if (fog && 'density' in fog) {
       this.savedFog = (fog as THREE.FogExp2).density;
-      // Same fog colour, thinner so the far squares of the wood still read.
-      (fog as THREE.FogExp2).density = 0.0045;
+      (fog as THREE.FogExp2).density = 0.0036;
     }
     this.sky = this.scene.getObjectByName('sky') ?? null;
-    // The play dome is radius 70; a high survey cam would sit outside it.
     if (this.sky) this.sky.scale.setScalar(SKY_SURVEY_SCALE);
   }
 
@@ -176,8 +187,7 @@ export class PlotSurvey {
 
   applyCamera(camera: THREE.PerspectiveCamera, dt: number): void {
     this.gameCamera = camera;
-    const ease = 1 - Math.exp(-7.5 * dt);
-    this.zoom += (this.zoomTarget - this.zoom) * ease;
+    this.zoom += (this.zoomTarget - this.zoom) * (1 - Math.exp(-7.5 * dt));
     this.look.lerp(this.lookTarget, 1 - Math.exp(-6.2 * dt));
     const z = this.zoom;
     camera.position.set(this.look.x, SURVEY_HEIGHT * z, this.look.z + SURVEY_BACK * z);
@@ -202,33 +212,26 @@ export class PlotSurvey {
     if (Math.hypot(dx, dy) > 4) this.dragMoved = true;
     this.dragLast.x = ev.clientX;
     this.dragLast.y = ev.clientY;
-    // Drag the look target across the wood; scale by how high we are sitting.
-    const k = 0.018 * this.zoom;
-    this.lookTarget.x = THREE.MathUtils.clamp(this.lookTarget.x - dx * k, -WORLD_HALF + 1, WORLD_HALF - 1);
-    this.lookTarget.z = THREE.MathUtils.clamp(this.lookTarget.z + dy * k, -WORLD_HALF + 1, WORLD_HALF - 1);
-    const under = plotAt(this.lookTarget.x, this.lookTarget.z);
-    if (under && under.id !== this.selected.id) this.select(under, false);
+    const k = 0.042 * this.zoom;
+    const p = this.selected;
+    this.lookTarget.x = THREE.MathUtils.clamp(this.lookTarget.x - dx * k, p.minX + 2, p.maxX - 2);
+    this.lookTarget.z = THREE.MathUtils.clamp(this.lookTarget.z + dy * k, p.minZ + 2, p.maxZ - 2);
   }
 
-  handlePointerUp(camera: THREE.PerspectiveCamera): void {
-    const wasDrag = this.dragMoved;
+  handlePointerUp(_camera: THREE.PerspectiveCamera): void {
     this.dragging = false;
-    if (wasDrag) return;
-    this.raycaster.setFromCamera(this.pointer, camera);
-    const hits = this.raycaster.intersectObject(this.pickPlane, false);
-    if (!hits.length) return;
-    const p = hits[0].point;
-    const plot = plotAt(p.x, p.z);
-    if (plot) this.select(plot, true);
   }
 
   private select(plot: Plot, frame: boolean): void {
     this.selected = plot;
+    this.world.focus(plot);
     if (frame) {
       this.lookTarget.set(plot.cx, groundHeight(plot.cx, plot.cz) + 0.25, plot.cz);
+      this.zoomTarget = 1;
     }
-    this.syncHighlight();
+    this.syncOverlay();
     this.refreshCard();
+    this.drawAtlas();
   }
 
   private step(dc: number, dr: number): void {
@@ -239,96 +242,76 @@ export class PlotSurvey {
 
   private frameSelected(): void {
     this.lookTarget.set(this.selected.cx, groundHeight(this.selected.cx, this.selected.cz) + 0.25, this.selected.cz);
-    this.zoomTarget = 0.85;
+    this.zoomTarget = 1;
   }
 
-  private frameWorld(): void {
-    this.lookTarget.set(0, 0.3, 0);
-    this.zoomTarget = 2.35;
+  private goHome(): void {
+    this.select(homePlot(), true);
   }
 
-  private syncHighlight(): void {
+  private syncOverlay(): void {
     const p = this.selected;
-    this.highlight.position.set(p.cx, groundHeight(p.cx, p.cz) + 0.1, p.cz);
-    for (const [id, spr] of this.labels) {
-      const on = id === p.id;
-      spr.material.opacity = on ? 1 : 0.72;
-      spr.scale.set(on ? 3.1 : 2.35, on ? 1.55 : 1.18, 1);
-    }
-    this.gridEl.querySelectorAll('.plot-cell').forEach((btn) => {
-      btn.classList.toggle('on', (btn as HTMLElement).dataset.id === p.id);
-    });
+    const y = groundHeight(p.cx, p.cz);
+    this.highlight.position.set(p.cx, y + 0.12, p.cz);
+    this.pickPlane.position.set(p.cx, 0, p.cz);
+    this.border.position.set(p.cx, 0, p.cz);
+    this.label.position.set(p.cx, y + 2.4, p.cz);
+    setLabelText(this.label, p.id);
   }
 
   private refreshCard(): void {
     const p = this.selected;
-    this.nameEl.textContent = `Plot ${p.id}`;
+    const n = plotNumber(p);
+    this.nameEl.textContent = `${p.id} · ${n} / ${PLOT_COUNT}`;
     const marks = landmarksIn(p);
     const lines = [
-      plotTerrain(p),
+      isHomePlot(p) ? 'Home section — the current Thornrest environment' : plotTerrain(p),
       `West ${p.minX.toFixed(0)} → east ${p.maxX.toFixed(0)} · south ${p.minZ.toFixed(0)} → north ${p.maxZ.toFixed(0)}`,
     ];
     if (marks.length) lines.push(marks.map((m) => m.name).join(' · '));
-    else lines.push('No authored landmarks yet — a blank square of the wood.');
+    else lines.push('Undeveloped — same 48×48 as Thornrest, waiting to be built.');
     this.metaEl.textContent = lines.join('\n');
   }
 
-  private buildList(): void {
-    this.gridEl.innerHTML = '';
-    // North at the top, so row 8 is first — matches looking down on the wood.
-    for (let row = PLOT_ROWS - 1; row >= 0; row--) {
-      for (let col = 0; col < PLOT_COLS; col++) {
-        const plot = makePlot(col, row);
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'plot-cell';
-        btn.dataset.id = plot.id;
-        btn.title = `${plot.id} — ${plotBlurb(plot)}`;
-        btn.textContent = plot.id;
-        btn.addEventListener('click', () => this.select(plot, true));
-        this.gridEl.appendChild(btn);
-      }
-    }
+  private atlasCell(ev: MouseEvent): Plot | null {
+    const r = this.atlas.getBoundingClientRect();
+    const x = ((ev.clientX - r.left) / r.width) * PLOT_COLS;
+    const y = ((ev.clientY - r.top) / r.height) * PLOT_ROWS;
+    const col = Math.floor(x);
+    const row = PLOT_ROWS - 1 - Math.floor(y);
+    if (col < 0 || col >= PLOT_COLS || row < 0 || row >= PLOT_ROWS) return null;
+    return makePlot(col, row);
   }
 
-  private buildOverlay(): void {
-    const pts: number[] = [];
-    const step = 1;
-    for (let i = 0; i <= PLOT_COLS; i++) {
-      const x = -WORLD_HALF + i * PLOT_SIZE;
-      for (let s = 0; s < WORLD_SIZE; s += step) {
-        const z0 = -WORLD_HALF + s;
-        const z1 = Math.min(WORLD_HALF, z0 + step);
-        pts.push(x, groundHeight(x, z0) + 0.07, z0, x, groundHeight(x, z1) + 0.07, z1);
+  private drawAtlas(): void {
+    const c = this.atlas;
+    const w = c.width;
+    const h = c.height;
+    const ctx = c.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#16120c';
+    ctx.fillRect(0, 0, w, h);
+    const cw = w / PLOT_COLS;
+    const rh = h / PLOT_ROWS;
+    for (let row = 0; row < PLOT_ROWS; row++) {
+      for (let col = 0; col < PLOT_COLS; col++) {
+        const drawRow = PLOT_ROWS - 1 - row;
+        const x = col * cw;
+        const y = drawRow * rh;
+        const home = col === HOME_COL && row === HOME_ROW;
+        const on = col === this.selected.col && row === this.selected.row;
+        const hover = this.hoverId === `${col},${row}`;
+        if (home) ctx.fillStyle = '#6a4e18';
+        else if (on) ctx.fillStyle = '#3a2c12';
+        else ctx.fillStyle = '#241c12';
+        ctx.fillRect(x + 0.5, y + 0.5, cw - 1, rh - 1);
+        if (on || home || hover) {
+          ctx.strokeStyle = home || on ? '#e8c46a' : '#a88840';
+          ctx.lineWidth = on ? 1.6 : 1;
+          ctx.strokeRect(x + 1, y + 1, cw - 2, rh - 2);
+        }
       }
-    }
-    for (let i = 0; i <= PLOT_ROWS; i++) {
-      const z = -WORLD_HALF + i * PLOT_SIZE;
-      for (let s = 0; s < WORLD_SIZE; s += step) {
-        const x0 = -WORLD_HALF + s;
-        const x1 = Math.min(WORLD_HALF, x0 + step);
-        pts.push(x0, groundHeight(x0, z) + 0.07, z, x1, groundHeight(x1, z) + 0.07, z);
-      }
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-    const lines = new THREE.LineSegments(
-      geo,
-      new THREE.LineBasicMaterial({
-        color: 0xe8c46a,
-        transparent: true,
-        opacity: 0.78,
-        depthWrite: false,
-      }),
-    );
-    lines.renderOrder = 2;
-    this.overlay.add(lines);
-
-    for (const plot of allPlots()) {
-      const spr = makeLabel(plot.id);
-      spr.position.set(plot.cx, groundHeight(plot.cx, plot.cz) + 1.15, plot.cz);
-      this.labels.set(plot.id, spr);
-      this.overlay.add(spr);
     }
   }
 
@@ -336,11 +319,36 @@ export class PlotSurvey {
     document.getElementById('btn-plots')?.addEventListener('click', () => this.toggle());
     document.getElementById('plots-close')?.addEventListener('click', () => this.close());
     document.getElementById('plots-frame')?.addEventListener('click', () => this.frameSelected());
-    document.getElementById('plots-world')?.addEventListener('click', () => this.frameWorld());
+    document.getElementById('plots-home')?.addEventListener('click', () => this.goHome());
+
+    this.atlas.addEventListener('click', (ev) => {
+      const plot = this.atlasCell(ev);
+      if (plot) this.select(plot, true);
+    });
+    this.atlas.addEventListener('mousemove', (ev) => {
+      const plot = this.atlasCell(ev);
+      const id = plot ? `${plot.col},${plot.row}` : '';
+      if (id !== this.hoverId) {
+        this.hoverId = id;
+        this.atlas.title = plot ? `${plot.id} · ${plotNumber(plot)} / ${PLOT_COUNT}` : '';
+        this.drawAtlas();
+      }
+    });
+
+    this.jumpEl?.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      const ref = parsePlotRef(this.jumpEl!.value);
+      if (!ref) return;
+      this.select(makePlot(ref.col, ref.row), true);
+      this.jumpEl!.blur();
+    });
 
     window.addEventListener('keydown', (e) => {
       const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) {
+        if (e.key === 'Escape' && this.openFlag) this.jumpEl?.blur();
+        return;
+      }
       if (e.key === 'Escape' && this.openFlag) {
         this.close();
         e.preventDefault();
@@ -358,34 +366,61 @@ export class PlotSurvey {
       if (e.key === 'ArrowDown' || e.key.toLowerCase() === 's') this.step(0, -1);
       if (e.key === 'ArrowUp' || e.key.toLowerCase() === 'w') this.step(0, 1);
       if (e.key.toLowerCase() === 'f') this.frameSelected();
-      if (e.key.toLowerCase() === 'm') this.frameWorld();
+      if (e.key.toLowerCase() === 'h') this.goHome();
     });
   }
 }
 
+function makeSectionBorder(): THREE.LineSegments {
+  const h = PLOT_SIZE / 2;
+  const pts = [
+    -h, 0.14, -h, h, 0.14, -h,
+    h, 0.14, -h, h, 0.14, h,
+    h, 0.14, h, -h, 0.14, h,
+    -h, 0.14, h, -h, 0.14, -h,
+  ];
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  const line = new THREE.LineSegments(
+    geo,
+    new THREE.LineBasicMaterial({ color: 0xe8c46a, transparent: true, opacity: 0.85, depthWrite: false }),
+  );
+  line.renderOrder = 2;
+  return line;
+}
+
 function makeLabel(text: string): THREE.Sprite {
+  const spr = new THREE.Sprite(
+    new THREE.SpriteMaterial({ transparent: true, depthWrite: false, opacity: 0.92 }),
+  );
+  spr.scale.set(10, 3.2, 1);
+  spr.renderOrder = 4;
+  setLabelText(spr, text);
+  return spr;
+}
+
+function setLabelText(spr: THREE.Sprite, text: string): void {
   const c = document.createElement('canvas');
-  c.width = 128;
-  c.height = 64;
+  c.width = 256;
+  c.height = 80;
   const ctx = c.getContext('2d')!;
-  ctx.clearRect(0, 0, 128, 64);
-  ctx.fillStyle = 'rgba(12, 10, 6, 0.55)';
+  ctx.clearRect(0, 0, 256, 80);
+  ctx.fillStyle = 'rgba(12, 10, 6, 0.62)';
   ctx.beginPath();
-  ctx.roundRect(18, 14, 92, 36, 8);
+  ctx.roundRect(16, 16, 224, 48, 10);
   ctx.fill();
-  ctx.strokeStyle = 'rgba(232, 196, 106, 0.7)';
+  ctx.strokeStyle = 'rgba(232, 196, 106, 0.75)';
   ctx.lineWidth = 2;
   ctx.stroke();
   ctx.fillStyle = '#f3d27a';
-  ctx.font = '700 22px Liberation Serif, Noto Serif, serif';
+  ctx.font = '700 28px Liberation Serif, Noto Serif, serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(text, 64, 33);
+  ctx.fillText(text, 128, 41);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
-  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0.72 });
-  const spr = new THREE.Sprite(mat);
-  spr.scale.set(2.35, 1.18, 1);
-  spr.renderOrder = 4;
-  return spr;
+  const mat = spr.material as THREE.SpriteMaterial;
+  mat.map?.dispose();
+  mat.map = tex;
+  mat.needsUpdate = true;
 }

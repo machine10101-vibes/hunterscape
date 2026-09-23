@@ -188,16 +188,21 @@
             <span class="studio-kicker">Survey</span>
             <span id="plots-name">Plot C4</span>
           </div>
-          <span id="plots-hint">Click a square · Drag to pan · Scroll to zoom · Arrows step · Esc to close</span>
+          <span id="plots-hint">Click the atlas · Drag to pan · Scroll to zoom · Arrows step · H home · Esc to close</span>
           <button type="button" id="plots-close" aria-label="Close plots">✕</button>
         </div>
         <div id="plots-side">
           <div class="panel-head">Land plots</div>
-          <div id="plots-grid" role="grid" aria-label="World plot grid"></div>
-          <p id="plots-meta">Choose a square of the wood to inspect it from above.</p>
+          <p id="plots-count">500 sections · 20 × 25 · each 48×48</p>
+          <canvas id="plots-atlas" width="240" height="300" role="img" aria-label="World plot atlas"></canvas>
+          <label id="plots-jump-wrap">
+            Jump
+            <input id="plots-jump" type="text" inputmode="text" placeholder="K13 or 251" autocomplete="off" spellcheck="false" />
+          </label>
+          <p id="plots-meta">Each section is the size of Thornrest. Click the atlas to inspect one from above.</p>
           <div id="plots-tools">
             <button type="button" id="plots-frame" title="Frame this plot (F)">Frame</button>
-            <button type="button" id="plots-world" title="See the whole wood (M)">Whole wood</button>
+            <button type="button" id="plots-home" title="Jump to Thornrest (H)">Home</button>
           </div>
         </div>
       </div>

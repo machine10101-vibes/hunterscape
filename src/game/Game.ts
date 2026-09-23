@@ -253,15 +253,15 @@ export class Game {
     this.setupReflectionEnv();
     this.studio = new ModelStudio(canvas);
     this.studio.setEnvironment(this.scene.environment);
-    this.survey = new PlotSurvey(this.scene);
-    this.studio.onWillOpen = () => this.survey.close();
-    this.survey.onWillOpen = () => this.studio.close();
     this.hud.setEnvironment(this.scene.environment);
     this.scene.add(createSkyDome(70));
     this.ground = createGround(48);
     this.scene.add(this.ground);
     this.scene.add(createTerrainFoliage());
     this.buildWorld();
+    this.survey = new PlotSurvey(this.scene);
+    this.studio.onWillOpen = () => this.survey.close();
+    this.survey.onWillOpen = () => this.studio.close();
 
     this.player = createPlayerMesh();
     this.player.position.set(this.save.x, groundHeight(this.save.x, this.save.z), this.save.z);
@@ -297,7 +297,7 @@ export class Game {
     this.hud.chat('The skill bar holds combat arts. Train Attack, Strength, and Defence to learn more.', 'system');
     this.hud.chat('Tap trees and rocks to chop and mine. Eat rations from your inventory.', 'system');
     this.hud.chat('A Frost Yeti hunts the north-east snow. An Orc Scout prowls the south-west trail.', 'combat');
-    this.hud.chat('Open Plots (P) to survey each square of the wood from high above.', 'system');
+    this.hud.chat('Open Plots (P) to survey 500 sections. Each one is the size of Thornrest.', 'system');
 
     window.addEventListener('resize', () => this.onResize());
     this.animate();
