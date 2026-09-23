@@ -23,7 +23,7 @@ const SURVEY_HEIGHT = 58;
 const SURVEY_BACK = 22;
 const SURVEY_ZOOM_MIN = 0.42;
 const SURVEY_ZOOM_MAX = 1.7;
-const SURVEY_FAR = 420;
+const SURVEY_FAR = 900;
 const PLAY_FAR = 140;
 const SKY_SURVEY_SCALE = 14;
 
@@ -137,6 +137,10 @@ export class PlotSurvey {
     this.overlay.visible = true;
     document.getElementById('btn-plots')?.setAttribute('aria-expanded', 'true');
     this.world.focus(this.selected);
+    this.lookTarget.set(this.selected.cx, groundHeight(this.selected.cx, this.selected.cz) + 0.25, this.selected.cz);
+    this.look.copy(this.lookTarget);
+    this.zoomTarget = 1;
+    this.zoom = 1;
     this.syncOverlay();
     this.refreshCard();
     this.drawAtlas();
@@ -163,7 +167,10 @@ export class PlotSurvey {
     if (fog && this.savedFog !== null && 'density' in fog) {
       (fog as THREE.FogExp2).density = this.savedFog;
     }
-    if (this.sky) this.sky.scale.setScalar(1);
+    if (this.sky) {
+      this.sky.position.set(0, 0, 0);
+      this.sky.scale.setScalar(1);
+    }
   }
 
   prepareCamera(camera: THREE.PerspectiveCamera): void {
@@ -177,7 +184,10 @@ export class PlotSurvey {
       (fog as THREE.FogExp2).density = 0.0036;
     }
     this.sky = this.scene.getObjectByName('sky') ?? null;
-    if (this.sky) this.sky.scale.setScalar(SKY_SURVEY_SCALE);
+    if (this.sky) {
+      this.sky.scale.setScalar(SKY_SURVEY_SCALE);
+      this.sky.position.set(this.look.x, 0, this.look.z);
+    }
   }
 
   nudgeZoom(dir: number, step = 0.12): void {
@@ -192,6 +202,7 @@ export class PlotSurvey {
     const z = this.zoom;
     camera.position.set(this.look.x, SURVEY_HEIGHT * z, this.look.z + SURVEY_BACK * z);
     camera.lookAt(this.look.x, this.look.y, this.look.z);
+    if (this.sky) this.sky.position.set(this.look.x, 0, this.look.z);
     if (camera.far !== SURVEY_FAR) this.prepareCamera(camera);
   }
 
@@ -227,7 +238,9 @@ export class PlotSurvey {
     this.world.focus(plot);
     if (frame) {
       this.lookTarget.set(plot.cx, groundHeight(plot.cx, plot.cz) + 0.25, plot.cz);
+      this.look.copy(this.lookTarget);
       this.zoomTarget = 1;
+      this.zoom = 1;
     }
     this.syncOverlay();
     this.refreshCard();
@@ -242,7 +255,9 @@ export class PlotSurvey {
 
   private frameSelected(): void {
     this.lookTarget.set(this.selected.cx, groundHeight(this.selected.cx, this.selected.cz) + 0.25, this.selected.cz);
+    this.look.copy(this.lookTarget);
     this.zoomTarget = 1;
+    this.zoom = 1;
   }
 
   private goHome(): void {
@@ -273,45 +288,77 @@ export class PlotSurvey {
     this.metaEl.textContent = lines.join('\n');
   }
 
+  private atlasLayout() {
+    const w = this.atlas.width;
+    const h = this.atlas.height;
+    const padL = 22;
+    const padB = 18;
+    const padT = 4;
+    const padR = 4;
+    return {
+      w,
+      h,
+      padL,
+      padB,
+      padT,
+      padR,
+      cw: (w - padL - padR) / PLOT_COLS,
+      rh: (h - padT - padB) / PLOT_ROWS,
+    };
+  }
+
   private atlasCell(ev: MouseEvent): Plot | null {
     const r = this.atlas.getBoundingClientRect();
-    const x = ((ev.clientX - r.left) / r.width) * PLOT_COLS;
-    const y = ((ev.clientY - r.top) / r.height) * PLOT_ROWS;
-    const col = Math.floor(x);
-    const row = PLOT_ROWS - 1 - Math.floor(y);
+    const layout = this.atlasLayout();
+    const sx = ((ev.clientX - r.left) / r.width) * layout.w;
+    const sy = ((ev.clientY - r.top) / r.height) * layout.h;
+    const col = Math.floor((sx - layout.padL) / layout.cw);
+    const drawRow = Math.floor((sy - layout.padT) / layout.rh);
+    const row = PLOT_ROWS - 1 - drawRow;
     if (col < 0 || col >= PLOT_COLS || row < 0 || row >= PLOT_ROWS) return null;
     return makePlot(col, row);
   }
 
   private drawAtlas(): void {
     const c = this.atlas;
-    const w = c.width;
-    const h = c.height;
     const ctx = c.getContext('2d');
     if (!ctx) return;
+    const { w, h, padL, padB, padT, cw, rh } = this.atlasLayout();
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = '#16120c';
     ctx.fillRect(0, 0, w, h);
-    const cw = w / PLOT_COLS;
-    const rh = h / PLOT_ROWS;
     for (let row = 0; row < PLOT_ROWS; row++) {
       for (let col = 0; col < PLOT_COLS; col++) {
         const drawRow = PLOT_ROWS - 1 - row;
-        const x = col * cw;
-        const y = drawRow * rh;
+        const x = padL + col * cw;
+        const y = padT + drawRow * rh;
         const home = col === HOME_COL && row === HOME_ROW;
         const on = col === this.selected.col && row === this.selected.row;
         const hover = this.hoverId === `${col},${row}`;
-        if (home) ctx.fillStyle = '#6a4e18';
-        else if (on) ctx.fillStyle = '#3a2c12';
-        else ctx.fillStyle = '#241c12';
-        ctx.fillRect(x + 0.5, y + 0.5, cw - 1, rh - 1);
+        if (home) ctx.fillStyle = '#8a6420';
+        else if (on) ctx.fillStyle = '#4a3814';
+        else ctx.fillStyle = '#2a2216';
+        ctx.fillRect(x + 0.4, y + 0.4, cw - 0.8, rh - 0.8);
         if (on || home || hover) {
           ctx.strokeStyle = home || on ? '#e8c46a' : '#a88840';
-          ctx.lineWidth = on ? 1.6 : 1;
-          ctx.strokeRect(x + 1, y + 1, cw - 2, rh - 2);
+          ctx.lineWidth = on ? 2 : 1.2;
+          ctx.strokeRect(x + 0.8, y + 0.8, cw - 1.6, rh - 1.6);
         }
       }
+    }
+    ctx.fillStyle = '#8a7a58';
+    ctx.font = '600 9px Liberation Sans, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let col = 0; col < PLOT_COLS; col++) {
+      if (col % 2 !== 0 && col !== HOME_COL) continue;
+      ctx.fillText(String.fromCharCode(65 + col), padL + (col + 0.5) * cw, h - padB / 2);
+    }
+    ctx.textAlign = 'right';
+    for (let row = 0; row < PLOT_ROWS; row++) {
+      if ((row + 1) % 5 !== 0 && row !== HOME_ROW) continue;
+      const drawRow = PLOT_ROWS - 1 - row;
+      ctx.fillText(String(row + 1), padL - 3, padT + (drawRow + 0.5) * rh);
     }
   }
 
