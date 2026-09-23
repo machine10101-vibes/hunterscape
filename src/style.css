@@ -1337,9 +1337,12 @@ html, body {
     right: 8px;
     width: auto;
     height: auto;
-    max-height: 42vh;
+    max-height: 48vh;
   }
-  #plots-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+  #plots-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 2px; padding: 6px; }
+  .plot-cell { font-size: 8px; }
+  #plots-meta { display: none; }
+  #plots-tools { padding: 6px 8px 8px; }
   #studio-side {
     top: auto;
     bottom: 58px;

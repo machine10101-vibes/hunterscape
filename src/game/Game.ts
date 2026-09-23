@@ -1656,8 +1656,23 @@ export class Game {
     if (this.orcTarget) this.orcSmoother.apply(this.orcTarget.mesh, dt, this.orcAggroed ? 24 : 16);
     this.snapMoversToGround();
     tickTerrainFoliage(this.animTime);
-    if (this.survey.isOpen()) this.survey.applyCamera(this.camera, dt);
-    else this.updateCamera(dt);
+    if (this.survey.isOpen()) {
+      this.survey.applyCamera(this.camera, dt);
+    } else {
+      if (this.survey.snappedBack) {
+        this.survey.snappedBack = false;
+        const z = this.camZoomTarget;
+        this.camZoom = z;
+        this.camera.position.set(
+          this.player.position.x + this.camOffset.x,
+          this.camOffset.y * z,
+          this.player.position.z + this.camOffset.z,
+        );
+        this.camLook.set(this.player.position.x, this.player.position.y + 1.05, this.player.position.z);
+        this.camera.lookAt(this.camLook);
+      }
+      this.updateCamera(dt);
+    }
 
     this.save.x = this.player.position.x;
     this.save.z = this.player.position.z;

@@ -16,13 +16,14 @@ import {
 } from '../game/plots';
 import { groundHeight } from '../rendering/terrain';
 
-/** Play camera sits at ~8.7 m; survey starts much higher so a whole plot reads. */
-const SURVEY_HEIGHT = 52;
-const SURVEY_BACK = 18;
-const SURVEY_ZOOM_MIN = 0.4;
-const SURVEY_ZOOM_MAX = 7.2;
-const SURVEY_FAR = 560;
+/** Play camera sits at ~8.7 m; survey starts ~3× higher so a plot still fills the frame. */
+const SURVEY_HEIGHT = 24;
+const SURVEY_BACK = 11;
+const SURVEY_ZOOM_MIN = 0.55;
+const SURVEY_ZOOM_MAX = 4.6;
+const SURVEY_FAR = 420;
 const PLAY_FAR = 140;
+const SKY_SURVEY_SCALE = 2.8;
 
 /**
  * High-camera survey over the live camp scene.
@@ -46,10 +47,12 @@ export class PlotSurvey {
   private selected: Plot;
   private look = new THREE.Vector3();
   private lookTarget = new THREE.Vector3();
-  private zoom = 1.65;
-  private zoomTarget = 1.65;
+  private zoom = 1;
+  private zoomTarget = 1;
   private savedFar = PLAY_FAR;
   private savedFog: number | null = null;
+  private sky: THREE.Object3D | null = null;
+  snappedBack = false;
   private dragging = false;
   private dragLast = { x: 0, y: 0 };
   private dragMoved = false;
@@ -85,7 +88,7 @@ export class PlotSurvey {
       new THREE.MeshBasicMaterial({
         color: 0xe8c46a,
         transparent: true,
-        opacity: 0.16,
+        opacity: 0.22,
         depthWrite: false,
         side: THREE.DoubleSide,
       }),
@@ -135,6 +138,7 @@ export class PlotSurvey {
     this.overlay.visible = false;
     document.getElementById('btn-plots')?.setAttribute('aria-expanded', 'false');
     if (this.gameCamera) this.restoreCamera(this.gameCamera);
+    this.snappedBack = true;
   }
 
   /** Restore the play camera's far plane and fog after leaving survey. */
@@ -146,6 +150,7 @@ export class PlotSurvey {
     if (fog && this.savedFog !== null && 'density' in fog) {
       (fog as THREE.FogExp2).density = this.savedFog;
     }
+    if (this.sky) this.sky.scale.setScalar(1);
   }
 
   prepareCamera(camera: THREE.PerspectiveCamera): void {
@@ -157,8 +162,11 @@ export class PlotSurvey {
     if (fog && 'density' in fog) {
       this.savedFog = (fog as THREE.FogExp2).density;
       // Same fog colour, thinner so the far squares of the wood still read.
-      (fog as THREE.FogExp2).density = 0.0028;
+      (fog as THREE.FogExp2).density = 0.0045;
     }
+    this.sky = this.scene.getObjectByName('sky') ?? null;
+    // The play dome is radius 70; a high survey cam would sit outside it.
+    if (this.sky) this.sky.scale.setScalar(SKY_SURVEY_SCALE);
   }
 
   nudgeZoom(dir: number, step = 0.12): void {
@@ -231,12 +239,12 @@ export class PlotSurvey {
 
   private frameSelected(): void {
     this.lookTarget.set(this.selected.cx, groundHeight(this.selected.cx, this.selected.cz) + 0.25, this.selected.cz);
-    this.zoomTarget = 1.05;
+    this.zoomTarget = 0.85;
   }
 
   private frameWorld(): void {
     this.lookTarget.set(0, 0.3, 0);
-    this.zoomTarget = 4.4;
+    this.zoomTarget = 2.35;
   }
 
   private syncHighlight(): void {
@@ -309,7 +317,7 @@ export class PlotSurvey {
       new THREE.LineBasicMaterial({
         color: 0xe8c46a,
         transparent: true,
-        opacity: 0.55,
+        opacity: 0.78,
         depthWrite: false,
       }),
     );
