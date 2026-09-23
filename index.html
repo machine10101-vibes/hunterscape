@@ -67,6 +67,11 @@
             <span class="nav-txt">Studio</span>
             <kbd class="nav-key">V</kbd>
           </button>
+          <button type="button" id="btn-plots" title="Land plots (P)" aria-expanded="false" aria-controls="plots">
+            <span class="nav-ico" aria-hidden="true">▣</span>
+            <span class="nav-txt">Plots</span>
+            <kbd class="nav-key">P</kbd>
+          </button>
         </nav>
 
         <!-- Hero gear / equipment -->
@@ -174,7 +179,32 @@
           <div class="bar thin"><div id="target-hp"></div></div>
         </div>
 
-        <div id="touch-hint">Tap the ground to walk · Pinch to zoom · Use the skill bar in a fight</div>
+        <div id="touch-hint">Tap the ground to walk · Pinch to zoom · Plots (P) surveys the wood</div>
+      </div>
+
+      <div id="plots" hidden>
+        <div id="plots-top">
+          <div class="studio-brand">
+            <span class="studio-kicker">Survey</span>
+            <span id="plots-name">Plot C4</span>
+          </div>
+          <span id="plots-hint">Click the atlas · Drag to pan · Scroll to zoom · Arrows step · H home · Esc to close</span>
+          <button type="button" id="plots-close" aria-label="Close plots">✕</button>
+        </div>
+        <div id="plots-side">
+          <div class="panel-head">Land plots</div>
+          <p id="plots-count">500 sections · 20 × 25 · each 48×48</p>
+          <canvas id="plots-atlas" width="400" height="500" role="img" aria-label="World plot atlas"></canvas>
+          <label id="plots-jump-wrap">
+            Jump
+            <input id="plots-jump" type="text" inputmode="text" placeholder="K13 or 251" autocomplete="off" spellcheck="false" />
+          </label>
+          <p id="plots-meta">Each section is the size of Thornrest. Click the atlas to inspect one from above.</p>
+          <div id="plots-tools">
+            <button type="button" id="plots-frame" title="Frame this plot (F)">Frame</button>
+            <button type="button" id="plots-home" title="Jump to Thornrest (H)">Home</button>
+          </div>
+        </div>
       </div>
 
       <div id="studio" hidden>

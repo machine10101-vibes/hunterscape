@@ -142,6 +142,7 @@ const CATALOG: CatalogEntry[] = [
  * procedural mesh so lighting, joints, and silhouette can be reviewed.
  */
 export class ModelStudio {
+  onWillOpen: (() => void) | null = null;
   private root: HTMLElement;
   private listEl: HTMLElement;
   private poseEl: HTMLElement;
@@ -189,6 +190,7 @@ export class ModelStudio {
   }
 
   open(): void {
+    this.onWillOpen?.();
     this.openFlag = true;
     this.root.hidden = false;
     const hud = document.getElementById('hud');

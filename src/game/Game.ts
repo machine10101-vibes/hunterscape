@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { HUD } from '../ui/HUD';
 import { ModelStudio } from '../ui/ModelStudio';
+import { PlotSurvey } from '../ui/PlotSurvey';
 import {
   animateOrcSpear,
   animateYetiSwipe,
@@ -156,6 +157,7 @@ export class Game {
   private clock = new THREE.Clock();
   private hud: HUD;
   private studio: ModelStudio;
+  private survey: PlotSurvey;
   private vfx: VFX;
   private save: SaveData;
   private objects: WorldObject[] = [];
@@ -257,6 +259,9 @@ export class Game {
     this.scene.add(this.ground);
     this.scene.add(createTerrainFoliage());
     this.buildWorld();
+    this.survey = new PlotSurvey(this.scene);
+    this.studio.onWillOpen = () => this.survey.close();
+    this.survey.onWillOpen = () => this.studio.close();
 
     this.player = createPlayerMesh();
     this.player.position.set(this.save.x, groundHeight(this.save.x, this.save.z), this.save.z);
@@ -292,6 +297,7 @@ export class Game {
     this.hud.chat('The skill bar holds combat arts. Train Attack, Strength, and Defence to learn more.', 'system');
     this.hud.chat('Tap trees and rocks to chop and mine. Eat rations from your inventory.', 'system');
     this.hud.chat('A Frost Yeti hunts the north-east snow. An Orc Scout prowls the south-west trail.', 'combat');
+    this.hud.chat('Open Plots (P) to survey 500 sections. Each one is the size of Thornrest.', 'system');
 
     window.addEventListener('resize', () => this.onResize());
     this.animate();
@@ -613,6 +619,10 @@ export class Game {
   private bindInput(canvas: HTMLCanvasElement): void {
     const onPointer = (ev: PointerEvent) => {
       if (this.studio.isOpen()) return;
+      if (this.survey.isOpen()) {
+        this.survey.handlePointerDown(ev, canvas);
+        return;
+      }
       const t = ev.target as HTMLElement;
       if (t !== canvas) return;
       this.pointer.x = (ev.clientX / window.innerWidth) * 2 - 1;
@@ -620,14 +630,24 @@ export class Game {
       this.handleWorldClick();
     };
     canvas.addEventListener('pointerdown', onPointer);
+    canvas.addEventListener('pointermove', (ev) => {
+      if (this.survey.isOpen()) this.survey.handlePointerMove(ev);
+    });
+    window.addEventListener('pointerup', () => {
+      if (this.survey.isOpen()) this.survey.handlePointerUp(this.camera);
+    });
 
     window.addEventListener(
       'wheel',
       (e) => {
         if (this.studio.isOpen()) return;
         const el = e.target as HTMLElement | null;
-        if (el?.closest('#gear-panel, #forge-panel, #inventory, #skills-panel, #chat, #studio')) return;
+        if (el?.closest('#gear-panel, #forge-panel, #inventory, #skills-panel, #chat, #studio, #plots')) return;
         e.preventDefault();
+        if (this.survey.isOpen()) {
+          this.survey.nudgeZoom(Math.sign(e.deltaY) || 1, 0.11);
+          return;
+        }
         // Wheel down / pinch-out → zoom out (see more of the wood).
         this.nudgeZoom(Math.sign(e.deltaY) || 1, 0.11);
       },
@@ -635,7 +655,7 @@ export class Game {
     );
 
     window.addEventListener('keydown', (e) => {
-      if (this.studio.isOpen()) return;
+      if (this.studio.isOpen() || this.survey.isOpen()) return;
       this.keys.add(e.key.toLowerCase());
       const art = COMBAT_SKILLS.find((s) => s.key === e.key);
       if (art) this.handleCombatSkill(art.id);
@@ -1636,7 +1656,23 @@ export class Game {
     if (this.orcTarget) this.orcSmoother.apply(this.orcTarget.mesh, dt, this.orcAggroed ? 24 : 16);
     this.snapMoversToGround();
     tickTerrainFoliage(this.animTime);
-    this.updateCamera(dt);
+    if (this.survey.isOpen()) {
+      this.survey.applyCamera(this.camera, dt);
+    } else {
+      if (this.survey.snappedBack) {
+        this.survey.snappedBack = false;
+        const z = this.camZoomTarget;
+        this.camZoom = z;
+        this.camera.position.set(
+          this.player.position.x + this.camOffset.x,
+          this.camOffset.y * z,
+          this.player.position.z + this.camOffset.z,
+        );
+        this.camLook.set(this.player.position.x, this.player.position.y + 1.05, this.player.position.z);
+        this.camera.lookAt(this.camLook);
+      }
+      this.updateCamera(dt);
+    }
 
     this.save.x = this.player.position.x;
     this.save.z = this.player.position.z;
