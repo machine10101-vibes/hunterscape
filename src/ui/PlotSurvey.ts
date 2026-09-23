@@ -325,7 +325,7 @@ export class PlotSurvey {
     if (!ctx) return;
     const { w, h, padL, padB, padT, cw, rh } = this.atlasLayout();
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#16120c';
+    ctx.fillStyle = '#1a1610';
     ctx.fillRect(0, 0, w, h);
     for (let row = 0; row < PLOT_ROWS; row++) {
       for (let col = 0; col < PLOT_COLS; col++) {
@@ -335,18 +335,16 @@ export class PlotSurvey {
         const home = col === HOME_COL && row === HOME_ROW;
         const on = col === this.selected.col && row === this.selected.row;
         const hover = this.hoverId === `${col},${row}`;
-        if (home) ctx.fillStyle = '#8a6420';
-        else if (on) ctx.fillStyle = '#4a3814';
-        else ctx.fillStyle = '#2a2216';
+        if (home) ctx.fillStyle = '#c4a24a';
+        else if (on) ctx.fillStyle = '#6a5220';
+        else ctx.fillStyle = '#3d3424';
         ctx.fillRect(x + 0.4, y + 0.4, cw - 0.8, rh - 0.8);
-        if (on || home || hover) {
-          ctx.strokeStyle = home || on ? '#e8c46a' : '#a88840';
-          ctx.lineWidth = on ? 2 : 1.2;
-          ctx.strokeRect(x + 0.8, y + 0.8, cw - 1.6, rh - 1.6);
-        }
+        ctx.strokeStyle = on || home ? '#f0d078' : hover ? '#a88840' : '#2a2418';
+        ctx.lineWidth = on || home ? 1.8 : 0.6;
+        ctx.strokeRect(x + 0.4, y + 0.4, cw - 0.8, rh - 0.8);
       }
     }
-    ctx.fillStyle = '#8a7a58';
+    ctx.fillStyle = '#c4b48a';
     ctx.font = '600 9px Liberation Sans, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
