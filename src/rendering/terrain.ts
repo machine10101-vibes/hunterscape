@@ -61,8 +61,8 @@ export function pathAmount(x: number, z: number): number {
   const pathT = Math.exp(-((x * 0.15 + 0.05) ** 2) * 8 - ((z * 0.12 - 0.15) ** 2) * 3);
   const path2 = Math.exp(-((x + 0.5 - z * 0.35) ** 2) * 2.2 - ((z - 1.2) ** 2) * 0.08);
   const pathWest = Math.exp(-((x + 3.2 - z * 0.15) ** 2) * 1.4 - ((z + 2.5) ** 2) * 0.06);
-  const eastTrail = Math.exp(-((z + 0.35) ** 2) * 0.2) * smooth01(5, 14, x) * (1 - smooth01(42, 58, x)) * 0.72;
-  const southTrail = Math.exp(-((x + 6.1) ** 2) * 0.1) * smooth01(-6, -18, z) * (1 - smooth01(-52, -66, z)) * 0.62;
+  const eastTrail = Math.exp(-((z + 0.35) ** 2) * 0.28) * smooth01(5, 14, x) * (1 - smooth01(38, 52, x)) * 0.7;
+  const southTrail = Math.exp(-((x + 6.1) ** 2) * 0.22) * smooth01(-6, -18, z) * (1 - smooth01(-48, -62, z)) * 0.55;
   return Math.max(pathT, path2 * 0.85, pathWest * 0.75, eastTrail, southTrail);
 }
 
@@ -94,17 +94,18 @@ export function rockField(x: number, z: number): number {
 /** Camp snow plus a larger north-east lobe that crosses into K14 / L13. */
 export function snowField(x: number, z: number): number {
   const local = snowAmount(x, z);
-  const lobe = Math.exp(-((x - 14) ** 2) * 0.0048 - ((z - 30) ** 2) * 0.0036);
-  const north = smooth01(10, 42, z) * (0.22 + 0.58 * fbm(x * 0.065 + 2.4, z * 0.065 + 9.1, 3));
-  return Math.max(local, lobe * 0.92, north * 0.78);
+  const patches = fbm(x * 0.085 + 5.2, z * 0.085 - 2.8, 4);
+  const connect = Math.exp(-((x - 7.2) ** 2) * 0.014 - ((z - 18) ** 2) * 0.01) * (0.28 + patches * 0.45);
+  const speck = Math.max(0, patches - 0.58) * 2.2 * smooth01(18, 40, z) * (0.55 + 0.45 * smooth01(-6, 18, x));
+  return Math.max(local, connect, speck);
 }
 
 /** Meander that crosses the east seam so L13 shares a cut with Thornrest. */
 export function streamAmount(x: number, z: number): number {
-  const wander = (fbm(x * 0.068 + 4.2, 3.1, 3) - 0.5) * 11;
-  const cz = z + 3.4 - wander;
-  const along = smooth01(8, 16, x) * (1 - smooth01(70, 82, x));
-  return Math.exp(-(cz * cz) * 0.48) * along;
+  const wander = (fbm(x * 0.05 + 4.2, 3.1, 3) - 0.5) * 16;
+  const cz = z + 9.2 - wander;
+  const along = smooth01(12, 22, x) * (1 - smooth01(66, 78, x));
+  return Math.exp(-(cz * cz) * 0.16) * along;
 }
 
 function campFlatten(x: number, z: number): number {
@@ -117,8 +118,8 @@ export function groundHeight(x: number, z: number): number {
   const micro = (valueNoise(x * 7.2 + 3.1, z * 7.2 - 2.4) - 0.5) * 0.022;
   let h = roll + bump + micro;
   const wild = wildness(x, z);
-  const hills = (warpedFbm(x * 0.4 + 90.2, z * 0.4 - 41.6) - 0.5) * 2.55 * wild;
-  const ridges = (fbm(x * 0.085 + 3.2, z * 0.085 + 11.4, 4) - 0.5) * 1.15 * wild * rockField(x, z);
+  const hills = (warpedFbm(x * 0.4 + 90.2, z * 0.4 - 41.6) - 0.5) * 4.4 * wild;
+  const ridges = (fbm(x * 0.085 + 3.2, z * 0.085 + 11.4, 4) - 0.5) * 1.8 * wild * rockField(x, z);
   h += hills + ridges;
   h -= streamAmount(x, z) * (0.16 + 0.42 * wild);
   h *= 1 - campFlatten(x, z) * 0.84;
@@ -164,9 +165,9 @@ export function createGround(size = 48, segments = 128, cx = 0, cz = 0): THREE.M
     const n = grassDetail(x, z);
     const n2 = valueNoise(x * 1.9 + 4.2, z * 1.9 - 1.7);
 
-    if (stream > 0.2) {
-      tmp.copy(wet).lerp(dirtDark, n2);
-      tmp.lerp(grassC, 1 - Math.min(1, stream * 1.6));
+    if (stream > 0.16) {
+      tmp.copy(wet).lerp(dirtDark, Math.min(1, stream));
+      tmp.lerp(grassC, 1 - Math.min(1, stream * 1.35));
     } else if (snowTotal > 0.24) {
       tmp.copy(snow).lerp(snowBlue, n);
       tmp.lerp(grassA, 1 - Math.min(1, snowTotal * 1.7));

@@ -122,7 +122,7 @@ export class PlotWorld {
         const forest = forestField(x, z);
         const keep = hash01(Math.floor(x * 23 + 4), Math.floor(z * 29 + 8));
         if (keep > forest * 0.78) continue;
-        if (snowField(x, z) > 0.55) continue;
+        if (snowField(x, z) > 0.72) continue;
         if (streamAmount(x, z) > 0.18) continue;
         if (rockField(x, z) > 0.72 && keep > 0.28) continue;
         const tree = createTree(Math.floor(keep * 997) + i);
