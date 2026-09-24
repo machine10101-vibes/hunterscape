@@ -52,17 +52,59 @@ function warpedFbm(x: number, y: number): number {
   return fbm(x * 0.11 + wx * 1.65, y * 0.11 + wy * 1.65, 5);
 }
 
+function smooth01(a: number, b: number, x: number): number {
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+}
+
 export function pathAmount(x: number, z: number): number {
   const pathT = Math.exp(-((x * 0.15 + 0.05) ** 2) * 8 - ((z * 0.12 - 0.15) ** 2) * 3);
   const path2 = Math.exp(-((x + 0.5 - z * 0.35) ** 2) * 2.2 - ((z - 1.2) ** 2) * 0.08);
   const pathWest = Math.exp(-((x + 3.2 - z * 0.15) ** 2) * 1.4 - ((z + 2.5) ** 2) * 0.06);
-  return Math.max(pathT, path2 * 0.85, pathWest * 0.75);
+  const eastTrail = Math.exp(-((z + 0.35) ** 2) * 0.2) * smooth01(5, 14, x) * (1 - smooth01(42, 58, x)) * 0.72;
+  const southTrail = Math.exp(-((x + 6.1) ** 2) * 0.1) * smooth01(-6, -18, z) * (1 - smooth01(-52, -66, z)) * 0.62;
+  return Math.max(pathT, path2 * 0.85, pathWest * 0.75, eastTrail, southTrail);
 }
 
 export function snowAmount(x: number, z: number): number {
   const a = Math.exp(-((x - 4.2) ** 2) * 0.09 - ((z - 7.2) ** 2) * 0.08);
   const b = Math.exp(-((x - 5.5) ** 2) * 0.15 - ((z - 6.0) ** 2) * 0.12);
   return Math.max(a, b * 0.85);
+}
+
+/** 0 on the authored camp, 1 once you are well into a neighbor section. */
+export function wildness(x: number, z: number): number {
+  return smooth01(15, 33, Math.hypot(x + 2.05, z + 0.55));
+}
+
+export function forestField(x: number, z: number): number {
+  const n = fbm(x * 0.042 + 8.1, z * 0.042 - 3.4, 4);
+  const south = smooth01(-6, -30, z) * 0.28;
+  const west = smooth01(-8, -32, x) * 0.08;
+  const eastOpen = smooth01(10, 36, x) * 0.22;
+  return Math.max(0, Math.min(1, n * 0.82 + 0.18 + south + west - eastOpen));
+}
+
+export function rockField(x: number, z: number): number {
+  const n = fbm(x * 0.05 - 12.2, z * 0.05 + 6.8, 4);
+  const west = smooth01(-8, -34, x) * 0.42;
+  return Math.max(0, Math.min(1, n * 0.62 + west));
+}
+
+/** Camp snow plus a larger north-east lobe that crosses into K14 / L13. */
+export function snowField(x: number, z: number): number {
+  const local = snowAmount(x, z);
+  const lobe = Math.exp(-((x - 14) ** 2) * 0.0048 - ((z - 30) ** 2) * 0.0036);
+  const north = smooth01(10, 42, z) * (0.22 + 0.58 * fbm(x * 0.065 + 2.4, z * 0.065 + 9.1, 3));
+  return Math.max(local, lobe * 0.92, north * 0.78);
+}
+
+/** Meander that crosses the east seam so L13 shares a cut with Thornrest. */
+export function streamAmount(x: number, z: number): number {
+  const wander = (fbm(x * 0.068 + 4.2, 3.1, 3) - 0.5) * 11;
+  const cz = z + 3.4 - wander;
+  const along = smooth01(8, 16, x) * (1 - smooth01(70, 82, x));
+  return Math.exp(-(cz * cz) * 0.48) * along;
 }
 
 function campFlatten(x: number, z: number): number {
@@ -74,9 +116,15 @@ export function groundHeight(x: number, z: number): number {
   const bump = (fbm(x * 1.65 + 41.2, z * 1.65 - 18.7, 4) - 0.5) * 0.07;
   const micro = (valueNoise(x * 7.2 + 3.1, z * 7.2 - 2.4) - 0.5) * 0.022;
   let h = roll + bump + micro;
+  const wild = wildness(x, z);
+  const hills = (warpedFbm(x * 0.4 + 90.2, z * 0.4 - 41.6) - 0.5) * 2.55 * wild;
+  const ridges = (fbm(x * 0.085 + 3.2, z * 0.085 + 11.4, 4) - 0.5) * 1.15 * wild * rockField(x, z);
+  h += hills + ridges;
+  h -= streamAmount(x, z) * (0.16 + 0.42 * wild);
   h *= 1 - campFlatten(x, z) * 0.84;
   h *= 1 - pathAmount(x, z) * 0.38;
   h += snowAmount(x, z) * 0.045;
+  h += Math.max(0, snowField(x, z) - snowAmount(x, z)) * 0.07;
   return h;
 }
 
@@ -99,6 +147,8 @@ export function createGround(size = 48, segments = 128, cx = 0, cz = 0): THREE.M
   const dirtDark = new THREE.Color(0x6e5430);
   const snow = new THREE.Color(0xeef6fb);
   const snowBlue = new THREE.Color(0xc8dcea);
+  const stone = new THREE.Color(0x7a7468);
+  const wet = new THREE.Color(0x3d5a32);
   const tmp = new THREE.Color();
 
   for (let i = 0; i < pos.count; i++) {
@@ -108,16 +158,24 @@ export function createGround(size = 48, segments = 128, cx = 0, cz = 0): THREE.M
     pos.setZ(i, groundHeight(x, z));
 
     const pathAmt = pathAmount(x, z);
-    const snowTotal = snowAmount(x, z);
+    const snowTotal = snowField(x, z);
+    const stream = streamAmount(x, z);
+    const rock = rockField(x, z);
     const n = grassDetail(x, z);
     const n2 = valueNoise(x * 1.9 + 4.2, z * 1.9 - 1.7);
 
-    if (snowTotal > 0.24) {
+    if (stream > 0.2) {
+      tmp.copy(wet).lerp(dirtDark, n2);
+      tmp.lerp(grassC, 1 - Math.min(1, stream * 1.6));
+    } else if (snowTotal > 0.24) {
       tmp.copy(snow).lerp(snowBlue, n);
       tmp.lerp(grassA, 1 - Math.min(1, snowTotal * 1.7));
     } else if (pathAmt > 0.28) {
       tmp.copy(dirt).lerp(dirtDark, n2);
       tmp.lerp(grassA, 1 - Math.min(1, pathAmt * 1.4));
+    } else if (rock > 0.58 && wildness(x, z) > 0.35) {
+      tmp.copy(stone).lerp(dirt, n2);
+      tmp.lerp(moss, 1 - Math.min(1, (rock - 0.35) * 1.4));
     } else if (n > 0.72) {
       tmp.copy(moss).lerp(grassC, n2 * 0.45);
     } else {
@@ -293,7 +351,8 @@ function addWind(mat: THREE.MeshLambertMaterial, amount: number): void {
 
 function canScatter(x: number, z: number, minPath = 0.32, minSnow = 0.22): boolean {
   if (pathAmount(x, z) > minPath) return false;
-  if (snowAmount(x, z) > minSnow) return false;
+  if (snowField(x, z) > minSnow) return false;
+  if (streamAmount(x, z) > 0.2) return false;
   if (Math.hypot(x + 1.2, z + 0.5) < 1.55) return false; // campfire
   if (Math.hypot(x + 3.5, z + 1.5) < 1.35) return false; // tent
   return true;
@@ -457,6 +516,114 @@ export function createTerrainFoliage(): THREE.Group {
   stones.frustumCulled = false;
   stones.raycast = () => {};
   root.add(stones);
+
+  return root;
+}
+
+/** Sparser grass / flowers / stones for a wild section, same materials as camp. */
+export function createPlotFoliage(minX: number, maxX: number, minZ: number, maxZ: number): THREE.Group {
+  const root = new THREE.Group();
+  root.name = 'plotFoliage';
+  const dummy = new THREE.Object3D();
+
+  const grassMat = new THREE.MeshLambertMaterial({
+    map: makeBladeTexture(),
+    color: 0xeaff98,
+    side: THREE.DoubleSide,
+    alphaTest: 0.18,
+  });
+  addWind(grassMat, 0.55);
+  const gColA = new THREE.Color(0xb4e05a);
+  const gColB = new THREE.Color(0x6aa832);
+  const tmpC = new THREE.Color();
+  const grassPts: { x: number; z: number; h: number; s: number; r: number; c: THREE.Color }[] = [];
+  const gStep = 0.85;
+  for (let gx = minX + 0.4; gx <= maxX - 0.4; gx += gStep) {
+    for (let gz = minZ + 0.4; gz <= maxZ - 0.4; gz += gStep) {
+      const jx = (hash2(Math.floor(gx * 20 + 3), Math.floor(gz * 20 + 9)) - 0.5) * gStep * 0.9;
+      const jz = (hash2(Math.floor(gx * 20 + 11), Math.floor(gz * 20 + 2)) - 0.5) * gStep * 0.9;
+      const x = gx + jx;
+      const z = gz + jz;
+      const keep = hash2(Math.floor(x * 17 + 4), Math.floor(z * 19 + 8));
+      if (keep < 0.28) continue;
+      if (!canScatter(x, z)) continue;
+      grassPts.push({
+        x,
+        z,
+        h: groundHeight(x, z),
+        s: 0.8 + keep * 0.75,
+        r: keep * Math.PI * 2,
+        c: tmpC.copy(gColA).lerp(gColB, hash2(Math.floor(x * 8), Math.floor(z * 13))).clone(),
+      });
+    }
+  }
+  if (grassPts.length) {
+    const grass = new THREE.InstancedMesh(grassTuftGeometry(), grassMat, grassPts.length);
+    grass.castShadow = false;
+    grass.receiveShadow = true;
+    grass.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    const gColors = new Float32Array(grassPts.length * 3);
+    grassPts.forEach((p, i) => {
+      dummy.position.set(p.x, p.h, p.z);
+      dummy.rotation.set(0, p.r, 0);
+      dummy.scale.setScalar(p.s);
+      dummy.updateMatrix();
+      grass.setMatrixAt(i, dummy.matrix);
+      gColors[i * 3] = p.c.r;
+      gColors[i * 3 + 1] = p.c.g;
+      gColors[i * 3 + 2] = p.c.b;
+    });
+    grass.instanceColor = new THREE.InstancedBufferAttribute(gColors, 3);
+    grass.instanceMatrix.needsUpdate = true;
+    grass.frustumCulled = false;
+    grass.raycast = () => {};
+    root.add(grass);
+  }
+
+  const flowerMat = new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+  addWind(flowerMat, 0.35);
+  const flowerCols = [0xfff6dc, 0xffdc3c, 0xff6aa8, 0xc888ff, 0xff8a32];
+  const flowerPts: { x: number; z: number; h: number; s: number; r: number; c: THREE.Color }[] = [];
+  const fStep = 1.7;
+  for (let fx = minX + 1; fx <= maxX - 1; fx += fStep) {
+    for (let fz = minZ + 1; fz <= maxZ - 1; fz += fStep) {
+      const jx = (hash2(Math.floor(fx * 13 + 21), Math.floor(fz * 13 + 5)) - 0.5) * fStep;
+      const jz = (hash2(Math.floor(fx * 13 + 7), Math.floor(fz * 13 + 18)) - 0.5) * fStep;
+      const x = fx + jx;
+      const z = fz + jz;
+      const keep = hash2(Math.floor(x * 29 + 1), Math.floor(z * 31 + 6));
+      if (keep < 0.42) continue;
+      if (!canScatter(x, z, 0.26, 0.18)) continue;
+      flowerPts.push({
+        x,
+        z,
+        h: groundHeight(x, z),
+        s: 0.85 + keep * 0.55,
+        r: keep * 6.2,
+        c: new THREE.Color(flowerCols[Math.floor(keep * flowerCols.length) % flowerCols.length]),
+      });
+    }
+  }
+  if (flowerPts.length) {
+    const flowers = new THREE.InstancedMesh(flowerGeometry(), flowerMat, flowerPts.length);
+    flowers.castShadow = false;
+    const fColors = new Float32Array(flowerPts.length * 3);
+    flowerPts.forEach((p, i) => {
+      dummy.position.set(p.x, p.h, p.z);
+      dummy.rotation.set(0, p.r, 0);
+      dummy.scale.setScalar(p.s);
+      dummy.updateMatrix();
+      flowers.setMatrixAt(i, dummy.matrix);
+      fColors[i * 3] = p.c.r;
+      fColors[i * 3 + 1] = p.c.g;
+      fColors[i * 3 + 2] = p.c.b;
+    });
+    flowers.instanceColor = new THREE.InstancedBufferAttribute(fColors, 3);
+    flowers.instanceMatrix.needsUpdate = true;
+    flowers.frustumCulled = false;
+    flowers.raycast = () => {};
+    root.add(flowers);
+  }
 
   return root;
 }

@@ -8,6 +8,7 @@ import {
   PLOT_SIZE,
   homePlot,
   isHomePlot,
+  isHomeRing,
   landmarksIn,
   makePlot,
   parsePlotRef,
@@ -73,6 +74,7 @@ export class PlotSurvey {
     this.metaEl = document.getElementById('plots-meta') as HTMLElement;
     this.jumpEl = document.getElementById('plots-jump') as HTMLInputElement | null;
     this.world = new PlotWorld(scene);
+    this.world.warmHomeRing();
     this.selected = homePlot();
     this.look.set(this.selected.cx, 0.3, this.selected.cz);
     this.lookTarget.copy(this.look);
@@ -112,6 +114,10 @@ export class PlotSurvey {
     this.bindUi();
     this.drawAtlas();
     this.syncOverlay();
+  }
+
+  primeRing(): void {
+    this.world.warmHomeRing();
   }
 
   isOpen(): boolean {
@@ -284,6 +290,7 @@ export class PlotSurvey {
       `West ${p.minX.toFixed(0)} → east ${p.maxX.toFixed(0)} · south ${p.minZ.toFixed(0)} → north ${p.maxZ.toFixed(0)}`,
     ];
     if (marks.length) lines.push(marks.map((m) => m.name).join(' · '));
+    else if (isHomeRing(p)) lines.push('Ring section — hills, woods, and trails blend into Thornrest.');
     else lines.push('Undeveloped — same 48×48 as Thornrest, waiting to be built.');
     this.metaEl.textContent = lines.join('\n');
   }
