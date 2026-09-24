@@ -81,6 +81,29 @@ export function isHomePlot(plot: Plot): boolean {
   return plot.col === HOME_COL && plot.row === HOME_ROW;
 }
 
+/** The four cardinal sections that share an edge with Thornrest. */
+export function isHomeRing(plot: Plot): boolean {
+  const dc = Math.abs(plot.col - HOME_COL);
+  const dr = Math.abs(plot.row - HOME_ROW);
+  return (dc === 1 && dr === 0) || (dc === 0 && dr === 1);
+}
+
+export function homeRingPlots(): Plot[] {
+  const out: Plot[] = [];
+  for (const [dc, dr] of [
+    [0, 1],
+    [0, -1],
+    [1, 0],
+    [-1, 0],
+  ] as const) {
+    const col = HOME_COL + dc;
+    const row = HOME_ROW + dr;
+    if (col < 0 || col >= PLOT_COLS || row < 0 || row >= PLOT_ROWS) continue;
+    out.push(makePlot(col, row));
+  }
+  return out;
+}
+
 export function plotNumber(plot: Plot): number {
   return plot.row * PLOT_COLS + plot.col + 1;
 }
@@ -108,6 +131,12 @@ function hash01(ix: number, iy: number): number {
 
 export function plotTerrain(plot: Plot): string {
   if (isHomePlot(plot)) return 'Thornrest camp';
+  if (isHomeRing(plot)) {
+    if (plot.row > HOME_ROW) return 'North snow pines';
+    if (plot.row < HOME_ROW) return 'South thicket';
+    if (plot.col > HOME_COL) return 'East heath and stream';
+    return 'West rocky fold';
+  }
   const n = hash01(plot.col * 17 + 3, plot.row * 31 + 5);
   if (n < 0.1) return 'Open heath';
   if (n < 0.2) return 'Rocky fold';

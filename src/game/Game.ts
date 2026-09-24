@@ -262,6 +262,7 @@ export class Game {
     this.survey = new PlotSurvey(this.scene);
     this.studio.onWillOpen = () => this.survey.close();
     this.survey.onWillOpen = () => this.studio.close();
+    this.survey.primeRing();
 
     this.player = createPlayerMesh();
     this.player.position.set(this.save.x, groundHeight(this.save.x, this.save.z), this.save.z);
@@ -297,7 +298,7 @@ export class Game {
     this.hud.chat('The skill bar holds combat arts. Train Attack, Strength, and Defence to learn more.', 'system');
     this.hud.chat('Tap trees and rocks to chop and mine. Eat rations from your inventory.', 'system');
     this.hud.chat('A Frost Yeti hunts the north-east snow. An Orc Scout prowls the south-west trail.', 'combat');
-    this.hud.chat('Open Plots (P) to survey 500 sections. Each one is the size of Thornrest.', 'system');
+    this.hud.chat('Open Plots (P) to survey 500 sections. The four around Thornrest are already wooded.', 'system');
 
     window.addEventListener('resize', () => this.onResize());
     this.animate();
@@ -315,11 +316,11 @@ export class Game {
     this.sun.shadow.normalBias = 0.035;
     this.sun.shadow.radius = 3.2;
     this.sun.shadow.camera.near = 2;
-    this.sun.shadow.camera.far = 58;
-    this.sun.shadow.camera.left = -24;
-    this.sun.shadow.camera.right = 24;
-    this.sun.shadow.camera.top = 24;
-    this.sun.shadow.camera.bottom = -24;
+    this.sun.shadow.camera.far = 140;
+    this.sun.shadow.camera.left = -72;
+    this.sun.shadow.camera.right = 72;
+    this.sun.shadow.camera.top = 72;
+    this.sun.shadow.camera.bottom = -72;
     this.scene.add(this.sun);
     this.scene.add(this.sun.target);
 
