@@ -1,3 +1,5 @@
+import { forestField, rockField, snowField, streamAmount } from '../rendering/terrain';
+
 /** One section is the current Thornrest environment: a 48×48 camp. */
 export const PLOT_SIZE = 48;
 /** 20×25 = 500 sections, with Thornrest as the home square. */
@@ -88,18 +90,27 @@ export function isHomeRing(plot: Plot): boolean {
   return (dc === 1 && dr === 0) || (dc === 0 && dr === 1);
 }
 
+/** Any of the eight sections that touch Thornrest, including corners. */
+export function isNearHome(plot: Plot): boolean {
+  const dc = Math.abs(plot.col - HOME_COL);
+  const dr = Math.abs(plot.row - HOME_ROW);
+  return dc <= 1 && dr <= 1 && (dc !== 0 || dr !== 0);
+}
+
 export function homeRingPlots(): Plot[] {
+  return homeNeighborhoodPlots().filter(isHomeRing);
+}
+
+export function homeNeighborhoodPlots(): Plot[] {
   const out: Plot[] = [];
-  for (const [dc, dr] of [
-    [0, 1],
-    [0, -1],
-    [1, 0],
-    [-1, 0],
-  ] as const) {
-    const col = HOME_COL + dc;
-    const row = HOME_ROW + dr;
-    if (col < 0 || col >= PLOT_COLS || row < 0 || row >= PLOT_ROWS) continue;
-    out.push(makePlot(col, row));
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      if (dc === 0 && dr === 0) continue;
+      const col = HOME_COL + dc;
+      const row = HOME_ROW + dr;
+      if (col < 0 || col >= PLOT_COLS || row < 0 || row >= PLOT_ROWS) continue;
+      out.push(makePlot(col, row));
+    }
   }
   return out;
 }
@@ -123,12 +134,6 @@ export function landmarksIn(plot: Plot): PlotLandmark[] {
   return PLOT_LANDMARKS.filter((m) => plotContains(plot, m.x, m.z));
 }
 
-function hash01(ix: number, iy: number): number {
-  let n = Math.imul(ix | 0, 1597334677) ^ Math.imul(iy | 0, 3812015801);
-  n = Math.imul(n ^ (n >>> 16), 0x7feb352d);
-  return ((n ^ (n >>> 15)) >>> 0) / 4294967296;
-}
-
 export function plotTerrain(plot: Plot): string {
   if (isHomePlot(plot)) return 'Thornrest camp';
   if (isHomeRing(plot)) {
@@ -137,11 +142,15 @@ export function plotTerrain(plot: Plot): string {
     if (plot.col > HOME_COL) return 'East heath and stream';
     return 'West rocky fold';
   }
-  const n = hash01(plot.col * 17 + 3, plot.row * 31 + 5);
-  if (n < 0.1) return 'Open heath';
-  if (n < 0.2) return 'Rocky fold';
-  if (n < 0.34) return 'Pine hollow';
-  if (n < 0.42) return 'Stream cut';
+  const snow = snowField(plot.cx, plot.cz);
+  const rock = rockField(plot.cx, plot.cz);
+  const forest = forestField(plot.cx, plot.cz);
+  const stream = streamAmount(plot.cx, plot.cz);
+  if (snow > 0.38) return 'Snow pines';
+  if (stream > 0.28) return 'Stream cut';
+  if (rock > 0.55) return 'Rocky fold';
+  if (forest < 0.36) return 'Open heath';
+  if (forest > 0.62) return 'Pine hollow';
   return 'Whisperwood';
 }
 
@@ -150,5 +159,5 @@ export function plotBlurb(plot: Plot): string {
   const land = plotTerrain(plot);
   if (marks.length) return `${land} · ${marks.join(', ')}`;
   if (isHomePlot(plot)) return land;
-  return `${land} — undeveloped section`;
+  return `${land} — woods continue across the section seams`;
 }

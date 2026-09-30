@@ -78,34 +78,46 @@ export function wildness(x: number, z: number): number {
 }
 
 export function forestField(x: number, z: number): number {
-  const n = fbm(x * 0.042 + 8.1, z * 0.042 - 3.4, 4);
+  const near = fbm(x * 0.042 + 8.1, z * 0.042 - 3.4, 4);
   const south = smooth01(-6, -30, z) * 0.28;
   const west = smooth01(-8, -32, x) * 0.08;
   const eastOpen = smooth01(10, 36, x) * 0.22;
-  return Math.max(0, Math.min(1, n * 0.82 + 0.18 + south + west - eastOpen));
+  const local = Math.max(0, Math.min(1, near * 0.82 + 0.18 + south + west - eastOpen));
+  const far = fbm(x * 0.015 + 40.2, z * 0.015 - 21.6, 5);
+  const t = smooth01(36, 88, Math.hypot(x, z));
+  return Math.max(0, Math.min(1, local * (1 - t) + (far * 0.72 + 0.22) * t));
 }
 
 export function rockField(x: number, z: number): number {
   const n = fbm(x * 0.05 - 12.2, z * 0.05 + 6.8, 4);
   const west = smooth01(-8, -34, x) * 0.42;
-  return Math.max(0, Math.min(1, n * 0.62 + west));
+  const local = Math.max(0, Math.min(1, n * 0.62 + west));
+  const far = fbm(x * 0.017 - 30.4, z * 0.017 + 14.8, 4);
+  const t = smooth01(36, 88, Math.hypot(x, z));
+  return Math.max(0, Math.min(1, local * (1 - t) + far * 0.7 * t));
 }
 
-/** Camp snow plus a larger north-east lobe that crosses into K14 / L13. */
+/** Camp snow plus patches that keep going north across later sections. */
 export function snowField(x: number, z: number): number {
   const local = snowAmount(x, z);
   const patches = fbm(x * 0.085 + 5.2, z * 0.085 - 2.8, 4);
   const connect = Math.exp(-((x - 7.2) ** 2) * 0.014 - ((z - 18) ** 2) * 0.01) * (0.28 + patches * 0.45);
   const speck = Math.max(0, patches - 0.58) * 2.2 * smooth01(18, 40, z) * (0.55 + 0.45 * smooth01(-6, 18, x));
-  return Math.max(local, connect, speck);
+  const worldNorth = Math.max(0, patches - 0.5) * 1.8 * smooth01(48, 160, z);
+  const alpine = Math.max(0, fbm(x * 0.02 + 9, z * 0.02 - 7, 4) - 0.68) * 2.4 * smooth01(70, 140, Math.hypot(x, z));
+  return Math.max(local, connect, speck, worldNorth, alpine);
 }
 
-/** Meander that crosses the east seam so L13 shares a cut with Thornrest. */
+/** Camp-east cut plus world rivers that keep crossing section seams. */
 export function streamAmount(x: number, z: number): number {
   const wander = (fbm(x * 0.05 + 4.2, 3.1, 3) - 0.5) * 16;
   const cz = z + 9.2 - wander;
   const along = smooth01(12, 22, x) * (1 - smooth01(66, 78, x));
-  return Math.exp(-(cz * cz) * 0.16) * along;
+  const camp = Math.exp(-(cz * cz) * 0.16) * along;
+  const warp = (fbm(x * 0.01 + 6.4, z * 0.01 - 2.2, 4) - 0.5) * 1.6;
+  const ridge = Math.abs(valueNoise(x * 0.022 + warp, z * 0.022 - warp * 0.55) - 0.5) * 2;
+  const world = Math.exp(-(ridge * ridge) * 220) * smooth01(40, 90, Math.hypot(x + 2, z + 0.5));
+  return Math.max(camp, world);
 }
 
 function campFlatten(x: number, z: number): number {
@@ -165,9 +177,9 @@ export function createGround(size = 48, segments = 128, cx = 0, cz = 0): THREE.M
     const n = grassDetail(x, z);
     const n2 = valueNoise(x * 1.9 + 4.2, z * 1.9 - 1.7);
 
-    if (stream > 0.16) {
+    if (stream > 0.28) {
       tmp.copy(wet).lerp(dirtDark, Math.min(1, stream));
-      tmp.lerp(grassC, 1 - Math.min(1, stream * 1.35));
+      tmp.lerp(grassC, 1 - Math.min(1, stream * 1.15));
     } else if (snowTotal > 0.24) {
       tmp.copy(snow).lerp(snowBlue, n);
       tmp.lerp(grassA, 1 - Math.min(1, snowTotal * 1.7));
@@ -207,6 +219,12 @@ export function createGround(size = 48, segments = 128, cx = 0, cz = 0): THREE.M
   mesh.position.set(cx, 0, cz);
   mesh.receiveShadow = true;
   mesh.name = cx === 0 && cz === 0 ? 'ground' : `ground_${cx}_${cz}`;
+  if (cx !== 0 || cz !== 0) {
+    const mat = mesh.material as THREE.MeshStandardMaterial;
+    mat.polygonOffset = true;
+    mat.polygonOffsetFactor = 1;
+    mat.polygonOffsetUnits = 1;
+  }
   return mesh;
 }
 
@@ -377,8 +395,8 @@ export function createTerrainFoliage(): THREE.Group {
   const gColA = new THREE.Color(0xb4e05a);
   const gColB = new THREE.Color(0x6aa832);
   const tmpC = new THREE.Color();
-  const gStep = 0.5;
-  for (let gx = -20; gx <= 20; gx += gStep) {
+  const gStep = 0.52;
+  for (let gx = -23.6; gx <= 23.6; gx += gStep) {
     for (let gz = -20; gz <= 20; gz += gStep) {
       const jx = (hash2(Math.floor(gx * 20 + 3), Math.floor(gz * 20 + 9)) - 0.5) * gStep * 0.92;
       const jz = (hash2(Math.floor(gx * 20 + 11), Math.floor(gz * 20 + 2)) - 0.5) * gStep * 0.92;
@@ -429,8 +447,8 @@ export function createTerrainFoliage(): THREE.Group {
 
   const flowerCols = [0xfff6dc, 0xffdc3c, 0xff6aa8, 0xc888ff, 0xff8a32];
   const flowerPts: { x: number; z: number; h: number; s: number; r: number; c: THREE.Color }[] = [];
-  const fStep = 1.28;
-  for (let fx = -19; fx <= 19; fx += fStep) {
+  const fStep = 1.32;
+  for (let fx = -23; fx <= 23; fx += fStep) {
     for (let fz = -19; fz <= 19; fz += fStep) {
       const jx = (hash2(Math.floor(fx * 13 + 21), Math.floor(fz * 13 + 5)) - 0.5) * fStep;
       const jz = (hash2(Math.floor(fx * 13 + 7), Math.floor(fz * 13 + 18)) - 0.5) * fStep;
@@ -476,8 +494,8 @@ export function createTerrainFoliage(): THREE.Group {
   });
   const stoneCols = [0x8a8c86, 0x6e6a62, 0x9a9488, 0x5c6454];
   const stonePts: { x: number; z: number; h: number; s: number; rx: number; ry: number; c: THREE.Color }[] = [];
-  const sStep = 1.7;
-  for (let sx = -18.5; sx <= 18.5; sx += sStep) {
+  const sStep = 1.75;
+  for (let sx = -23; sx <= 23; sx += sStep) {
     for (let sz = -18.5; sz <= 18.5; sz += sStep) {
       const jx = (hash2(Math.floor(sx * 11 + 40), Math.floor(sz * 11 + 3)) - 0.5) * sStep;
       const jz = (hash2(Math.floor(sx * 11 + 8), Math.floor(sz * 11 + 33)) - 0.5) * sStep;

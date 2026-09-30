@@ -9,6 +9,7 @@ import {
   homePlot,
   isHomePlot,
   isHomeRing,
+  isNearHome,
   landmarksIn,
   makePlot,
   parsePlotRef,
@@ -290,8 +291,11 @@ export class PlotSurvey {
       `West ${p.minX.toFixed(0)} → east ${p.maxX.toFixed(0)} · south ${p.minZ.toFixed(0)} → north ${p.maxZ.toFixed(0)}`,
     ];
     if (marks.length) lines.push(marks.map((m) => m.name).join(' · '));
-    else if (isHomeRing(p)) lines.push('Ring section — hills, woods, and trails blend into Thornrest.');
-    else lines.push('Undeveloped — same 48×48 as Thornrest, waiting to be built.');
+    else if (isHomeRing(p) || isNearHome(p)) {
+      lines.push('Ring section — hills, woods, and trails blend into Thornrest.');
+    } else {
+      lines.push('Wild section — same ground, trees, and rivers as its neighbors.');
+    }
     this.metaEl.textContent = lines.join('\n');
   }
 
