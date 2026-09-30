@@ -3,10 +3,11 @@ import {
   PLOT_COLS,
   PLOT_ROWS,
   PLOT_SIZE,
-  homeRingPlots,
+  homeNeighborhoodPlots,
   isHomePlot,
-  isHomeRing,
+  isNearHome,
   makePlot,
+  plotContains,
   type Plot,
 } from '../game/plots';
 import { createTree } from './meshes';
@@ -22,9 +23,17 @@ import {
 
 type Chunk = { id: string; root: THREE.Group; pinned: boolean };
 
+/** Same tessellation as camp so shared edges land on the same world vertices. */
+const GROUND_SEGS = 128;
+/** Tuck under the neighbor tile so a hairline crack cannot show. */
+const GROUND_OVERLAP = 0.28;
+const TREE_STEP = 5.1;
+const BOULDER_STEP = 7.4;
+
 /**
- * Terrain tiles beyond Thornrest. The four cardinal neighbors are pinned
- * so camp and survey always see a blended ring. Farther sections stay LRU.
+ * Terrain tiles beyond Thornrest. The eight neighbors around camp stay
+ * pinned. Every loaded section uses the same world-space height, color,
+ * and scatter so seams read as one wood.
  */
 export class PlotWorld {
   private chunks = new Map<string, Chunk>();
@@ -34,11 +43,11 @@ export class PlotWorld {
   constructor(private scene: THREE.Scene) {}
 
   warmHomeRing(): void {
-    for (const plot of homeRingPlots()) this.ensure(plot, true);
+    for (const plot of homeNeighborhoodPlots()) this.ensure(plot, true);
   }
 
   focus(plot: Plot): void {
-    this.ensure(plot, isHomeRing(plot));
+    this.ensure(plot, isNearHome(plot));
     for (let dr = -1; dr <= 1; dr++) {
       for (let dc = -1; dc <= 1; dc++) {
         if (dc === 0 && dr === 0) continue;
@@ -46,7 +55,7 @@ export class PlotWorld {
         const row = plot.row + dr;
         if (col < 0 || col >= PLOT_COLS || row < 0 || row >= PLOT_ROWS) continue;
         const next = makePlot(col, row);
-        this.ensure(next, isHomeRing(next));
+        this.ensure(next, isNearHome(next));
       }
     }
   }
@@ -61,7 +70,7 @@ export class PlotWorld {
     }
     const root = this.buildWild(plot);
     this.scene.add(root);
-    this.chunks.set(plot.id, { id: plot.id, root, pinned: pin || isHomeRing(plot) });
+    this.chunks.set(plot.id, { id: plot.id, root, pinned: pin || isNearHome(plot) });
     this.lru.push(plot.id);
     this.evict();
   }
@@ -98,66 +107,66 @@ export class PlotWorld {
   private buildWild(plot: Plot): THREE.Group {
     const root = new THREE.Group();
     root.name = `plotChunk_${plot.id}`;
-    const segs = isHomeRing(plot) ? 128 : 48;
-    root.add(createGround(PLOT_SIZE, segs, plot.cx, plot.cz));
+    root.add(createGround(PLOT_SIZE + GROUND_OVERLAP, GROUND_SEGS, plot.cx, plot.cz));
     this.scatterTrees(root, plot);
-    if (isHomeRing(plot)) {
-      this.scatterBoulders(root, plot);
-      root.add(createPlotFoliage(plot.minX, plot.maxX, plot.minZ, plot.maxZ));
-    }
+    this.scatterBoulders(root, plot);
+    root.add(createPlotFoliage(plot.minX, plot.maxX, plot.minZ, plot.maxZ));
     return root;
   }
 
   private scatterTrees(root: THREE.Group, plot: Plot): void {
-    const step = isHomeRing(plot) ? 5.1 : 6.4;
     let i = 0;
-    for (let gx = plot.minX + 2.2; gx < plot.maxX - 2.2; gx += step) {
-      for (let gz = plot.minZ + 2.2; gz < plot.maxZ - 2.2; gz += step) {
-        const hx = hash01(Math.floor(gx * 11 + 3), Math.floor(gz * 13 + 7));
-        const hz = hash01(Math.floor(gx * 17 + 9), Math.floor(gz * 19 + 2));
-        const x = gx + (hx - 0.5) * step * 0.82;
-        const z = gz + (hz - 0.5) * step * 0.82;
-        if (x < plot.minX + 1.4 || x > plot.maxX - 1.4) continue;
-        if (z < plot.minZ + 1.4 || z > plot.maxZ - 1.4) continue;
-        const forest = forestField(x, z);
-        const keep = hash01(Math.floor(x * 23 + 4), Math.floor(z * 29 + 8));
-        if (keep > forest * 0.78) continue;
-        if (snowField(x, z) > 0.72) continue;
-        if (streamAmount(x, z) > 0.18) continue;
-        if (rockField(x, z) > 0.72 && keep > 0.28) continue;
-        const tree = createTree(Math.floor(keep * 997) + i);
-        tree.position.set(x, groundHeight(x, z), z);
-        tree.rotation.y = hx * Math.PI * 2;
-        const s = 0.88 + forest * 0.28 + (keep - 0.5) * 0.12;
-        tree.scale.setScalar(s);
-        root.add(tree);
-        i += 1;
-      }
+    for (const [x, z, hx, keep] of worldCells(plot, TREE_STEP, 0.7)) {
+      const forest = forestField(x, z);
+      if (keep > forest * 0.78) continue;
+      if (snowField(x, z) > 0.72) continue;
+      if (streamAmount(x, z) > 0.18) continue;
+      if (rockField(x, z) > 0.72 && keep > 0.28) continue;
+      const tree = createTree(Math.floor(keep * 997) + i);
+      tree.position.set(x, groundHeight(x, z), z);
+      tree.rotation.y = hx * Math.PI * 2;
+      tree.scale.setScalar(0.88 + forest * 0.28 + (keep - 0.5) * 0.12);
+      root.add(tree);
+      i += 1;
     }
   }
 
   private scatterBoulders(root: THREE.Group, plot: Plot): void {
-    const step = 7.4;
     let n = 0;
-    for (let gx = plot.minX + 3; gx < plot.maxX - 3; gx += step) {
-      for (let gz = plot.minZ + 3; gz < plot.maxZ - 3; gz += step) {
-        const hx = hash01(Math.floor(gx * 9 + 41), Math.floor(gz * 11 + 3));
-        const hz = hash01(Math.floor(gx * 7 + 18), Math.floor(gz * 15 + 33));
-        const x = gx + (hx - 0.5) * step * 0.75;
-        const z = gz + (hz - 0.5) * step * 0.75;
-        const rock = rockField(x, z);
-        const keep = hash01(Math.floor(x * 31 + 2), Math.floor(z * 37 + 6));
-        if (keep > rock * 0.7) continue;
-        if (streamAmount(x, z) > 0.16) continue;
-        if (snowField(x, z) > 0.5) continue;
-        const boulder = createBoulder(Math.floor(keep * 400 + n));
-        boulder.position.set(x, groundHeight(x, z), z);
-        boulder.rotation.y = hx * Math.PI * 2;
-        const s = 0.7 + rock * 0.9 + keep * 0.25;
-        boulder.scale.setScalar(s);
-        root.add(boulder);
-        n += 1;
-      }
+    for (const [x, z, hx, keep] of worldCells(plot, BOULDER_STEP, 0.75)) {
+      const rock = rockField(x, z);
+      if (keep > rock * 0.7) continue;
+      if (streamAmount(x, z) > 0.16) continue;
+      if (snowField(x, z) > 0.5) continue;
+      const boulder = createBoulder(Math.floor(keep * 400 + n));
+      boulder.position.set(x, groundHeight(x, z), z);
+      boulder.rotation.y = hx * Math.PI * 2;
+      boulder.scale.setScalar(0.7 + rock * 0.9 + keep * 0.25);
+      root.add(boulder);
+      n += 1;
+    }
+  }
+}
+
+/** Lattice in world units so a seam tree belongs to exactly one plot. */
+function* worldCells(
+  plot: Plot,
+  step: number,
+  jitter: number,
+): Generator<[number, number, number, number]> {
+  const x0 = Math.floor(plot.minX / step) * step;
+  const z0 = Math.floor(plot.minZ / step) * step;
+  const x1 = Math.ceil(plot.maxX / step) * step;
+  const z1 = Math.ceil(plot.maxZ / step) * step;
+  for (let gx = x0; gx <= x1; gx += step) {
+    for (let gz = z0; gz <= z1; gz += step) {
+      const hx = hash01(Math.floor(gx * 11 + 3), Math.floor(gz * 13 + 7));
+      const hz = hash01(Math.floor(gx * 17 + 9), Math.floor(gz * 19 + 2));
+      const x = gx + (hx - 0.5) * step * jitter;
+      const z = gz + (hz - 0.5) * step * jitter;
+      if (!plotContains(plot, x, z)) continue;
+      const keep = hash01(Math.floor(x * 23 + 4), Math.floor(z * 29 + 8));
+      yield [x, z, hx, keep];
     }
   }
 }
