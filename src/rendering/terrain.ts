@@ -114,9 +114,9 @@ export function streamAmount(x: number, z: number): number {
   const cz = z + 9.2 - wander;
   const along = smooth01(12, 22, x) * (1 - smooth01(66, 78, x));
   const camp = Math.exp(-(cz * cz) * 0.16) * along;
-  const warp = (fbm(x * 0.011 + 6.4, z * 0.011 - 2.2, 4) - 0.5) * 2.4;
-  const ridge = Math.abs(valueNoise(x * 0.028 + warp, z * 0.028 - warp * 0.6) - 0.5) * 2;
-  const world = Math.exp(-(ridge * ridge) * 38) * smooth01(28, 64, Math.hypot(x + 2, z + 0.5));
+  const warp = (fbm(x * 0.01 + 6.4, z * 0.01 - 2.2, 4) - 0.5) * 1.6;
+  const ridge = Math.abs(valueNoise(x * 0.022 + warp, z * 0.022 - warp * 0.55) - 0.5) * 2;
+  const world = Math.exp(-(ridge * ridge) * 220) * smooth01(40, 90, Math.hypot(x + 2, z + 0.5));
   return Math.max(camp, world);
 }
 
@@ -177,9 +177,9 @@ export function createGround(size = 48, segments = 128, cx = 0, cz = 0): THREE.M
     const n = grassDetail(x, z);
     const n2 = valueNoise(x * 1.9 + 4.2, z * 1.9 - 1.7);
 
-    if (stream > 0.16) {
+    if (stream > 0.28) {
       tmp.copy(wet).lerp(dirtDark, Math.min(1, stream));
-      tmp.lerp(grassC, 1 - Math.min(1, stream * 1.35));
+      tmp.lerp(grassC, 1 - Math.min(1, stream * 1.15));
     } else if (snowTotal > 0.24) {
       tmp.copy(snow).lerp(snowBlue, n);
       tmp.lerp(grassA, 1 - Math.min(1, snowTotal * 1.7));
