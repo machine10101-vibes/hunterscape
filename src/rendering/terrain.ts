@@ -77,6 +77,11 @@ export function wildness(x: number, z: number): number {
   return smooth01(15, 33, Math.hypot(x + 2.05, z + 0.55));
 }
 
+/** Tight clumps so trees gather into groves instead of a regular grid. */
+export function groveField(x: number, z: number): number {
+  return fbm(x * 0.095 + 2.2, z * 0.095 - 5.1, 3);
+}
+
 export function forestField(x: number, z: number): number {
   const near = fbm(x * 0.042 + 8.1, z * 0.042 - 3.4, 4);
   const south = smooth01(-6, -30, z) * 0.28;
@@ -540,7 +545,13 @@ export function createTerrainFoliage(): THREE.Group {
 }
 
 /** Sparser grass / flowers / stones for a wild section, same materials as camp. */
-export function createPlotFoliage(minX: number, maxX: number, minZ: number, maxZ: number): THREE.Group {
+export function createPlotFoliage(
+  minX: number,
+  maxX: number,
+  minZ: number,
+  maxZ: number,
+  density = 1,
+): THREE.Group {
   const root = new THREE.Group();
   root.name = 'plotFoliage';
   const dummy = new THREE.Object3D();
@@ -564,7 +575,7 @@ export function createPlotFoliage(minX: number, maxX: number, minZ: number, maxZ
       const x = gx + jx;
       const z = gz + jz;
       const keep = hash2(Math.floor(x * 17 + 4), Math.floor(z * 19 + 8));
-      if (keep < 0.28) continue;
+      if (keep < 0.28 / Math.max(0.45, density)) continue;
       if (!canScatter(x, z)) continue;
       grassPts.push({
         x,
@@ -611,7 +622,7 @@ export function createPlotFoliage(minX: number, maxX: number, minZ: number, maxZ
       const x = fx + jx;
       const z = fz + jz;
       const keep = hash2(Math.floor(x * 29 + 1), Math.floor(z * 31 + 6));
-      if (keep < 0.42) continue;
+      if (keep < 0.42 / Math.max(0.5, density)) continue;
       if (!canScatter(x, z, 0.26, 0.18)) continue;
       flowerPts.push({
         x,

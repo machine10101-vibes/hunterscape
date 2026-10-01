@@ -5,6 +5,7 @@ import {
   PLOT_SIZE,
   homeNeighborhoodPlots,
   isHomePlot,
+  isHomeRing,
   isNearHome,
   makePlot,
   plotContains,
@@ -15,11 +16,22 @@ import {
   createGround,
   createPlotFoliage,
   forestField,
+  groveField,
   groundHeight,
   rockField,
   snowField,
   streamAmount,
 } from './terrain';
+import {
+  createBush,
+  createCairn,
+  createFallenLog,
+  createFordStone,
+  createReed,
+  createSapling,
+  createSnowMound,
+  createStump,
+} from './wildDress';
 
 type Chunk = { id: string; root: THREE.Group; pinned: boolean };
 
@@ -110,22 +122,32 @@ export class PlotWorld {
     root.add(createGround(PLOT_SIZE + GROUND_OVERLAP, GROUND_SEGS, plot.cx, plot.cz));
     this.scatterTrees(root, plot);
     this.scatterBoulders(root, plot);
-    root.add(createPlotFoliage(plot.minX, plot.maxX, plot.minZ, plot.maxZ));
+    this.scatterBrush(root, plot);
+    this.scatterSnowDress(root, plot);
+    this.scatterReeds(root, plot);
+    if (isNearHome(plot)) this.dressLandmark(root, plot);
+    const foliage = isNearHome(plot) ? 1.35 : 1;
+    root.add(createPlotFoliage(plot.minX, plot.maxX, plot.minZ, plot.maxZ, foliage));
     return root;
   }
 
   private scatterTrees(root: THREE.Group, plot: Plot): void {
+    const rich = isNearHome(plot);
+    const step = rich ? 4.05 : TREE_STEP;
     let i = 0;
-    for (const [x, z, hx, keep] of worldCells(plot, TREE_STEP, 0.7)) {
+    for (const [x, z, hx, keep] of worldCells(plot, step, 0.72)) {
       const forest = forestField(x, z);
-      if (keep > forest * 0.78) continue;
-      if (snowField(x, z) > 0.72) continue;
+      const grove = groveField(x, z);
+      const chance = forest * (0.45 + grove * 0.7);
+      if (keep > chance) continue;
+      if (snowField(x, z) > 0.74) continue;
       if (streamAmount(x, z) > 0.18) continue;
-      if (rockField(x, z) > 0.72 && keep > 0.28) continue;
-      const tree = createTree(Math.floor(keep * 997) + i);
+      if (rockField(x, z) > 0.74 && keep > 0.3) continue;
+      const sapling = keep > 0.55 && grove < 0.48;
+      const tree = sapling ? createSapling(Math.floor(keep * 997) + i) : createTree(Math.floor(keep * 997) + i);
       tree.position.set(x, groundHeight(x, z), z);
       tree.rotation.y = hx * Math.PI * 2;
-      tree.scale.setScalar(0.88 + forest * 0.28 + (keep - 0.5) * 0.12);
+      tree.scale.setScalar((sapling ? 0.95 : 0.86) + forest * 0.3 + (keep - 0.5) * 0.14);
       root.add(tree);
       i += 1;
     }
@@ -133,19 +155,121 @@ export class PlotWorld {
 
   private scatterBoulders(root: THREE.Group, plot: Plot): void {
     let n = 0;
-    for (const [x, z, hx, keep] of worldCells(plot, BOULDER_STEP, 0.75)) {
+    const step = isNearHome(plot) ? 6.2 : BOULDER_STEP;
+    for (const [x, z, hx, keep] of worldCells(plot, step, 0.75)) {
       const rock = rockField(x, z);
-      if (keep > rock * 0.7) continue;
+      if (keep > rock * 0.72) continue;
       if (streamAmount(x, z) > 0.16) continue;
-      if (snowField(x, z) > 0.5) continue;
+      if (snowField(x, z) > 0.52) continue;
       const boulder = createBoulder(Math.floor(keep * 400 + n));
       boulder.position.set(x, groundHeight(x, z), z);
       boulder.rotation.y = hx * Math.PI * 2;
-      boulder.scale.setScalar(0.7 + rock * 0.9 + keep * 0.25);
+      boulder.scale.setScalar(0.7 + rock * 0.95 + keep * 0.25);
       root.add(boulder);
       n += 1;
     }
   }
+
+  private scatterBrush(root: THREE.Group, plot: Plot): void {
+    const rich = isNearHome(plot);
+    const step = rich ? 3.15 : 4.4;
+    let i = 0;
+    for (const [x, z, hx, keep] of worldCells(plot, step, 0.78)) {
+      const forest = forestField(x, z);
+      if (keep > 0.38 + forest * 0.4) continue;
+      if (snowField(x, z) > 0.32) continue;
+      if (streamAmount(x, z) > 0.14) continue;
+      const kind = hash01(Math.floor(x * 41), Math.floor(z * 43));
+      const prop =
+        kind < 0.18 && forest > 0.42
+          ? createFallenLog(Math.floor(keep * 200 + i))
+          : kind < 0.28 && forest > 0.38
+            ? createStump(Math.floor(keep * 180 + i))
+            : createBush(Math.floor(keep * 310 + i));
+      prop.position.set(x, groundHeight(x, z), z);
+      prop.rotation.y = hx * Math.PI * 2;
+      prop.scale.setScalar(0.85 + keep * 0.4);
+      root.add(prop);
+      i += 1;
+    }
+  }
+
+  private scatterSnowDress(root: THREE.Group, plot: Plot): void {
+    let i = 0;
+    for (const [x, z, hx, keep] of worldCells(plot, 4.6, 0.7)) {
+      const snow = snowField(x, z);
+      if (snow < 0.26) continue;
+      if (keep > snow * 0.85) continue;
+      if (streamAmount(x, z) > 0.2) continue;
+      const mound = createSnowMound(Math.floor(keep * 220 + i));
+      mound.position.set(x, groundHeight(x, z), z);
+      mound.rotation.y = hx * Math.PI * 2;
+      mound.scale.setScalar(0.8 + snow * 0.5);
+      root.add(mound);
+      i += 1;
+    }
+  }
+
+  private scatterReeds(root: THREE.Group, plot: Plot): void {
+    let i = 0;
+    for (const [x, z, hx, keep] of worldCells(plot, 2.8, 0.65)) {
+      const stream = streamAmount(x, z);
+      if (stream < 0.1 || stream > 0.55) continue;
+      if (keep > 0.55) continue;
+      const reed = createReed(Math.floor(keep * 160 + i));
+      reed.position.set(x, groundHeight(x, z), z);
+      reed.rotation.y = hx * Math.PI * 2;
+      root.add(reed);
+      i += 1;
+    }
+  }
+
+  private dressLandmark(root: THREE.Group, plot: Plot): void {
+    const spots = landmarkSpots(plot);
+    spots.forEach(([x, z, kind], i) => {
+      const y = groundHeight(x, z);
+      if (kind === 'cairn') {
+        const cairn = createCairn(plot.col * 17 + plot.row + i);
+        cairn.position.set(x, y, z);
+        cairn.scale.setScalar(1.35);
+        root.add(cairn);
+      } else if (kind === 'stumps') {
+        for (let k = 0; k < 5; k++) {
+          const a = (k / 5) * Math.PI * 2;
+          const stump = createStump(k + plot.row * 3);
+          stump.position.set(x + Math.cos(a) * 1.1, groundHeight(x + Math.cos(a) * 1.1, z + Math.sin(a) * 1.1), z + Math.sin(a) * 1.1);
+          root.add(stump);
+        }
+      } else if (kind === 'ford') {
+        for (let k = 0; k < 6; k++) {
+          const stone = createFordStone(k + 9);
+          stone.position.set(x + k * 0.85 - 2.1, groundHeight(x + k * 0.85 - 2.1, z + (k % 2) * 0.35), z + (k % 2) * 0.35);
+          root.add(stone);
+        }
+      } else if (kind === 'fold') {
+        for (let k = 0; k < 4; k++) {
+          const b = createBoulder(80 + k);
+          const ox = (k % 2) * 1.2 - 0.4;
+          const oz = Math.floor(k / 2) * 1.1 - 0.3;
+          b.position.set(x + ox, groundHeight(x + ox, z + oz), z + oz);
+          b.scale.setScalar(1.2 + k * 0.15);
+          root.add(b);
+        }
+      }
+    });
+  }
+}
+
+function landmarkSpots(plot: Plot): [number, number, 'cairn' | 'stumps' | 'ford' | 'fold'][] {
+  if (isHomeRing(plot) && plot.row > 0 && plot.cz > 20) return [[7.5, 42, 'cairn']];
+  if (isHomeRing(plot) && plot.cz < -20) return [[-5.2, -41, 'stumps']];
+  if (isHomeRing(plot) && plot.cx > 20) return [[38, -8.4, 'ford']];
+  if (isHomeRing(plot) && plot.cx < -20) return [[-40, 5.5, 'fold']];
+  if (plot.cx > 20 && plot.cz > 20) return [[36, 40, 'cairn']];
+  if (plot.cx > 20 && plot.cz < -20) return [[34, -38, 'stumps']];
+  if (plot.cx < -20 && plot.cz > 20) return [[-38, 38, 'fold']];
+  if (plot.cx < -20 && plot.cz < -20) return [[-36, -40, 'stumps']];
+  return [];
 }
 
 /** Lattice in world units so a seam tree belongs to exactly one plot. */
