@@ -13,6 +13,70 @@ function dressMat(
   });
 }
 
+export function createSnag(seed: number): THREE.Group {
+  const g = new THREE.Group();
+  g.name = 'wildSnag';
+  const h = 1.55 + (seed % 4) * 0.28;
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.18, h, 6), dressMat(0x3a2a18));
+  trunk.position.y = h / 2;
+  trunk.rotation.z = ((seed % 5) - 2) * 0.07;
+  trunk.castShadow = true;
+  g.add(trunk);
+  const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.055, 0.72, 5), dressMat(0x2a1c0c));
+  arm.position.set(0.18, h * 0.68, 0.04);
+  arm.rotation.z = 1.05;
+  arm.castShadow = true;
+  g.add(arm);
+  return g;
+}
+
+export function createFern(seed: number): THREE.Group {
+  const g = new THREE.Group();
+  g.name = 'wildFern';
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2 + seed * 0.2;
+    const blade = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.4, 4), dressMat(i % 2 ? 0x2c6424 : 0x3a7a30));
+    blade.position.set(Math.cos(a) * 0.1, 0.16, Math.sin(a) * 0.1);
+    blade.rotation.z = Math.cos(a) * 0.45;
+    blade.rotation.x = Math.sin(a) * 0.35;
+    g.add(blade);
+  }
+  return g;
+}
+
+export function createMushrooms(seed: number): THREE.Group {
+  const g = new THREE.Group();
+  g.name = 'wildMushrooms';
+  const n = 3 + (seed % 3);
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    const r = 0.16 + (i % 2) * 0.08;
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.04, 0.12, 5), dressMat(0xe6d8b8));
+    stem.position.set(Math.cos(a) * r, 0.06, Math.sin(a) * r);
+    const cap = new THREE.Mesh(
+      new THREE.SphereGeometry(0.065, 6, 4),
+      dressMat(i % 2 ? 0xc44838 : 0xd4c070),
+    );
+    cap.position.y = 0.11;
+    cap.scale.y = 0.5;
+    stem.add(cap);
+    g.add(stem);
+  }
+  return g;
+}
+
+export function createBerryBush(seed: number): THREE.Group {
+  const g = createBush(seed);
+  g.name = 'wildBerry';
+  for (let i = 0; i < 4; i++) {
+    const berry = new THREE.Mesh(new THREE.SphereGeometry(0.045, 5, 4), dressMat(seed % 2 ? 0xc43848 : 0x8a3060));
+    const a = (i / 4) * Math.PI * 2;
+    berry.position.set(Math.cos(a) * 0.18, 0.38 + (i % 2) * 0.06, Math.sin(a) * 0.16);
+    g.add(berry);
+  }
+  return g;
+}
+
 export function createBush(seed: number): THREE.Group {
   const g = new THREE.Group();
   g.name = 'wildBush';

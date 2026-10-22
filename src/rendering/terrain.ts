@@ -82,6 +82,12 @@ export function groveField(x: number, z: number): number {
   return fbm(x * 0.095 + 2.2, z * 0.095 - 5.1, 3);
 }
 
+/** Open pockets that cross plot lines, so a clearing is not a tile hole. */
+export function clearingField(x: number, z: number): number {
+  const n = fbm(x * 0.048 + 19.4, z * 0.048 - 7.2, 3);
+  return smooth01(0.64, 0.84, n);
+}
+
 export function forestField(x: number, z: number): number {
   const near = fbm(x * 0.042 + 8.1, z * 0.042 - 3.4, 4);
   const south = smooth01(-6, -30, z) * 0.28;

@@ -15,6 +15,7 @@ import { createTree } from './meshes';
 import {
   createGround,
   createPlotFoliage,
+  clearingField,
   forestField,
   groveField,
   groundHeight,
@@ -23,12 +24,16 @@ import {
   streamAmount,
 } from './terrain';
 import {
+  createBerryBush,
   createBush,
   createCairn,
   createFallenLog,
+  createFern,
   createFordStone,
+  createMushrooms,
   createReed,
   createSapling,
+  createSnag,
   createSnowMound,
   createStump,
 } from './wildDress';
@@ -123,6 +128,7 @@ export class PlotWorld {
     this.scatterTrees(root, plot);
     this.scatterBoulders(root, plot);
     this.scatterBrush(root, plot);
+    this.scatterUnderstory(root, plot);
     this.scatterSnowDress(root, plot);
     this.scatterReeds(root, plot);
     if (isNearHome(plot)) this.dressLandmark(root, plot);
@@ -138,13 +144,21 @@ export class PlotWorld {
     for (const [x, z, hx, keep] of worldCells(plot, step, 0.72)) {
       const forest = forestField(x, z);
       const grove = groveField(x, z);
-      const chance = forest * (0.45 + grove * 0.7);
+      const open = clearingField(x, z);
+      const snow = snowField(x, z);
+      const rock = rockField(x, z);
+      const chance = forest * (0.45 + grove * 0.7) * (1 - open * 0.82);
       if (keep > chance) continue;
-      if (snowField(x, z) > 0.74) continue;
+      if (snow > 0.74) continue;
       if (streamAmount(x, z) > 0.18) continue;
-      if (rockField(x, z) > 0.74 && keep > 0.3) continue;
-      const sapling = keep > 0.55 && grove < 0.48;
-      const tree = sapling ? createSapling(Math.floor(keep * 997) + i) : createTree(Math.floor(keep * 997) + i);
+      if (rock > 0.74 && keep > 0.3) continue;
+      const snag = (snow > 0.32 || rock > 0.48) && keep < 0.34;
+      const sapling = !snag && keep > 0.55 && grove < 0.48;
+      const tree = snag
+        ? createSnag(Math.floor(keep * 997) + i)
+        : sapling
+          ? createSapling(Math.floor(keep * 997) + i)
+          : createTree(Math.floor(keep * 997) + i);
       tree.position.set(x, groundHeight(x, z), z);
       tree.rotation.y = hx * Math.PI * 2;
       tree.scale.setScalar((sapling ? 0.95 : 0.86) + forest * 0.3 + (keep - 0.5) * 0.14);
@@ -166,6 +180,17 @@ export class PlotWorld {
       boulder.rotation.y = hx * Math.PI * 2;
       boulder.scale.setScalar(0.7 + rock * 0.95 + keep * 0.25);
       root.add(boulder);
+      if (isNearHome(plot) && rock > 0.42 && keep > 0.35) {
+        for (let k = 0; k < 2; k++) {
+          const ox = (hash01(Math.floor(x * 9 + k), Math.floor(z * 5)) - 0.5) * 1.6;
+          const oz = (hash01(Math.floor(x * 4 + k), Math.floor(z * 13)) - 0.5) * 1.6;
+          if (!plotContains(plot, x + ox, z + oz)) continue;
+          const chip = createBoulder(Math.floor(keep * 90 + k + n));
+          chip.position.set(x + ox, groundHeight(x + ox, z + oz), z + oz);
+          chip.scale.setScalar(0.45 + keep * 0.35);
+          root.add(chip);
+        }
+      }
       n += 1;
     }
   }
@@ -181,14 +206,38 @@ export class PlotWorld {
       if (streamAmount(x, z) > 0.14) continue;
       const kind = hash01(Math.floor(x * 41), Math.floor(z * 43));
       const prop =
-        kind < 0.18 && forest > 0.42
+        kind < 0.16 && forest > 0.42
           ? createFallenLog(Math.floor(keep * 200 + i))
-          : kind < 0.28 && forest > 0.38
+          : kind < 0.26 && forest > 0.38
             ? createStump(Math.floor(keep * 180 + i))
-            : createBush(Math.floor(keep * 310 + i));
+            : kind > 0.72 && forest > 0.28
+              ? createBerryBush(Math.floor(keep * 310 + i))
+              : createBush(Math.floor(keep * 310 + i));
       prop.position.set(x, groundHeight(x, z), z);
       prop.rotation.y = hx * Math.PI * 2;
       prop.scale.setScalar(0.85 + keep * 0.4);
+      root.add(prop);
+      i += 1;
+    }
+  }
+
+  private scatterUnderstory(root: THREE.Group, plot: Plot): void {
+    if (!isNearHome(plot)) return;
+    let i = 0;
+    for (const [x, z, hx, keep] of worldCells(plot, 2.55, 0.7)) {
+      const forest = forestField(x, z);
+      const grove = groveField(x, z);
+      const open = clearingField(x, z);
+      if (snowField(x, z) > 0.28) continue;
+      if (streamAmount(x, z) > 0.16) continue;
+      if (rockField(x, z) > 0.62) continue;
+      const fern = grove > 0.45 && forest > 0.4 && keep < grove * 0.55;
+      const shroom = open < 0.25 && forest > 0.5 && keep > 0.72 && keep < 0.86;
+      if (!fern && !shroom) continue;
+      const prop = shroom ? createMushrooms(Math.floor(keep * 240 + i)) : createFern(Math.floor(keep * 240 + i));
+      prop.position.set(x, groundHeight(x, z), z);
+      prop.rotation.y = hx * Math.PI * 2;
+      prop.scale.setScalar(0.9 + keep * 0.35);
       root.add(prop);
       i += 1;
     }
