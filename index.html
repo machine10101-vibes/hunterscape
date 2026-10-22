@@ -9,8 +9,8 @@
     <title>Hunterscape — Thornrest Camp</title>
     <link rel="icon" type="image/svg+xml" href="/hunterscape/favicon.svg" />
     <link rel="apple-touch-icon" href="/hunterscape/favicon.svg" />
-    <script type="module" crossorigin src="/hunterscape/assets/index-BQK_5O-6.js"></script>
-    <link rel="stylesheet" crossorigin href="/hunterscape/assets/index-BMKY7PDO.css">
+    <script type="module" crossorigin src="/hunterscape/assets/index-DlYrzCWC.js"></script>
+    <link rel="stylesheet" crossorigin href="/hunterscape/assets/index-B1ezSwuo.css">
   </head>
   <body>
     <div id="app">
@@ -52,37 +52,51 @@
           </div>
         </div>
 
-        <!-- Skills toggle button -->
-        <button type="button" id="btn-skills" title="Skills (K)">⚔ Skills</button>
-        <button type="button" id="btn-gear" title="Hero gear (C)">🛡 Gear</button>
-        <button type="button" id="btn-studio" title="Model Studio (V)">◈ Studio</button>
+        <nav id="hud-nav" aria-label="Hero menu">
+          <button type="button" id="btn-skills" title="Skills (K)" aria-expanded="false" aria-controls="skills-panel">
+            <span class="nav-ico" aria-hidden="true">⚔</span>
+            <span class="nav-txt">Skills</span>
+            <kbd class="nav-key">K</kbd>
+          </button>
+          <button type="button" id="btn-gear" title="Hero gear (C)" aria-expanded="false" aria-controls="gear-panel">
+            <span class="nav-ico" aria-hidden="true">🛡</span>
+            <span class="nav-txt">Gear</span>
+            <kbd class="nav-key">C</kbd>
+          </button>
+          <button type="button" id="btn-studio" title="Model Studio (V)">
+            <span class="nav-ico" aria-hidden="true">◈</span>
+            <span class="nav-txt">Studio</span>
+            <kbd class="nav-key">V</kbd>
+          </button>
+          <button type="button" id="btn-plots" title="Land plots (P)" aria-expanded="false" aria-controls="plots">
+            <span class="nav-ico" aria-hidden="true">▣</span>
+            <span class="nav-txt">Plots</span>
+            <kbd class="nav-key">P</kbd>
+          </button>
+        </nav>
 
         <!-- Hero gear / equipment -->
         <div id="gear-panel" class="panel" hidden>
           <div class="panel-head">
-            <span>Hero</span>
+            <span>Gear</span>
             <button type="button" class="panel-close" id="gear-close" aria-label="Close">✕</button>
           </div>
           <div id="gear-body">
             <div class="gear-col">
               <button type="button" class="gear-slot" data-slot="weapon" title="Weapon">
                 <canvas class="item-icon" width="128" height="128"></canvas>
-                <span class="gear-empty">Weapon</span>
                 <span class="gear-label">Weapon</span>
               </button>
               <button type="button" class="gear-slot" data-slot="shield" title="Shield">
                 <canvas class="item-icon" width="128" height="128"></canvas>
-                <span class="gear-empty">Shield</span>
                 <span class="gear-label">Shield</span>
               </button>
               <button type="button" class="gear-slot" data-slot="chest" title="Chest">
                 <canvas class="item-icon" width="128" height="128"></canvas>
-                <span class="gear-empty">Chest</span>
                 <span class="gear-label">Chest</span>
               </button>
               <button type="button" class="gear-slot" data-slot="greaves" title="Greaves">
                 <canvas class="item-icon" width="128" height="128"></canvas>
-                <span class="gear-empty">Greaves</span>
                 <span class="gear-label">Greaves</span>
               </button>
             </div>
@@ -90,36 +104,40 @@
             <div class="gear-col">
               <button type="button" class="gear-slot" data-slot="legs" title="Legs">
                 <canvas class="item-icon" width="128" height="128"></canvas>
-                <span class="gear-empty">Legs</span>
                 <span class="gear-label">Legs</span>
               </button>
               <button type="button" class="gear-slot" data-slot="boots" title="Boots">
                 <canvas class="item-icon" width="128" height="128"></canvas>
-                <span class="gear-empty">Boots</span>
                 <span class="gear-label">Boots</span>
               </button>
               <button type="button" class="gear-slot" data-slot="hatchet" title="Hatchet">
                 <canvas class="item-icon" width="128" height="128"></canvas>
-                <span class="gear-empty">Hatchet</span>
                 <span class="gear-label">Hatchet</span>
               </button>
               <button type="button" class="gear-slot" data-slot="pickaxe" title="Pickaxe">
                 <canvas class="item-icon" width="128" height="128"></canvas>
-                <span class="gear-empty">Pickaxe</span>
                 <span class="gear-label">Pickaxe</span>
               </button>
             </div>
           </div>
-          <div id="gear-inspect">Click a slot to unequip · Click inventory to equip</div>
+          <div id="gear-inspect">Click a filled slot to unequip. Click an inventory item to equip it.</div>
         </div>
 
         <div id="forge-panel" class="panel" hidden>
           <div class="panel-head">
-            <span>Thornrest Forge</span>
+            <span id="forge-title">Thornrest Forge</span>
             <button type="button" class="panel-close" id="forge-close" aria-label="Close">✕</button>
           </div>
           <p id="forge-blurb">Work frost-yeti hide, fur, bone, and claws into a matching set.</p>
           <div id="forge-list"></div>
+        </div>
+
+        <div id="quest-tracker" aria-label="Quests"></div>
+
+        <div id="dialogue" hidden>
+          <div id="dialogue-speaker"></div>
+          <p id="dialogue-body"></p>
+          <div id="dialogue-options"></div>
         </div>
 
         <!-- Skills panel -->
@@ -131,23 +149,14 @@
           <div id="skills-list"></div>
         </div>
 
-        <!-- Chat bottom-left -->
-        <div id="chat">
+        <div id="chat" class="panel" aria-label="Game log">
+          <div class="chat-head">Log</div>
           <div id="chat-log"></div>
-          <div id="chat-tabs">
-            <span class="chat-tab active">Game</span>
-            <span class="chat-tab">Public</span>
-            <span class="chat-tab">Private</span>
-          </div>
         </div>
 
-        <!-- Action bar bottom-center -->
-        <div id="action-bar" aria-label="Action bar">
-          <button class="ab-slot" data-action="attack" title="Basic Attack (1)"><span class="ab-icon">⚔</span><span class="ab-key">1</span></button>
-          <button class="ab-slot" data-action="chop" title="Chop Tree (2)"><span class="ab-icon">🪓</span><span class="ab-key">2</span></button>
-          <button class="ab-slot" data-action="mine" title="Mine Rock (3)"><span class="ab-icon">⛏</span><span class="ab-key">3</span></button>
-          <button class="ab-slot" data-action="eat" title="Eat Food (4)"><span class="ab-icon">🍖</span><span class="ab-key">4</span></button>
-          <button class="ab-slot" data-action="examine" title="Examine (5)"><span class="ab-icon">👁</span><span class="ab-key">5</span></button>
+        <div id="action-bar" aria-label="Combat skills">
+          <div class="ab-kicker">Arts</div>
+          <div id="skill-slots"></div>
         </div>
 
         <!-- Inventory toggle (narrow viewports) -->
@@ -163,6 +172,7 @@
             </span>
           </div>
           <div id="inv-grid"></div>
+          <div id="inv-inspect">Click an item to equip or eat it.</div>
         </div>
 
         <!-- Progress bar (gathering/combat) -->
@@ -173,11 +183,37 @@
 
         <!-- Target info -->
         <div id="target-info" hidden>
+          <span class="target-kicker">Target</span>
           <span id="target-name"></span>
           <div class="bar thin"><div id="target-hp"></div></div>
         </div>
 
-        <div id="touch-hint">Tap ground to move · Pinch to zoom · Tap trees, rocks &amp; dummy to interact</div>
+        <div id="touch-hint">Tap to walk · Briarford is east · Pinch to zoom</div>
+      </div>
+
+      <div id="plots" hidden>
+        <div id="plots-top">
+          <div class="studio-brand">
+            <span class="studio-kicker">Survey</span>
+            <span id="plots-name">Plot C4</span>
+          </div>
+          <span id="plots-hint">Click the atlas · Drag to pan · Scroll to zoom · Arrows step · H home · Esc to close</span>
+          <button type="button" id="plots-close" aria-label="Close plots">✕</button>
+        </div>
+        <div id="plots-side">
+          <div class="panel-head">Land plots</div>
+          <p id="plots-count">500 sections · 20 × 25 · each 48×48</p>
+          <canvas id="plots-atlas" width="400" height="500" role="img" aria-label="World plot atlas"></canvas>
+          <label id="plots-jump-wrap">
+            Jump
+            <input id="plots-jump" type="text" inputmode="text" placeholder="K13 or 251" autocomplete="off" spellcheck="false" />
+          </label>
+          <p id="plots-meta">Each section is the size of Thornrest. Click the atlas to inspect one from above.</p>
+          <div id="plots-tools">
+            <button type="button" id="plots-frame" title="Frame this plot (F)">Frame</button>
+            <button type="button" id="plots-home" title="Jump to Thornrest (H)">Home</button>
+          </div>
+        </div>
       </div>
 
       <div id="studio" hidden>
