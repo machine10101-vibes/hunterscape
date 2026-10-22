@@ -32,6 +32,15 @@ import { createBriarAnvil } from '../rendering/briarGear';
 import { briarfordProps, createTownNpc } from '../rendering/town';
 import { createBriarWolf, poseBriarWolf, WOLF_HOMES } from '../rendering/wolf';
 import {
+  BOAR_HOMES,
+  SPIDER_HOMES,
+  createBriarBoar,
+  createSpiderWeb,
+  createThornSpider,
+  poseBriarBoar,
+  poseThornSpider,
+} from '../rendering/critters';
+import {
   animateDeath,
   animateHitFlinch,
   animateOrcAttack,
@@ -70,6 +79,7 @@ import {
   COMBAT_SKILLS,
   BRIAR_RECIPES,
   ITEM_META,
+  ROAD_RECIPES,
   YETI_RECIPES,
   armorMitigation,
   canCraft,
@@ -87,11 +97,13 @@ import {
   dialogueFor,
   harlMaterialsReady,
   trackerLines,
+  BOAR_KILLS,
   EAST_ROAD_KILLS,
+  SILK_NEEDED,
   type NpcId,
 } from './quests';
 
-type InteractKind = 'tree' | 'rock' | 'dummy' | 'yeti' | 'orc' | 'wolf' | 'forge' | 'npc';
+type InteractKind = 'tree' | 'rock' | 'dummy' | 'yeti' | 'orc' | 'wolf' | 'boar' | 'spider' | 'forge' | 'npc';
 type ForgeBench = 'camp' | 'briar';
 
 interface WorldObject {
@@ -105,12 +117,28 @@ interface WorldObject {
   meta?: { ore?: 'copper' | 'tin'; npc?: NpcId; forge?: ForgeBench; homeX?: number; homeZ?: number };
 }
 
-interface WolfRuntime {
+interface FoeRuntime {
   obj: WorldObject;
   aggro: boolean;
   cd: number;
   biteT: number;
   hitDone: boolean;
+  aggroR: number;
+  range: number;
+  leash: number;
+  chase: number;
+  dmgMin: number;
+  dmgMax: number;
+  knock: number;
+  respawn: number;
+  label: string;
+  snarl: string;
+  engage: string;
+  biteLine: string;
+  loseLine: string;
+  returnLine: string;
+  corpse: string;
+  pose: (mesh: THREE.Group, time: number, moving: boolean, attack: number) => void;
 }
 
 type Activity =
@@ -159,12 +187,8 @@ const ORC_DMG_MAX = 8;
 const ORC_HOME = { x: -6.2, z: -4.8 };
 const YETI_HOME = { x: 4.2, z: 7.2 };
 const WOLF_MAX_HP = 28;
-const WOLF_RESPAWN_SEC = 18;
-const WOLF_DMG_MIN = 2;
-const WOLF_DMG_MAX = 4;
-const WOLF_AGGRO_RADIUS = 4.6;
-const WOLF_ATTACK_RANGE = 1.55;
-const WOLF_LEASH = 4.2;
+const BOAR_MAX_HP = 36;
+const SPIDER_MAX_HP = 22;
 const TALK_RANGE = 2.3;
 const MOVE_MIN_X = -16;
 const MOVE_MAX_X = 23;
@@ -256,7 +280,7 @@ export class Game {
   private pendingForge: WorldObject | null = null;
   private pendingTalk: WorldObject | null = null;
   private forgeBench: ForgeBench = 'camp';
-  private wolves: WolfRuntime[] = [];
+  private foes: FoeRuntime[] = [];
   private queuedSkill: CombatSkillId | null = null;
   private guardLeft = 0;
   private skillCd: Record<CombatSkillId, number> = {
@@ -338,7 +362,8 @@ export class Game {
     this.hud.chat('Tap trees and rocks to chop and mine. Eat rations from your inventory.', 'system');
     this.hud.chat('A Frost Yeti hunts the north-east snow. An Orc Scout prowls the south-west trail.', 'combat');
     this.hud.chat('Open Plots (P) to survey 500 sections. The four around Thornrest are already wooded.', 'system');
-    this.hud.chat('Briarford, the first town, stands on the east road. Warden Elspeth has work if you walk there.', 'system');
+    this.hud.chat('Briarford stands on the east road. Elspeth, Bram, and Maeve each have a starter task.', 'system');
+    this.hud.chat('Briar boars root the bean rows south of the square. Thorn spiders den just east of them.', 'combat');
     this.hud.chat('Scroll, pinch, or use + / − to zoom the camera.', 'system');
 
     window.addEventListener('resize', () => this.onResize());
@@ -672,6 +697,8 @@ export class Game {
       { id: 'elspeth', x: 18.55, z: -1.15, rot: 0 },
       { id: 'harl', x: 20.05, z: -0.55, rot: -0.9 },
       { id: 'nessa', x: 15.45, z: -0.72, rot: 0.4 },
+      { id: 'bram', x: 14.45, z: -1.15, rot: -0.6 },
+      { id: 'maeve', x: 16.9, z: 3.7, rot: Math.PI },
     ];
     for (const n of npcs) {
       const mesh = createTownNpc(n.id);
@@ -706,23 +733,106 @@ export class Game {
     });
 
     WOLF_HOMES.forEach((home, i) => {
-      const mesh = createBriarWolf();
-      mesh.position.set(home.x, groundHeight(home.x, home.z), home.z);
-      mesh.rotation.y = Math.PI * 0.5;
-      this.scene.add(mesh);
-      const obj: WorldObject = {
-        kind: 'wolf',
-        mesh,
-        id: `wolf_${i}`,
-        hp: WOLF_MAX_HP,
-        maxHp: WOLF_MAX_HP,
-        depleted: false,
-        respawnAt: 0,
-        meta: { homeX: home.x, homeZ: home.z },
-      };
-      this.objects.push(obj);
-      this.wolves.push({ obj, aggro: false, cd: 1.2 + i * 0.35, biteT: 0, hitDone: false });
+      this.spawnFoe('wolf', createBriarWolf(), home, `wolf_${i}`, WOLF_MAX_HP, {
+        aggroR: 4.6,
+        range: 1.55,
+        leash: 4.2,
+        chase: 3.15,
+        dmgMin: 2,
+        dmgMax: 4,
+        knock: 1.4,
+        respawn: 18,
+        label: 'Briar Wolf',
+        snarl: 'A briar wolf snarls and lunges!',
+        engage: 'A briar wolf engages you!',
+        biteLine: 'The briar wolf bites you for',
+        loseLine: 'The briar wolf loses the scent and slinks back to the road.',
+        returnLine: 'A briar wolf pads back onto the east road.',
+        corpse: 'The briar wolf lies dead. Another will pad back onto the road.',
+        pose: poseBriarWolf,
+      });
     });
+
+    BOAR_HOMES.forEach((home, i) => {
+      this.spawnFoe('boar', createBriarBoar(), home, `boar_${i}`, BOAR_MAX_HP, {
+        aggroR: 3.6,
+        range: 1.7,
+        leash: 3.0,
+        chase: 2.7,
+        dmgMin: 3,
+        dmgMax: 5,
+        knock: 1.7,
+        respawn: 20,
+        label: 'Briar Boar',
+        snarl: 'A briar boar squeals and charges!',
+        engage: 'A briar boar engages you!',
+        biteLine: 'The briar boar gores you for',
+        loseLine: 'The briar boar snorts and roots back into the beans.',
+        returnLine: 'A briar boar roots its way back into the bean rows.',
+        corpse: 'The briar boar lies dead. Another will root back into the rows.',
+        pose: poseBriarBoar,
+      });
+    });
+
+    SPIDER_HOMES.forEach((home, i) => {
+      const web = createSpiderWeb();
+      const wx = home.x + 0.55;
+      const wz = home.z + 0.15;
+      web.position.set(wx, groundHeight(wx, wz), wz);
+      web.rotation.y = i * 0.6;
+      this.scene.add(web);
+      this.spawnFoe('spider', createThornSpider(), home, `spider_${i}`, SPIDER_MAX_HP, {
+        aggroR: 3.6,
+        range: 1.45,
+        leash: 2.8,
+        chase: 3.3,
+        dmgMin: 2,
+        dmgMax: 4,
+        knock: 0.7,
+        respawn: 16,
+        label: 'Thorn Spider',
+        snarl: 'A thorn spider skitters out of its web!',
+        engage: 'A thorn spider engages you!',
+        biteLine: 'The thorn spider bites you for',
+        loseLine: 'The thorn spider retreats to its web.',
+        returnLine: 'A thorn spider settles back onto its web.',
+        corpse: 'The thorn spider is dead. Another will crawl back to the den.',
+        pose: poseThornSpider,
+      });
+    });
+  }
+
+  private spawnFoe(
+    kind: 'wolf' | 'boar' | 'spider',
+    mesh: THREE.Group,
+    home: { x: number; z: number },
+    id: string,
+    hp: number,
+    stats: Omit<FoeRuntime, 'obj' | 'aggro' | 'cd' | 'biteT' | 'hitDone'>,
+  ): void {
+    mesh.position.set(home.x, groundHeight(home.x, home.z), home.z);
+    mesh.rotation.y = kind === 'spider' ? -0.4 : Math.PI * 0.5;
+    this.scene.add(mesh);
+    const obj: WorldObject = {
+      kind,
+      mesh,
+      id,
+      hp,
+      maxHp: hp,
+      depleted: false,
+      respawnAt: 0,
+      meta: { homeX: home.x, homeZ: home.z },
+    };
+    this.objects.push(obj);
+    this.foes.push({ obj, aggro: false, cd: 1.15, biteT: 0, hitDone: false, ...stats });
+  }
+
+  private foeOf(obj: WorldObject): FoeRuntime | undefined {
+    return this.foes.find((f) => f.obj === obj);
+  }
+
+  private isBeast(kind: InteractKind): boolean {
+    return kind === 'wolf' || kind === 'boar' || kind === 'spider';
   }
 
   private bindInput(canvas: HTMLCanvasElement): void {
@@ -898,7 +1008,7 @@ export class Game {
 
     const hitMeshes: THREE.Object3D[] = [];
     for (const o of this.objects) {
-      if (o.depleted && o.kind !== 'dummy' && o.kind !== 'yeti' && o.kind !== 'orc' && o.kind !== 'wolf') continue;
+      if (o.depleted && o.kind !== 'dummy' && o.kind !== 'yeti' && o.kind !== 'orc' && !this.isBeast(o.kind)) continue;
       o.mesh.traverse((c) => {
         if ((c as THREE.Mesh).isMesh && c.name !== 'outline') hitMeshes.push(c);
       });
@@ -936,14 +1046,14 @@ export class Game {
       this.approachThenTalk(obj);
       return;
     }
-    if (obj.kind === 'wolf') {
+    if (this.isBeast(obj.kind)) {
+      const foe = this.foeOf(obj);
       if (obj.depleted || obj.hp <= 0) {
-        this.hud.chat('The briar wolf lies dead. Another will pad back onto the road.', 'system');
+        this.hud.chat(foe?.corpse ?? 'It lies dead.', 'system');
         return;
       }
-      const wolf = this.wolves.find((w) => w.obj === obj);
-      if (wolf) wolf.aggro = true;
-      this.approachThenCombat(obj, `You ready your ${this.weaponName()} against the Briar Wolf!`);
+      if (foe) foe.aggro = true;
+      this.approachThenCombat(obj, `You ready your ${this.weaponName()} against the ${foe?.label ?? 'beast'}!`);
       return;
     }
     if (obj.kind === 'yeti') {
@@ -1009,24 +1119,26 @@ export class Game {
   private combatName(obj: WorldObject): string {
     if (obj.kind === 'yeti') return 'Frost Yeti';
     if (obj.kind === 'orc') return 'Orc Scout';
-    if (obj.kind === 'wolf') return 'Briar Wolf';
+    if (this.isBeast(obj.kind)) return this.foeOf(obj)?.label ?? obj.kind;
     if (obj.kind === 'dummy') return 'Training Dummy';
     if (obj.kind === 'npc') {
       if (obj.meta?.npc === 'elspeth') return 'Warden Elspeth';
       if (obj.meta?.npc === 'harl') return 'Smith Harl';
+      if (obj.meta?.npc === 'bram') return 'Innkeeper Bram';
+      if (obj.meta?.npc === 'maeve') return 'Weaver Maeve';
       return 'Shopkeep Nessa';
     }
     return obj.kind;
   }
 
   private isMonster(obj: WorldObject): boolean {
-    return obj.kind === 'yeti' || obj.kind === 'orc' || obj.kind === 'wolf';
+    return obj.kind === 'yeti' || obj.kind === 'orc' || this.isBeast(obj.kind);
   }
 
   private monsterAttackRange(obj: WorldObject): number {
     if (obj.kind === 'yeti') return YETI_ATTACK_RANGE;
     if (obj.kind === 'orc') return ORC_ATTACK_RANGE;
-    if (obj.kind === 'wolf') return WOLF_ATTACK_RANGE;
+    if (this.isBeast(obj.kind)) return this.foeOf(obj)?.range ?? 1.55;
     return ATTACK_RANGE;
   }
 
@@ -1085,7 +1197,7 @@ export class Game {
     let best: WorldObject | null = null;
     let bestD = Infinity;
     for (const o of this.objects) {
-      if ((o.kind !== 'yeti' && o.kind !== 'orc' && o.kind !== 'wolf' && o.kind !== 'dummy') || o.hp <= 0 || o.depleted) continue;
+      if ((o.kind !== 'yeti' && o.kind !== 'orc' && !this.isBeast(o.kind) && o.kind !== 'dummy') || o.hp <= 0 || o.depleted) continue;
       const d = this.distTo(o);
       if (d < bestD) {
         bestD = d;
@@ -1235,6 +1347,10 @@ export class Game {
       this.hud.chat('An Orc Scout in spiked tan fur and leather. White tusks and a long spear gleam.', 'combat');
     else if (all.kind === 'wolf')
       this.hud.chat('A briar wolf. Pelt and fangs are what Smith Harl works at the town anvil.', 'combat');
+    else if (all.kind === 'boar')
+      this.hud.chat('A briar boar. Hide and tusks feed the roadwarden patterns. Bram wants two of them off the bean rows.', 'combat');
+    else if (all.kind === 'spider')
+      this.hud.chat('A thorn spider. Its silk is what Weaver Maeve binds into the roadwarden set.', 'combat');
     else if (all.kind === 'npc') this.talkTo(all);
     else if (all.kind === 'forge' && all.meta?.forge === 'briar')
       this.hud.chat('The Briarford anvil. Harl opens it once his commission is paid.', 'system');
@@ -1244,20 +1360,7 @@ export class Game {
   }
 
   private eatFood(): void {
-    const idx = this.save.inventory.findIndex((i) => i.id === 'camp_rations');
-    if (idx < 0) {
-      this.hud.chat('You have no camp rations left.', 'system');
-      return;
-    }
-    if (this.save.hp >= this.save.maxHp) {
-      this.hud.chat('You are already at full health.', 'system');
-      return;
-    }
-    this.consumeAt(idx, 1);
-    this.save.hp = Math.min(this.save.maxHp, this.save.hp + 25);
-    this.hud.chat('You eat camp rations and recover 25 health.', 'loot');
-    this.refreshUI();
-    this.persist();
+    this.eatStack('camp_rations', 25, 'camp rations');
   }
 
   private handleInvClick(index: number): void {
@@ -1270,6 +1373,24 @@ export class Game {
     }
     this.hud.chat(`${meta?.name ?? item.id}${item.qty > 1 ? ` ×${item.qty}` : ''}`, 'system');
     if (item.id === 'camp_rations') this.eatFood();
+    if (item.id === 'boar_roast') this.eatStack('boar_roast', 40, 'a boar roast');
+  }
+
+  private eatStack(id: string, heal: number, label: string): void {
+    const idx = this.save.inventory.findIndex((i) => i.id === id);
+    if (idx < 0) {
+      this.hud.chat(`You have no ${label} left.`, 'system');
+      return;
+    }
+    if (this.save.hp >= this.save.maxHp) {
+      this.hud.chat('You are already at full health.', 'system');
+      return;
+    }
+    this.consumeAt(idx, 1);
+    this.save.hp = Math.min(this.save.maxHp, this.save.hp + heal);
+    this.hud.chat(`You eat ${label} and recover ${heal} health.`, 'loot');
+    this.refreshUI();
+    this.persist();
   }
 
   private heldTool() {
@@ -1469,6 +1590,43 @@ export class Game {
       this.grantXp('defence', 40);
       this.addItem('camp_rations', 2);
       this.hud.chat('Nessa lights the square and hands you two camp rations.', 'loot');
+    } else if (id === 'bram_accept') {
+      this.save.quests.hearth_boars = 'active';
+      this.hud.chat('Quest started: fell two briar boars in the bean rows south of Briarford.', 'system');
+    } else if (id === 'bram_turnin' && this.save.quests.hearth_boars === 'active' && this.save.quests.boarKills >= BOAR_KILLS) {
+      if (!this.addItem('boar_roast', 1)) {
+        this.hud.chat('Your pack is full — Bram keeps the roast until it will fit.', 'system');
+        this.dialogue.hide();
+        this.refreshUI();
+        return;
+      }
+      this.save.quests.hearth_boars = 'done';
+      this.grantXp('strength', 40);
+      this.hud.chat('Bram hands you a boar roast. The hides you skinned stay in your pack.', 'loot');
+    } else if (id === 'maeve_accept') {
+      this.save.quests.silk_loom = 'active';
+      this.hud.chat('Quest started: bring Weaver Maeve 2 spider silk.', 'system');
+    } else if (
+      id === 'maeve_turnin' &&
+      this.save.quests.silk_loom === 'active' &&
+      countItem(this.save.inventory, 'spider_silk') >= SILK_NEEDED
+    ) {
+      if (!this.consumeId('spider_silk', SILK_NEEDED)) {
+        this.dialogue.hide();
+        this.refreshUI();
+        return;
+      }
+      if (!this.addItem('road_mace', 1)) {
+        this.addItem('spider_silk', SILK_NEEDED);
+        this.hud.chat('Your pack is full — Maeve will not take the silk until the mace will fit.', 'system');
+        this.dialogue.hide();
+        this.refreshUI();
+        return;
+      }
+      this.save.quests.silk_loom = 'done';
+      this.save.quests.roadUnlocked = true;
+      this.grantXp('defence', 45);
+      this.hud.chat('Maeve sets a Roadwarden Mace in your pack and opens the roadwarden patterns.', 'loot');
     }
     this.dialogue.hide();
     this.refreshUI();
@@ -1511,14 +1669,18 @@ export class Game {
     const briar = forge.meta?.forge === 'briar';
     this.forgeBench = briar ? 'briar' : 'camp';
     const unlocked = this.save.quests.briarUnlocked;
+    const road = this.save.quests.roadUnlocked;
     this.hud.setForgeOpen(true, this.save, briar
       ? {
           title: 'Briarford Anvil',
-          blurb: unlocked
-            ? 'Wolf pelt, fangs, copper, and whisper logs. The briar set is forged here.'
-            : 'Harl keeps the anvil cold until his commission is paid in pelts, logs, and copper.',
-          recipes: BRIAR_RECIPES,
+          blurb: !unlocked
+            ? 'Harl keeps the anvil cold until his commission is paid in pelts, logs, and copper.'
+            : road
+              ? 'Briar patterns and roadwarden patterns share this anvil.'
+              : 'The briar set is open. Maeve still holds the roadwarden patterns.',
+          recipes: [...BRIAR_RECIPES, ...ROAD_RECIPES],
           forgeable: unlocked,
+          lockedIds: road ? [] : ROAD_RECIPES.map((r) => r.id),
         }
       : {
           title: 'Thornrest Forge',
@@ -1528,9 +1690,11 @@ export class Game {
         });
     this.hud.chat(
       briar
-        ? unlocked
-          ? 'The anvil is hot. Choose a briar pattern.'
-          : 'The anvil is shut. Finish Harl’s commission to forge here.'
+        ? !unlocked
+          ? 'The anvil is shut. Finish Harl’s commission to forge here.'
+          : road
+            ? 'The anvil is hot. Briar and roadwarden patterns are both open.'
+            : 'The anvil is hot. Choose a briar pattern. Roadwarden patterns stay locked until Maeve opens them.'
         : 'The forge is hot. Choose a frost-yeti pattern to work.',
       'system',
     );
@@ -1538,16 +1702,20 @@ export class Game {
   }
 
   private craftAtForge(recipeId: string): void {
-    const list = this.forgeBench === 'briar' ? BRIAR_RECIPES : YETI_RECIPES;
+    const list = this.forgeBench === 'briar' ? [...BRIAR_RECIPES, ...ROAD_RECIPES] : YETI_RECIPES;
     const recipe = list.find((r) => r.id === recipeId);
     if (!recipe) return;
     if (this.forgeBench === 'briar' && !this.save.quests.briarUnlocked) {
       this.hud.chat('Harl has not opened this anvil to you.', 'system');
       return;
     }
+    if (recipe.id.startsWith('road_') && !this.save.quests.roadUnlocked) {
+      this.hud.chat('Maeve has not opened the roadwarden patterns.', 'system');
+      return;
+    }
     if (!canCraft(this.save, recipe)) {
       this.hud.chat(
-        this.forgeBench === 'briar' ? 'You still need more briar materials for that.' : 'You still need more frost-yeti parts for that.',
+        this.forgeBench === 'briar' ? 'You still need more materials for that.' : 'You still need more frost-yeti parts for that.',
         'system',
       );
       this.hud.setForgeRecipes(this.save);
@@ -1663,24 +1831,24 @@ export class Game {
         animateOrcWalk(o.mesh, this.animTime, false);
         this.hud.chat('An Orc Scout stalks back onto the south-west trail!', 'combat');
       }
-      if (o.kind === 'wolf' && o.depleted && now >= o.respawnAt) {
+      if (this.isBeast(o.kind) && o.depleted && now >= o.respawnAt) {
         o.hp = o.maxHp;
         o.depleted = false;
         o.mesh.visible = true;
-        o.mesh.rotation.set(0, Math.PI * 0.5, 0);
+        o.mesh.rotation.set(0, o.kind === 'spider' ? -0.4 : Math.PI * 0.5, 0);
         o.mesh.scale.setScalar(1);
         const hx = o.meta?.homeX ?? o.mesh.position.x;
         const hz = o.meta?.homeZ ?? o.mesh.position.z;
         o.mesh.position.set(hx, groundHeight(hx, hz), hz);
-        const runtime = this.wolves.find((w) => w.obj === o);
+        const runtime = this.foeOf(o);
         if (runtime) {
           runtime.aggro = false;
           runtime.cd = 1.4;
           runtime.biteT = 0;
           runtime.hitDone = false;
+          runtime.pose(o.mesh, this.animTime, false, 0);
+          this.hud.chat(runtime.returnLine, 'combat');
         }
-        poseBriarWolf(o.mesh, this.animTime, false, 0);
-        this.hud.chat('A briar wolf pads back onto the east road.', 'combat');
       }
     }
 
@@ -1855,10 +2023,8 @@ export class Game {
           if (t && t.hp > 0 && !t.depleted) {
             if (t.kind === 'yeti') this.yetiAggroed = true;
             if (t.kind === 'orc') this.orcAggroed = true;
-            if (t.kind === 'wolf') {
-              const wolf = this.wolves.find((w) => w.obj === t);
-              if (wolf) wolf.aggro = true;
-            }
+            const foe = this.foeOf(t);
+            if (foe) foe.aggro = true;
             this.beginCombat(t, chat);
           }
         }
@@ -2051,7 +2217,7 @@ export class Game {
 
     this.updateOrcAI(dt);
 
-    this.updateWolves(dt);
+    this.updateFoes(dt);
 
     this.vfx.update(dt);
     this.updateCombatTreeFade(dt);
@@ -2154,9 +2320,9 @@ export class Game {
       ),
     );
     target.hp -= dmg;
-    const xpAtk = target.kind === 'yeti' ? 18 : target.kind === 'orc' ? 15 : target.kind === 'wolf' ? 12 : 12;
-    const xpStr = target.kind === 'yeti' ? 14 : target.kind === 'orc' ? 12 : target.kind === 'wolf' ? 10 : 8;
-    const xpCon = target.kind === 'yeti' ? 8 : target.kind === 'orc' ? 6 : target.kind === 'wolf' ? 5 : 4;
+    const xpAtk = target.kind === 'yeti' ? 18 : target.kind === 'orc' ? 15 : target.kind === 'boar' ? 14 : target.kind === 'wolf' ? 12 : target.kind === 'spider' ? 11 : 12;
+    const xpStr = target.kind === 'yeti' ? 14 : target.kind === 'orc' ? 12 : target.kind === 'boar' ? 12 : target.kind === 'wolf' ? 10 : target.kind === 'spider' ? 9 : 8;
+    const xpCon = target.kind === 'yeti' ? 8 : target.kind === 'orc' ? 6 : target.kind === 'boar' ? 6 : target.kind === 'wolf' ? 5 : target.kind === 'spider' ? 4 : 4;
     this.grantXp('attack', xpAtk);
     this.grantXp('strength', xpStr);
     this.grantXp('constitution', xpCon);
@@ -2184,10 +2350,8 @@ export class Game {
       this.vfx.spawnSpearThrust(target.mesh.position.clone(), 8);
       this.orcAggroed = true;
     }
-    if (target.kind === 'wolf') {
-      const wolf = this.wolves.find((w) => w.obj === target);
-      if (wolf) wolf.aggro = true;
-    }
+    const struck = this.foeOf(target);
+    if (struck) struck.aggro = true;
 
     if (target.kind === 'dummy') {
       const recoil = Math.random() < 0.15 ? 1 : 0;
@@ -2199,8 +2363,8 @@ export class Game {
       }
     } else if (target.kind === 'orc') {
       this.hud.chat(`You ${art.name.toLowerCase()} the Orc Scout for ${dmg} damage!`, 'combat');
-    } else if (target.kind === 'wolf') {
-      this.hud.chat(`You ${art.name.toLowerCase()} the Briar Wolf for ${dmg} damage!`, 'combat');
+    } else if (this.isBeast(target.kind)) {
+      this.hud.chat(`You ${art.name.toLowerCase()} the ${this.foeOf(target)?.label ?? 'beast'} for ${dmg} damage!`, 'combat');
     } else {
       this.hud.chat(`You ${art.name.toLowerCase()} the Frost Yeti for ${dmg} damage!`, 'combat');
     }
@@ -2209,7 +2373,7 @@ export class Game {
       target.hp = 0;
       if (target.kind === 'yeti') this.onYetiDeath(target);
       else if (target.kind === 'orc') this.onOrcDeath(target);
-      else if (target.kind === 'wolf') this.onWolfDeath(target);
+      else if (this.isBeast(target.kind)) this.onFoeDeath(target);
       else this.onDummyDeath(target);
     } else {
       this.hud.showTarget(label, target.hp / target.maxHp);
@@ -2300,10 +2464,10 @@ export class Game {
     this.persist();
   }
 
-  private onWolfDeath(target: WorldObject): void {
+  private onFoeDeath(target: WorldObject): void {
+    const runtime = this.foeOf(target);
     target.depleted = true;
-    target.respawnAt = performance.now() / 1000 + WOLF_RESPAWN_SEC;
-    const runtime = this.wolves.find((w) => w.obj === target);
+    target.respawnAt = performance.now() / 1000 + (runtime?.respawn ?? 18);
     if (runtime) {
       runtime.aggro = false;
       runtime.biteT = 0;
@@ -2312,20 +2476,48 @@ export class Game {
     target.mesh.visible = false;
     this.vfx.spawnHitSparks(target.mesh.position.clone().setY(0.6), 16);
     this.vfx.spawnImpactBurst(target.mesh.position.clone().setY(0.5), 12, false);
-    this.hud.chat('The briar wolf drops. Pelt and fang come free of the hide.', 'combat');
-    this.grantXp('defence', 16);
-    this.grantXp('attack', 8);
-    if (this.addItem('wolf_pelt', 1)) this.hud.chat('You skin a Wolf Pelt.', 'loot');
-    if (Math.random() < 0.5 && this.addItem('wolf_fang', 1)) this.hud.chat('You pull a Wolf Fang.', 'loot');
-    if (this.save.quests.east_road === 'active') {
-      this.save.quests.wolfKills += 1;
-      const n = this.save.quests.wolfKills;
-      this.hud.chat(
-        n >= EAST_ROAD_KILLS
-          ? 'The east road is clear enough. Return to Warden Elspeth.'
-          : `Briar wolves felled: ${n}/${EAST_ROAD_KILLS}.`,
-        'system',
-      );
+    this.grantXp('defence', target.kind === 'boar' ? 18 : 16);
+    this.grantXp('attack', target.kind === 'spider' ? 6 : 8);
+    if (target.kind === 'boar') {
+      this.hud.chat('The briar boar drops. Hide and tusk come free.', 'combat');
+      if (this.addItem('boar_hide', 1)) this.hud.chat('You skin a Boar Hide.', 'loot');
+      if (Math.random() < 0.45 && this.addItem('boar_tusk', 1)) this.hud.chat('You wrench out a Boar Tusk.', 'loot');
+      if (this.save.quests.hearth_boars === 'active') {
+        this.save.quests.boarKills += 1;
+        const n = this.save.quests.boarKills;
+        this.hud.chat(
+          n >= BOAR_KILLS
+            ? 'The bean rows are quieter. Return to Innkeeper Bram.'
+            : `Briar boars felled: ${n}/${BOAR_KILLS}.`,
+          'system',
+        );
+      }
+    } else if (target.kind === 'spider') {
+      this.hud.chat('The thorn spider curls up. A spool of silk comes free.', 'combat');
+      if (this.addItem('spider_silk', 1)) this.hud.chat('You wind a spool of Spider Silk.', 'loot');
+      if (this.save.quests.silk_loom === 'active') {
+        const n = countItem(this.save.inventory, 'spider_silk');
+        this.hud.chat(
+          n >= SILK_NEEDED
+            ? 'Maeve has enough silk. Return to the loom.'
+            : `Spider silk gathered: ${n}/${SILK_NEEDED}.`,
+          'system',
+        );
+      }
+    } else {
+      this.hud.chat('The briar wolf drops. Pelt and fang come free of the hide.', 'combat');
+      if (this.addItem('wolf_pelt', 1)) this.hud.chat('You skin a Wolf Pelt.', 'loot');
+      if (Math.random() < 0.5 && this.addItem('wolf_fang', 1)) this.hud.chat('You pull a Wolf Fang.', 'loot');
+      if (this.save.quests.east_road === 'active') {
+        this.save.quests.wolfKills += 1;
+        const n = this.save.quests.wolfKills;
+        this.hud.chat(
+          n >= EAST_ROAD_KILLS
+            ? 'The east road is clear enough. Return to Warden Elspeth.'
+            : `Briar wolves felled: ${n}/${EAST_ROAD_KILLS}.`,
+          'system',
+        );
+      }
     }
     this.activity = { type: 'idle' };
     this.syncHeldTool();
@@ -2334,11 +2526,11 @@ export class Game {
     this.persist();
   }
 
-  private updateWolves(dt: number): void {
-    for (const wolf of this.wolves) {
-      const obj = wolf.obj;
+  private updateFoes(dt: number): void {
+    for (const foe of this.foes) {
+      const obj = foe.obj;
       if (obj.depleted || obj.hp <= 0 || !obj.mesh.visible) {
-        if (wolf.biteT > 0) wolf.biteT = 0;
+        if (foe.biteT > 0) foe.biteT = 0;
         continue;
       }
       const homeX = obj.meta?.homeX ?? obj.mesh.position.x;
@@ -2346,16 +2538,16 @@ export class Game {
       const dist = this.distTo(obj);
       const homeDist = Math.hypot(obj.mesh.position.x - homeX, obj.mesh.position.z - homeZ);
 
-      if (!wolf.aggro && dist <= WOLF_AGGRO_RADIUS) {
-        wolf.aggro = true;
-        this.hud.chat('A briar wolf snarls and lunges!', 'combat');
+      if (!foe.aggro && dist <= foe.aggroR) {
+        foe.aggro = true;
+        this.hud.chat(foe.snarl, 'combat');
         if (this.activity.type !== 'combat' || this.activity.target !== obj) {
-          this.beginCombat(obj, 'A briar wolf engages you!');
+          this.beginCombat(obj, foe.engage);
         }
       }
 
       let moving = false;
-      if (!wolf.aggro) {
+      if (!foe.aggro) {
         if (homeDist > 0.2) {
           const hx = homeX - obj.mesh.position.x;
           const hz = homeZ - obj.mesh.position.z;
@@ -2366,73 +2558,77 @@ export class Game {
           obj.mesh.rotation.y = turnTowardYaw(obj.mesh.rotation.y, Math.atan2(hx, hz), 6, dt);
           moving = true;
         }
-      } else if (dist > WOLF_AGGRO_RADIUS + 4.5 || homeDist > WOLF_LEASH + 1.2) {
-        wolf.aggro = false;
-        wolf.biteT = 0;
-        this.hud.chat('The briar wolf loses the scent and slinks back to the road.', 'system');
+      } else if (dist > foe.aggroR + 4.5 || homeDist > foe.leash + 1.2) {
+        foe.aggro = false;
+        foe.biteT = 0;
+        this.hud.chat(foe.loseLine, 'system');
       } else {
         const dx = this.player.position.x - obj.mesh.position.x;
         const dz = this.player.position.z - obj.mesh.position.z;
         if (Math.hypot(dx, dz) > 0.01) {
           obj.mesh.rotation.y = turnTowardYaw(obj.mesh.rotation.y, Math.atan2(dx, dz), 8, dt);
         }
-        if (dist > WOLF_ATTACK_RANGE && homeDist < WOLF_LEASH) {
+        if (dist > foe.range && homeDist < foe.leash) {
           const n = Math.hypot(dx, dz) || 1;
-          const step = Math.min(dist - WOLF_ATTACK_RANGE * 0.8, 3.15 * dt);
+          const step = Math.min(dist - foe.range * 0.8, foe.chase * dt);
           obj.mesh.position.x += (dx / n) * step;
           obj.mesh.position.z += (dz / n) * step;
           moving = true;
           const lx = obj.mesh.position.x - homeX;
           const lz = obj.mesh.position.z - homeZ;
           const ld = Math.hypot(lx, lz);
-          if (ld > WOLF_LEASH) {
-            obj.mesh.position.x = homeX + (lx / ld) * WOLF_LEASH;
-            obj.mesh.position.z = homeZ + (lz / ld) * WOLF_LEASH;
+          if (ld > foe.leash) {
+            obj.mesh.position.x = homeX + (lx / ld) * foe.leash;
+            obj.mesh.position.z = homeZ + (lz / ld) * foe.leash;
           }
         }
       }
 
-      if (wolf.aggro && wolf.biteT <= 0 && dist <= WOLF_ATTACK_RANGE + 0.25 && wolf.cd <= 0) {
-        wolf.biteT = 0.001;
-        wolf.hitDone = false;
-        wolf.cd = 1.55;
+      if (foe.aggro && foe.biteT <= 0 && dist <= foe.range + 0.25 && foe.cd <= 0) {
+        foe.biteT = 0.001;
+        foe.hitDone = false;
+        foe.cd = obj.kind === 'spider' ? 1.35 : 1.55;
       }
       let bite = 0;
-      if (wolf.biteT > 0) {
-        wolf.biteT += dt;
-        bite = Math.min(1, wolf.biteT / 0.55);
-        if (!wolf.hitDone && bite >= 0.42 && bite <= 0.72 && dist <= WOLF_ATTACK_RANGE + 0.45) {
-          wolf.hitDone = true;
-          this.wolfBite(obj);
+      if (foe.biteT > 0) {
+        foe.biteT += dt;
+        bite = Math.min(1, foe.biteT / 0.55);
+        if (!foe.hitDone && bite >= 0.42 && bite <= 0.72 && dist <= foe.range + 0.45) {
+          foe.hitDone = true;
+          this.foeStrike(obj);
         }
         if (bite >= 1) {
-          wolf.biteT = 0;
-          wolf.hitDone = false;
+          foe.biteT = 0;
+          foe.hitDone = false;
         }
       } else {
-        wolf.cd = Math.max(0, wolf.cd - dt);
+        foe.cd = Math.max(0, foe.cd - dt);
       }
-      poseBriarWolf(obj.mesh, this.animTime * (moving ? 7 : 1), moving, bite);
+      foe.pose(obj.mesh, this.animTime * (moving ? 7 : 1), moving, bite);
     }
   }
 
-  private wolfBite(wolf: WorldObject): void {
-    const raw = WOLF_DMG_MIN + Math.floor(Math.random() * (WOLF_DMG_MAX - WOLF_DMG_MIN + 1));
+  private foeStrike(beast: WorldObject): void {
+    const foe = this.foeOf(beast);
+    const min = foe?.dmgMin ?? 2;
+    const max = foe?.dmgMax ?? 4;
+    const raw = min + Math.floor(Math.random() * (max - min + 1));
     const mitigated = this.mitigateIncoming(raw);
     this.save.hp = Math.max(0, this.save.hp - mitigated);
     this.vfx.spawnHitSparks(this.player.position.clone().setY(0.9), 10);
     this.vfx.spawnDamage(this.player.position.clone().setY(1.2), mitigated);
     this.playerFlinch = 0.45;
     const away = Math.atan2(
-      this.player.position.x - wolf.mesh.position.x,
-      this.player.position.z - wolf.mesh.position.z,
+      this.player.position.x - beast.mesh.position.x,
+      this.player.position.z - beast.mesh.position.z,
     );
-    this.playerKnock.set(Math.sin(away) * 1.4, 0, Math.cos(away) * 1.4);
-    this.hud.chat(`The briar wolf bites you for ${mitigated} damage!`, 'combat');
+    const knock = foe?.knock ?? 1.2;
+    this.playerKnock.set(Math.sin(away) * knock, 0, Math.cos(away) * knock);
+    this.hud.chat(`${foe?.biteLine ?? 'It strikes you for'} ${mitigated} damage!`, 'combat');
     this.hud.setOrbs(this.save.hp, this.save.maxHp, this.save.focus, this.save.stamina);
     if (this.save.hp <= 0) this.fellToCamp();
-    else if (this.activity.type !== 'combat' && wolf.hp > 0 && !wolf.depleted) {
-      this.beginCombat(wolf, 'You raise your guard against the briar wolf!');
+    else if (this.activity.type !== 'combat' && beast.hp > 0 && !beast.depleted) {
+      this.beginCombat(beast, `You raise your guard against the ${foe?.label ?? 'beast'}!`);
     }
     this.refreshUI();
     this.persist();
@@ -2443,7 +2639,7 @@ export class Game {
     this.player.position.set(0, 0, 2);
     this.yetiAggroed = false;
     this.orcAggroed = false;
-    for (const w of this.wolves) w.aggro = false;
+    for (const w of this.foes) w.aggro = false;
     this.activity = { type: 'idle' };
     this.syncHeldTool();
     this.hud.hideTarget();
@@ -2790,8 +2986,8 @@ export class Game {
       this.sitOnGround(this.orcTarget.mesh, Number(this.orcTarget.mesh.userData.locomotionY) || 0);
     }
     if (this.dummyTarget && !dying.has(this.dummyTarget.mesh)) this.sitOnGround(this.dummyTarget.mesh);
-    for (const wolf of this.wolves) {
-      if (!wolf.obj.depleted) this.sitOnGround(wolf.obj.mesh);
+    for (const foe of this.foes) {
+      if (!foe.obj.depleted) this.sitOnGround(foe.obj.mesh);
     }
     if (this.moveMarker.visible) this.sitOnGround(this.moveMarker, 0.06);
   }
@@ -2891,12 +3087,14 @@ export class Game {
   private drawMinimapMarkers(): void {
     const markers: { x: number; z: number; color: string }[] = [];
     for (const o of this.objects) {
-      if (o.depleted && o.kind !== 'dummy' && o.kind !== 'yeti' && o.kind !== 'orc' && o.kind !== 'wolf') continue;
+      if (o.depleted && o.kind !== 'dummy' && o.kind !== 'yeti' && o.kind !== 'orc' && !this.isBeast(o.kind)) continue;
       if (o.kind === 'tree') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#2d8a2d' });
       else if (o.kind === 'rock') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#888' });
       else if (o.kind === 'yeti') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#7ec8ff' });
       else if (o.kind === 'orc') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#6a9a2a' });
       else if (o.kind === 'wolf') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#c4783a' });
+      else if (o.kind === 'boar') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#a0673a' });
+      else if (o.kind === 'spider') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#6a3a78' });
       else if (o.kind === 'npc') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#f0d070' });
       else if (o.kind === 'forge' && o.meta?.forge === 'briar')
         markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#e09040' });

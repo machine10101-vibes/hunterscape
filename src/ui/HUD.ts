@@ -53,6 +53,7 @@ export class HUD {
   private forgeList!: HTMLElement;
   private forgeRecipes: Recipe[] = YETI_RECIPES;
   private forgeReady = true;
+  private forgeLocked = new Set<string>();
   private questTracker!: HTMLElement;
   private narrowMq!: MediaQueryList;
   private desktopInvInited = false;
@@ -220,13 +221,14 @@ export class HUD {
   setForgeOpen(
     open: boolean,
     save?: SaveData,
-    view?: { title: string; blurb: string; recipes: Recipe[]; forgeable: boolean },
+    view?: { title: string; blurb: string; recipes: Recipe[]; forgeable: boolean; lockedIds?: string[] },
   ): void {
     if (view) {
       el('forge-title').textContent = view.title;
       el('forge-blurb').textContent = view.blurb;
       this.forgeRecipes = view.recipes;
       this.forgeReady = view.forgeable;
+      this.forgeLocked = new Set(view.lockedIds ?? []);
     }
     this.forgePanel.hidden = !open;
     if (open) {
@@ -266,9 +268,10 @@ export class HUD {
     this.forgeList.innerHTML = '';
     for (const recipe of this.forgeRecipes) {
       const owned = ownsItem(save, recipe.id);
-      const ready = this.forgeReady && canCraft(save, recipe);
+      const locked = !this.forgeReady || this.forgeLocked.has(recipe.id);
+      const ready = !locked && canCraft(save, recipe);
       const row = document.createElement('div');
-      row.className = `forge-row${owned ? ' owned' : ''}${this.forgeReady ? '' : ' locked'}`;
+      row.className = `forge-row${owned ? ' owned' : ''}${locked ? ' locked' : ''}`;
       const icon = document.createElement('canvas');
       icon.className = 'item-icon';
       icon.width = 128;
@@ -288,7 +291,7 @@ export class HUD {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'forge-craft';
-      btn.textContent = !this.forgeReady ? 'Locked' : owned ? 'Owned' : 'Forge';
+      btn.textContent = locked ? 'Locked' : owned ? 'Owned' : 'Forge';
       btn.disabled = !ready;
       const id = recipe.id;
       btn.addEventListener('click', () => this.onForgeCraft?.(id));

@@ -210,6 +210,14 @@ export const ITEM_META: Record<
   briar_shield: { name: 'Briar Shield', icon: '🛡', stackable: false, slot: 'shield' },
   briar_vest: { name: 'Briar Vest', icon: '🦺', stackable: false, slot: 'chest' },
   briar_boots: { name: 'Briar Boots', icon: '👢', stackable: false, slot: 'boots' },
+  boar_hide: { name: 'Boar Hide', icon: '🥩', stackable: true },
+  boar_tusk: { name: 'Boar Tusk', icon: '🦷', stackable: true },
+  spider_silk: { name: 'Spider Silk', icon: '🕸', stackable: true },
+  boar_roast: { name: 'Boar Roast', icon: '🍖', stackable: true },
+  road_mace: { name: 'Roadwarden Mace', icon: '🔨', stackable: false, slot: 'weapon' },
+  road_shield: { name: 'Roadwarden Shield', icon: '🛡', stackable: false, slot: 'shield' },
+  road_legs: { name: 'Roadwarden Chaps', icon: '👖', stackable: false, slot: 'legs' },
+  road_greaves: { name: 'Roadwarden Greaves', icon: '🦵', stackable: false, slot: 'greaves' },
 };
 
 export const EQUIP_SLOTS: { id: EquipSlot; label: string }[] = [
@@ -370,6 +378,49 @@ export const BRIAR_RECIPES: Recipe[] = [
   },
 ];
 
+/** Briarford anvil, after Weaver Maeve opens the roadwarden patterns. */
+export const ROAD_RECIPES: Recipe[] = [
+  {
+    id: 'road_mace',
+    name: 'Roadwarden Mace',
+    blurb: 'A hide-bound haft crowned with a tusk-spiked head and a copper spike.',
+    cost: [
+      { id: 'boar_tusk', qty: 1 },
+      { id: 'boar_hide', qty: 1 },
+      { id: 'copper_ore', qty: 1 },
+      { id: 'whisper_logs', qty: 1 },
+    ],
+  },
+  {
+    id: 'road_shield',
+    name: 'Roadwarden Shield',
+    blurb: 'A boar-hide round, bossed with a tusk and laced in spider silk.',
+    cost: [
+      { id: 'boar_hide', qty: 2 },
+      { id: 'spider_silk', qty: 1 },
+    ],
+  },
+  {
+    id: 'road_legs',
+    name: 'Roadwarden Chaps',
+    blurb: 'Hide chaps bound with spider silk, cut from briar boar flanks.',
+    cost: [
+      { id: 'boar_hide', qty: 2 },
+      { id: 'spider_silk', qty: 2 },
+    ],
+  },
+  {
+    id: 'road_greaves',
+    name: 'Roadwarden Greaves',
+    blurb: 'Boiled hide plates with a tusk ridge, tied on with silk.',
+    cost: [
+      { id: 'boar_hide', qty: 1 },
+      { id: 'spider_silk', qty: 1 },
+      { id: 'whisper_logs', qty: 1 },
+    ],
+  },
+];
+
 export function countItem(inv: ItemStack[], id: string): number {
   return inv.filter((s) => s.id === id).reduce((n, s) => n + s.qty, 0);
 }
@@ -388,10 +439,13 @@ export function armorMitigation(save: SaveData): number {
   let n = 0;
   if (save.equipped.shield === 'frost_shield') n += 3;
   if (save.equipped.shield === 'briar_shield') n += 1;
+  if (save.equipped.shield === 'road_shield') n += 2;
   if (save.equipped.chest === 'frost_chest') n += 3;
   if (save.equipped.chest === 'briar_vest') n += 2;
   if (save.equipped.greaves === 'frost_greaves') n += 2;
+  if (save.equipped.greaves === 'road_greaves') n += 1;
   if (save.equipped.legs === 'frost_legs') n += 2;
+  if (save.equipped.legs === 'road_legs') n += 2;
   if (save.equipped.boots === 'frost_boots') n += 1;
   if (save.equipped.boots === 'briar_boots') n += 1;
   return n;
@@ -402,6 +456,7 @@ export function weaponDamageBonus(id: string | null): number {
   if (id === 'frost_sword' || id === 'frost_spear') return 3;
   if (id === 'frost_bow') return 2;
   if (id === 'briar_sword') return 1;
+  if (id === 'road_mace') return 2;
   return 0;
 }
 
@@ -459,7 +514,11 @@ export function defaultSave(): SaveData {
       harl_commission: 'none',
       lanterns: 'none',
       wolfKills: 0,
+      boarKills: 0,
       briarUnlocked: false,
+      hearth_boars: 'none',
+      silk_loom: 'none',
+      roadUnlocked: false,
     },
   };
 }

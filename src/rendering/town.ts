@@ -23,7 +23,7 @@ function add(parent: THREE.Object3D, mesh: THREE.Mesh): THREE.Mesh {
   return mesh;
 }
 
-function boardSign(): THREE.Mesh {
+function paintedBoard(text: string, pw = 1.35, ph = 0.5, font = '700 40px Georgia, serif'): THREE.Mesh {
   const canvas = document.createElement('canvas');
   canvas.width = 256;
   canvas.height = 96;
@@ -34,17 +34,39 @@ function boardSign(): THREE.Mesh {
   ctx.lineWidth = 8;
   ctx.strokeRect(8, 8, 240, 80);
   ctx.fillStyle = '#f3d78a';
-  ctx.font = '700 40px Georgia, serif';
+  ctx.font = font;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('BRIARFORD', 128, 50);
+  ctx.fillText(text, 128, 50);
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   const mesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.35, 0.5),
+    new THREE.PlaneGeometry(pw, ph),
     new THREE.MeshStandardMaterial({ map: tex, roughness: 0.7, metalness: 0.05 }),
   );
   return mesh;
+}
+
+function nameplate(text: string): THREE.Sprite {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d')!;
+  ctx.font = '700 36px Georgia, serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = 'rgba(20, 12, 4, 0.85)';
+  ctx.strokeText(text, 128, 34);
+  ctx.fillStyle = '#f3d78a';
+  ctx.fillText(text, 128, 34);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+  sprite.name = 'nameplate';
+  sprite.position.y = 1.72;
+  sprite.scale.set(1.15, 0.29, 1);
+  return sprite;
 }
 
 function lantern(parent: THREE.Group, x: number, z: number): void {
@@ -195,6 +217,185 @@ function npcBody(tunic: number, hair: number, hood: boolean): THREE.Group {
   return g;
 }
 
+/** The Briar Hearth. Smaller than the hall, door facing the square (+Z). */
+function hearth(): THREE.Group {
+  const g = new THREE.Group();
+  const timber = mat(0x6a4428);
+  const dark = mat(0x3a2816);
+  const plaster = mat(0xd2b48a, { roughness: 0.9 });
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.1, 1.9), dark);
+  floor.position.y = 0.05;
+  add(g, floor);
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(2.3, 1.35, 1.6), plaster);
+  wall.position.y = 0.78;
+  add(g, wall);
+  const door = new THREE.Mesh(new THREE.BoxGeometry(0.55, 1.0, 0.06), dark);
+  door.position.set(0, 0.55, 0.82);
+  add(g, door);
+  const roofL = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.08, 1.15), mat(0x6a3030));
+  roofL.position.set(0, 1.62, -0.32);
+  roofL.rotation.x = 0.42;
+  add(g, roofL);
+  const roofR = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.08, 1.15), mat(0x7a3830));
+  roofR.position.set(0, 1.62, 0.32);
+  roofR.rotation.x = -0.42;
+  add(g, roofR);
+  const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.7, 0.28), mat(0x6a4038));
+  chimney.position.set(-0.75, 1.85, -0.35);
+  add(g, chimney);
+  const smoke = new THREE.Mesh(
+    new THREE.SphereGeometry(0.1, 6, 5),
+    mat(0xc8c0b0, { transparent: true, opacity: 0.45, roughness: 1 }),
+  );
+  smoke.position.set(-0.75, 2.28, -0.35);
+  g.add(smoke);
+  const sign = paintedBoard('HEARTH', 1.2, 0.36, '700 36px Georgia, serif');
+  sign.position.set(0, 1.22, 0.9);
+  g.add(sign);
+  return g;
+}
+
+/** Weaver's shed. The loom stands in the open front so the shuttle reads. */
+function loomCottage(): THREE.Group {
+  const g = new THREE.Group();
+  const timber = mat(0x5a3c24);
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.2, 1.15), mat(0xc4b090));
+  wall.position.set(0, 0.65, -0.15);
+  add(g, wall);
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.08, 1.45), mat(0x4a3068));
+  roof.position.y = 1.32;
+  roof.rotation.x = -0.12;
+  add(g, roof);
+  for (const x of [-0.38, 0.38]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.85, 5), timber);
+    post.position.set(x, 0.5, 0.48);
+    add(g, post);
+  }
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.05, 0.05), timber);
+  beam.position.set(0, 0.9, 0.48);
+  add(g, beam);
+  for (let i = 0; i < 5; i++) {
+    const warp = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.55, 0.012), mat(0xe6e0d4, { roughness: 0.35 }));
+    warp.position.set(-0.24 + i * 0.12, 0.55, 0.48);
+    add(g, warp);
+  }
+  const cloth = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.22, 0.02), mat(0x6a4888));
+  cloth.position.set(0, 0.32, 0.5);
+  add(g, cloth);
+  const signPost = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 1.15, 5), timber);
+  signPost.position.set(0.85, 0.58, 0.95);
+  add(g, signPost);
+  const sign = paintedBoard('LOOM', 0.85, 0.3, '700 42px Georgia, serif');
+  sign.position.set(0.85, 1.2, 0.98);
+  g.add(sign);
+  return g;
+}
+
+/** Bean rows with a low fence. The boars root the south side of this patch. */
+function beanRows(): THREE.Group {
+  const g = new THREE.Group();
+  const dirt = new THREE.Mesh(new THREE.CircleGeometry(1.7, 12), mat(0x6a4a30, { roughness: 0.96 }));
+  dirt.rotation.x = -Math.PI / 2;
+  dirt.position.y = 0.02;
+  dirt.receiveShadow = true;
+  g.add(dirt);
+  for (const [x, z] of [
+    [-1.4, -1.1],
+    [1.4, -1.1],
+    [-1.4, 1.1],
+    [1.4, 1.1],
+  ] as const) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.45, 5), mat(0x4a3018));
+    post.position.set(x, 0.22, z);
+    add(g, post);
+  }
+  for (const z of [-1.1, 1.1]) {
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.05, 0.05), mat(0x5a3c22));
+    rail.position.set(0, 0.32, z);
+    add(g, rail);
+  }
+  for (const x of [-1.4, 1.4]) {
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 2.2), mat(0x5a3c22));
+    rail.position.set(x, 0.32, 0);
+    add(g, rail);
+  }
+  for (let i = 0; i < 6; i++) {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.85, 5), mat(0x6a5030));
+    pole.position.set(-0.7 + (i % 3) * 0.7, 0.42, i < 3 ? -0.35 : 0.4);
+    add(g, pole);
+    const leaves = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 5), mat(0x3a6a28, { roughness: 0.8 }));
+    leaves.position.set(-0.7 + (i % 3) * 0.7, 0.78, i < 3 ? -0.35 : 0.4);
+    add(g, leaves);
+  }
+  const sign = paintedBoard('BEAN ROWS', 1.15, 0.36, '700 32px Georgia, serif');
+  sign.position.set(0, 0.7, -1.35);
+  g.add(sign);
+  return g;
+}
+
+function noticeBoard(): THREE.Group {
+  const g = new THREE.Group();
+  for (const x of [-0.45, 0.45]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 1.35, 5), mat(0x4a3018));
+    post.position.set(x, 0.67, 0);
+    add(g, post);
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 160;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#efe2c4';
+  ctx.fillRect(0, 0, 256, 160);
+  ctx.strokeStyle = '#6a4428';
+  ctx.lineWidth = 8;
+  ctx.strokeRect(6, 6, 244, 148);
+  ctx.fillStyle = '#3a2814';
+  ctx.textAlign = 'center';
+  ctx.font = '700 28px Georgia, serif';
+  ctx.fillText('NOTICE', 128, 42);
+  ctx.font = '600 18px Georgia, serif';
+  ctx.fillText('Boars — bean rows, south', 128, 84);
+  ctx.fillText('Spiders — dens, southeast', 128, 114);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const board = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.15, 0.72),
+    new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8 }),
+  );
+  board.position.y = 1.05;
+  g.add(board);
+  return g;
+}
+
+function bench(): THREE.Group {
+  const g = new THREE.Group();
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.06, 0.32), mat(0x6a4428));
+  seat.position.y = 0.38;
+  add(g, seat);
+  for (const x of [-0.4, 0.4]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.36, 0.26), mat(0x3a2816));
+    leg.position.set(x, 0.18, 0);
+    add(g, leg);
+  }
+  return g;
+}
+
+function chicken(tint: number): THREE.Group {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.09, 7, 6), mat(tint, { roughness: 0.8 }));
+  body.scale.set(1.2, 0.85, 0.9);
+  body.position.y = 0.12;
+  add(g, body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 5), mat(tint));
+  head.position.set(0, 0.2, 0.08);
+  add(g, head);
+  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.04, 4), mat(0xe0a030));
+  beak.rotation.x = Math.PI / 2;
+  beak.position.set(0, 0.19, 0.13);
+  add(g, beak);
+  return g;
+}
+
 export function createTownNpc(id: NpcId): THREE.Group {
   if (id === 'elspeth') {
     const g = npcBody(0x2f4a32, 0x3a2414, true);
@@ -206,6 +407,7 @@ export function createTownNpc(id: NpcId): THREE.Group {
     clasp.position.set(0, 1.0, 0.16);
     add(g, clasp);
     g.name = 'npc_elspeth';
+    g.add(nameplate('Elspeth'));
     return g;
   }
   if (id === 'harl') {
@@ -220,6 +422,31 @@ export function createTownNpc(id: NpcId): THREE.Group {
     haft.position.set(0.32, 0.52, 0.08);
     add(g, haft);
     g.name = 'npc_harl';
+    g.add(nameplate('Harl'));
+    return g;
+  }
+  if (id === 'bram') {
+    const g = npcBody(0x8a4030, 0x3a2418, false);
+    const apron = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.38, 0.05), mat(0xd8c8a0));
+    apron.position.set(0, 0.74, 0.14);
+    add(g, apron);
+    const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.04, 0.08, 6), mat(0x6a3030));
+    mug.position.set(0.28, 0.7, 0.06);
+    add(g, mug);
+    g.name = 'npc_bram';
+    g.add(nameplate('Bram'));
+    return g;
+  }
+  if (id === 'maeve') {
+    const g = npcBody(0x4a3068, 0x2a1810, false);
+    const shawl = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.16, 0.08), mat(0xc4a0d0));
+    shawl.position.set(0, 0.95, 0.08);
+    add(g, shawl);
+    const shuttle = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.03, 0.04), mat(0xe6e0d4, { roughness: 0.4 }));
+    shuttle.position.set(-0.28, 0.78, 0.08);
+    add(g, shuttle);
+    g.name = 'npc_maeve';
+    g.add(nameplate('Maeve'));
     return g;
   }
   const g = npcBody(0x6a3048, 0x4a2a18, false);
@@ -230,6 +457,7 @@ export function createTownNpc(id: NpcId): THREE.Group {
   basket.position.set(-0.28, 0.62, 0.08);
   add(g, basket);
   g.name = 'npc_nessa';
+  g.add(nameplate('Nessa'));
   return g;
 }
 
@@ -271,20 +499,35 @@ export function briarfordProps(): TownPlacement[] {
   lantern(yard, -2.6, 1.7);
   lantern(yard, 1.4, -1.8);
   lantern(yard, 2.8, 1.1);
+  lantern(yard, -0.4, -1.5);
 
   const signPost = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 1.5, 6), mat(0x4a3018));
   signPost.position.set(-3.2, 0.75, 1.15);
   add(yard, signPost);
-  const sign = boardSign();
+  const sign = paintedBoard('BRIARFORD');
   sign.position.set(-3.2, 1.45, 1.15);
   yard.add(sign);
+
+  const henA = chicken(0xf0efe4);
+  henA.position.set(-1.4, 0, -0.55);
+  yard.add(henA);
+  const henB = chicken(0xc4a060);
+  henB.position.set(0.35, 0, 1.15);
+  henB.rotation.y = 1.2;
+  yard.add(henB);
 
   rootBits.push({ mesh: yard, x: 17.2, z: 0.25 });
 
   // Hall sits on the far side of the road so the camera, which looks from +Z,
   // sees the door instead of standing under the roof.
   rootBits.push({ mesh: hall(), x: 18.7, z: -3.15 });
+  rootBits.push({ mesh: hearth(), x: 13.6, z: -2.9 });
   rootBits.push({ mesh: well(), x: 16.35, z: 0.2 });
   rootBits.push({ mesh: stall(), x: 15.15, z: -1.85, rotY: 0.15 });
+  rootBits.push({ mesh: loomCottage(), x: 16.8, z: 2.2 });
+  rootBits.push({ mesh: beanRows(), x: 11.5, z: 6.35 });
+  rootBits.push({ mesh: noticeBoard(), x: 17.35, z: -1.45 });
+  rootBits.push({ mesh: bench(), x: 17.85, z: 0.85, rotY: 0.2 });
+  rootBits.push({ mesh: bench(), x: 16.15, z: -0.35, rotY: -0.4 });
   return rootBits;
 }

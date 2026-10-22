@@ -1,14 +1,18 @@
 import { countItem, type SaveData } from './types';
 
-export type NpcId = 'elspeth' | 'harl' | 'nessa';
+export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve';
 export type QuestStage = 'none' | 'active' | 'done';
 
 export interface QuestState {
   east_road: QuestStage;
   harl_commission: QuestStage;
   lanterns: QuestStage;
+  hearth_boars: QuestStage;
+  silk_loom: QuestStage;
   wolfKills: number;
+  boarKills: number;
   briarUnlocked: boolean;
+  roadUnlocked: boolean;
 }
 
 export function defaultQuests(): QuestState {
@@ -16,12 +20,18 @@ export function defaultQuests(): QuestState {
     east_road: 'none',
     harl_commission: 'none',
     lanterns: 'none',
+    hearth_boars: 'none',
+    silk_loom: 'none',
     wolfKills: 0,
+    boarKills: 0,
     briarUnlocked: false,
+    roadUnlocked: false,
   };
 }
 
 export const EAST_ROAD_KILLS = 3;
+export const BOAR_KILLS = 2;
+export const SILK_NEEDED = 2;
 
 export interface DialogueOption {
   id: string;
@@ -65,7 +75,7 @@ export function dialogueFor(save: SaveData, npc: NpcId): DialogueScript {
     }
     return {
       speaker: 'Warden Elspeth',
-      body: 'Briarford holds. If Harl has opened his anvil, the briar set is cut from wolf pelt, fangs, copper, and whisper logs. Nessa keeps the square lit.',
+      body: 'Briarford holds. Bram keeps the hearth, and the bean rows south of the square are his. Maeve’s loom stands on the near side — her roadwarden patterns open once she has spider silk. Harl’s anvil still cuts the briar set.',
       options: [CLOSE],
     };
   }
@@ -102,7 +112,72 @@ export function dialogueFor(save: SaveData, npc: NpcId): DialogueScript {
     }
     return {
       speaker: 'Smith Harl',
-      body: 'The anvil is yours. Sword: 1 pelt, 2 fangs, 1 copper, 1 log. Shield: 2 pelts, 1 log. Vest: 3 pelts, 1 fang. Boots: 2 pelts, 1 log.',
+      body: 'The anvil is yours. Sword: 1 pelt, 2 fangs, 1 copper, 1 log. Shield: 2 pelts, 1 log. Vest: 3 pelts, 1 fang. Boots: 2 pelts, 1 log. When Maeve opens the roadwarden patterns, mace, shield, chaps, and greaves share this same anvil.',
+      options: [CLOSE],
+    };
+  }
+
+  if (npc === 'bram') {
+    if (q.hearth_boars === 'none') {
+      return {
+        speaker: 'Innkeeper Bram',
+        body: 'The Briar Hearth is open, but the boars have rooted the bean rows south of the square. Fell two of them and I will put a roast on your pack.',
+        options: [
+          { id: 'bram_accept', label: 'I will clear the rows.' },
+          { id: 'close', label: 'Not hungry yet.' },
+        ],
+      };
+    }
+    if (q.hearth_boars === 'active' && q.boarKills < BOAR_KILLS) {
+      return {
+        speaker: 'Innkeeper Bram',
+        body: `The rows are still torn up. You have felled ${q.boarKills} of ${BOAR_KILLS} briar boars. Their hides stay yours — the anvil can use them.`,
+        options: [{ id: 'close', label: 'I will keep hunting.' }],
+      };
+    }
+    if (q.hearth_boars === 'active') {
+      return {
+        speaker: 'Innkeeper Bram',
+        body: 'Two boars down, and the beans might stand a chance. Take this roast. The hides you skinned are still in your pack.',
+        options: [{ id: 'bram_turnin', label: 'The rows are quieter.' }],
+      };
+    }
+    return {
+      speaker: 'Innkeeper Bram',
+      body: 'Hearth’s warm. If a boar still wanders the rows, its hide and tusks are what Maeve’s roadwarden kit is cut from.',
+      options: [CLOSE],
+    };
+  }
+
+  if (npc === 'maeve') {
+    const silk = countItem(save.inventory, 'spider_silk');
+    if (q.silk_loom === 'none') {
+      return {
+        speaker: 'Weaver Maeve',
+        body: 'The loom is dressed, but the roadwarden patterns need spider silk. Thorn spiders den east of the bean rows. Bring me 2 spools and I will set a mace in your hand and open those patterns on Harl’s anvil.',
+        options: [
+          { id: 'maeve_accept', label: 'I will bring the silk.' },
+          { id: 'close', label: 'The webs can wait.' },
+        ],
+      };
+    }
+    if (q.silk_loom === 'active' && silk < SILK_NEEDED) {
+      return {
+        speaker: 'Weaver Maeve',
+        body: `The shuttle is waiting. I need ${SILK_NEEDED} spider silk (you have ${silk}). The dens sit east of the bean rows.`,
+        options: [CLOSE],
+      };
+    }
+    if (q.silk_loom === 'active') {
+      return {
+        speaker: 'Weaver Maeve',
+        body: 'Two spools. That will bind a Roadwarden Mace, and the anvil will take hide, tusk, silk, copper, and logs for the rest of the set.',
+        options: [{ id: 'maeve_turnin', label: 'Take the silk.' }],
+      };
+    }
+    return {
+      speaker: 'Weaver Maeve',
+      body: 'Roadwarden patterns are on the anvil. Mace: 1 tusk, 1 hide, 1 copper, 1 log. Shield: 2 hides, 1 silk. Chaps: 2 hides, 2 silk. Greaves: 1 hide, 1 silk, 1 log.',
       options: [CLOSE],
     };
   }
@@ -130,7 +205,7 @@ export function dialogueFor(save: SaveData, npc: NpcId): DialogueScript {
   }
   return {
     speaker: 'Shopkeep Nessa',
-    body: 'Stall is open, lanterns are lit. Wolf pelts sell themselves to Harl — I just keep the square from going dark.',
+    body: 'Stall is open, lanterns are lit. Bram feeds the square, Maeve dresses the roadwardens, and I just keep the dark off the stones.',
     options: [CLOSE],
   };
 }
@@ -154,11 +229,25 @@ export function trackerLines(save: SaveData): string[] {
         : `East road: briar wolves ${Math.min(q.wolfKills, EAST_ROAD_KILLS)}/${EAST_ROAD_KILLS}`,
     );
   }
+  if (q.hearth_boars === 'none') lines.push('Innkeeper Bram: clear 2 briar boars from the bean rows.');
+  else if (q.hearth_boars === 'active') {
+    lines.push(
+      q.boarKills >= BOAR_KILLS
+        ? 'Bean rows: return to Innkeeper Bram.'
+        : `Bean rows: briar boars ${Math.min(q.boarKills, BOAR_KILLS)}/${BOAR_KILLS}`,
+    );
+  }
+  if (q.silk_loom === 'none') lines.push('Weaver Maeve needs 2 spider silk.');
+  else if (q.silk_loom === 'active') {
+    const silk = countItem(save.inventory, 'spider_silk');
+    lines.push(silk >= SILK_NEEDED ? 'Loom: return to Weaver Maeve.' : `Loom: spider silk ${silk}/${SILK_NEEDED}`);
+  }
   if (q.east_road === 'done' && q.harl_commission === 'none') lines.push('Smith Harl has a commission.');
   else if (q.harl_commission === 'active') lines.push('Harl: 3 pelts, 2 logs, 1 copper.');
   if (q.lanterns === 'none' && q.east_road !== 'none') lines.push('Nessa needs 2 tin ore for the lanterns.');
   else if (q.lanterns === 'active') lines.push(`Nessa: tin ore ${Math.min(countItem(save.inventory, 'tin_ore'), 2)}/2`);
-  if (q.briarUnlocked) lines.push('Briarford anvil is open.');
+  if (q.roadUnlocked) lines.push('Briarford anvil: briar and roadwarden patterns.');
+  else if (q.briarUnlocked) lines.push('Briar patterns are open. Maeve still holds the roadwarden set.');
   if (lines.length === 0) lines.push('Briarford is settled.');
-  return lines.slice(0, 4);
+  return lines.slice(0, 5);
 }

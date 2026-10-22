@@ -23,6 +23,16 @@ import {
   createWolfFangItem,
   createWolfPeltItem,
 } from './briarGear';
+import {
+  createBoarHideItem,
+  createBoarRoastItem,
+  createBoarTuskItem,
+  createRoadGreaves,
+  createRoadLegs,
+  createRoadMace,
+  createRoadShield,
+  createSpiderSilkItem,
+} from './roadGear';
 
 function std(color: number, opts: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
@@ -71,6 +81,14 @@ export function createItemMesh(id: string): THREE.Group {
   if (id === 'briar_shield') return createBriarShield();
   if (id === 'briar_vest') return createBriarVest();
   if (id === 'briar_boots') return createBriarBoot();
+  if (id === 'boar_hide') return createBoarHideItem();
+  if (id === 'boar_tusk') return createBoarTuskItem();
+  if (id === 'spider_silk') return createSpiderSilkItem();
+  if (id === 'boar_roast') return createBoarRoastItem();
+  if (id === 'road_mace') return createRoadMace();
+  if (id === 'road_shield') return createRoadShield();
+  if (id === 'road_legs') return createRoadLegs();
+  if (id === 'road_greaves') return createRoadGreaves();
   return makeUnknown();
 }
 
