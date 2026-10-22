@@ -339,6 +339,7 @@ export class Game {
     this.hud.chat('A Frost Yeti hunts the north-east snow. An Orc Scout prowls the south-west trail.', 'combat');
     this.hud.chat('Open Plots (P) to survey 500 sections. The four around Thornrest are already wooded.', 'system');
     this.hud.chat('Briarford, the first town, stands on the east road. Warden Elspeth has work if you walk there.', 'system');
+    this.hud.chat('Scroll, pinch, or use + / − to zoom the camera.', 'system');
 
     window.addEventListener('resize', () => this.onResize());
     this.animate();
@@ -725,25 +726,131 @@ export class Game {
   }
 
   private bindInput(canvas: HTMLCanvasElement): void {
-    const onPointer = (ev: PointerEvent) => {
+    const pointers = new Map<number, { x: number; y: number }>();
+    let pinchDist0 = 0;
+    let pinchZoom0 = 1;
+    let pinching = false;
+    let tap: { id: number; x: number; y: number } | null = null;
+
+    const pinchDist = (): number => {
+      const pts = [...pointers.values()];
+      if (pts.length < 2) return 0;
+      return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    };
+
+    const worldFromEvent = (ev: PointerEvent): void => {
+      this.pointer.x = (ev.clientX / window.innerWidth) * 2 - 1;
+      this.pointer.y = -(ev.clientY / window.innerHeight) * 2 + 1;
+    };
+
+    const applyPinch = (scale: number): void => {
+      const zoom = pinchZoom0 * scale;
+      if (this.survey.isOpen()) this.survey.setZoom(zoom);
+      else this.setZoom(zoom);
+    };
+
+    canvas.addEventListener('pointerdown', (ev) => {
       if (this.studio.isOpen()) return;
+      if (ev.target !== canvas) return;
+      pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+      if (pointers.size >= 2) {
+        pinching = true;
+        tap = null;
+        pinchDist0 = pinchDist() || 1;
+        pinchZoom0 = this.survey.isOpen() ? this.survey.zoomLevel() : this.camZoomTarget;
+        if (this.survey.isOpen()) this.survey.handlePointerUp(this.camera);
+        for (const id of pointers.keys()) {
+          try {
+            canvas.setPointerCapture(id);
+          } catch {
+            /* capture is best-effort on some mobile browsers */
+          }
+        }
+        ev.preventDefault();
+        return;
+      }
       if (this.survey.isOpen()) {
         this.survey.handlePointerDown(ev, canvas);
         return;
       }
-      const t = ev.target as HTMLElement;
-      if (t !== canvas) return;
-      this.pointer.x = (ev.clientX / window.innerWidth) * 2 - 1;
-      this.pointer.y = -(ev.clientY / window.innerHeight) * 2 + 1;
-      this.handleWorldClick();
-    };
-    canvas.addEventListener('pointerdown', onPointer);
-    canvas.addEventListener('pointermove', (ev) => {
-      if (this.survey.isOpen()) this.survey.handlePointerMove(ev);
+      // Mouse keeps press-to-move. Touch waits for pointerup so a pinch
+      // does not also send the hunter walking.
+      if (ev.pointerType === 'mouse') {
+        worldFromEvent(ev);
+        this.handleWorldClick();
+      } else {
+        tap = { id: ev.pointerId, x: ev.clientX, y: ev.clientY };
+      }
     });
+
+    canvas.addEventListener(
+      'pointermove',
+      (ev) => {
+        if (pointers.has(ev.pointerId)) {
+          pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+        }
+        if (pinching && pointers.size >= 2) {
+          ev.preventDefault();
+          const d = pinchDist();
+          if (d >= 12 && pinchDist0 >= 12) applyPinch(d / pinchDist0);
+          return;
+        }
+        if (this.survey.isOpen()) this.survey.handlePointerMove(ev);
+      },
+      { passive: false },
+    );
+
+    const endPointer = (ev: PointerEvent): void => {
+      const wasPinch = pinching;
+      pointers.delete(ev.pointerId);
+      if (pointers.size < 2) pinching = false;
+      if (this.survey.isOpen()) this.survey.handlePointerUp(this.camera);
+      if (
+        !wasPinch &&
+        tap?.id === ev.pointerId &&
+        ev.type === 'pointerup' &&
+        !this.studio.isOpen() &&
+        !this.survey.isOpen()
+      ) {
+        const dx = ev.clientX - tap.x;
+        const dy = ev.clientY - tap.y;
+        if (dx * dx + dy * dy <= 24 * 24) {
+          worldFromEvent(ev);
+          this.handleWorldClick();
+        }
+      }
+      if (tap?.id === ev.pointerId) tap = null;
+    };
+    canvas.addEventListener('pointerup', endPointer);
+    canvas.addEventListener('pointercancel', endPointer);
     window.addEventListener('pointerup', () => {
       if (this.survey.isOpen()) this.survey.handlePointerUp(this.camera);
     });
+
+    canvas.addEventListener(
+      'touchmove',
+      (e) => {
+        if (e.touches.length >= 2) e.preventDefault();
+      },
+      { passive: false },
+    );
+    // Safari still emits gesture* on some iOS builds when pointer events
+    // never report a second finger. Use it only when the pointer pinch is idle.
+    let gestureZoom0 = 1;
+    canvas.addEventListener('gesturestart', (e) => {
+      e.preventDefault();
+      gestureZoom0 = this.survey.isOpen() ? this.survey.zoomLevel() : this.camZoomTarget;
+    });
+    canvas.addEventListener('gesturechange', (e) => {
+      e.preventDefault();
+      if (pinching) return;
+      const scale = (e as unknown as { scale: number }).scale;
+      if (!Number.isFinite(scale) || scale <= 0) return;
+      const zoom = gestureZoom0 * scale;
+      if (this.survey.isOpen()) this.survey.setZoom(zoom);
+      else this.setZoom(zoom);
+    });
+    canvas.addEventListener('gestureend', (e) => e.preventDefault());
 
     window.addEventListener(
       'wheel',
@@ -2689,9 +2796,12 @@ export class Game {
     if (this.moveMarker.visible) this.sitOnGround(this.moveMarker, 0.06);
   }
 
+  private setZoom(zoom: number): void {
+    this.camZoomTarget = Math.min(CAM_ZOOM_MAX, Math.max(CAM_ZOOM_MIN, zoom));
+  }
+
   private nudgeZoom(dir: number, step = 0.12): void {
-    const next = this.camZoomTarget * Math.exp(dir * step);
-    this.camZoomTarget = Math.min(CAM_ZOOM_MAX, Math.max(CAM_ZOOM_MIN, next));
+    this.setZoom(this.camZoomTarget * Math.exp(dir * step));
   }
 
   private updateCamera(dt: number): void {

@@ -198,8 +198,15 @@ export class PlotSurvey {
   }
 
   nudgeZoom(dir: number, step = 0.12): void {
-    const next = this.zoomTarget * Math.exp(dir * step);
-    this.zoomTarget = Math.min(SURVEY_ZOOM_MAX, Math.max(SURVEY_ZOOM_MIN, next));
+    this.setZoom(this.zoomTarget * Math.exp(dir * step));
+  }
+
+  zoomLevel(): number {
+    return this.zoomTarget;
+  }
+
+  setZoom(zoom: number): void {
+    this.zoomTarget = Math.min(SURVEY_ZOOM_MAX, Math.max(SURVEY_ZOOM_MIN, zoom));
   }
 
   applyCamera(camera: THREE.PerspectiveCamera, dt: number): void {
