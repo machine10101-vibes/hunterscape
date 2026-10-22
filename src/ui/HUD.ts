@@ -13,6 +13,7 @@ import {
   type CombatSkillId,
   type EquipSlot,
   type ItemStack,
+  type Recipe,
   type SaveData,
   type SkillId,
 } from '../game/types';
@@ -50,6 +51,9 @@ export class HUD {
   private heroPane: HeroPane;
   private forgePanel!: HTMLElement;
   private forgeList!: HTMLElement;
+  private forgeRecipes: Recipe[] = YETI_RECIPES;
+  private forgeReady = true;
+  private questTracker!: HTMLElement;
   private narrowMq!: MediaQueryList;
   private desktopInvInited = false;
   private circum = 2 * Math.PI * 28;
@@ -89,6 +93,7 @@ export class HUD {
     this.heroPane = new HeroPane(el('gear-hero') as HTMLCanvasElement);
     this.forgePanel = el('forge-panel');
     this.forgeList = el('forge-list');
+    this.questTracker = el('quest-tracker');
     el('forge-close').addEventListener('click', () => this.setForgeOpen(false));
     this.narrowMq = window.matchMedia('(max-width: 480px)');
 
@@ -212,11 +217,31 @@ export class HUD {
     return !this.skillsPanel.hidden;
   }
 
-  setForgeOpen(open: boolean, save?: SaveData): void {
+  setForgeOpen(
+    open: boolean,
+    save?: SaveData,
+    view?: { title: string; blurb: string; recipes: Recipe[]; forgeable: boolean },
+  ): void {
+    if (view) {
+      el('forge-title').textContent = view.title;
+      el('forge-blurb').textContent = view.blurb;
+      this.forgeRecipes = view.recipes;
+      this.forgeReady = view.forgeable;
+    }
     this.forgePanel.hidden = !open;
     if (open) {
       this.closeSidePanels('forge');
       if (save) this.setForgeRecipes(save);
+    }
+  }
+
+  setQuests(lines: string[]): void {
+    this.questTracker.innerHTML = '';
+    for (const line of lines) {
+      const row = document.createElement('div');
+      row.className = 'quest-line';
+      row.textContent = line;
+      this.questTracker.appendChild(row);
     }
   }
 
@@ -239,11 +264,11 @@ export class HUD {
 
   setForgeRecipes(save: SaveData): void {
     this.forgeList.innerHTML = '';
-    for (const recipe of YETI_RECIPES) {
+    for (const recipe of this.forgeRecipes) {
       const owned = ownsItem(save, recipe.id);
-      const ready = canCraft(save, recipe);
+      const ready = this.forgeReady && canCraft(save, recipe);
       const row = document.createElement('div');
-      row.className = `forge-row${owned ? ' owned' : ''}`;
+      row.className = `forge-row${owned ? ' owned' : ''}${this.forgeReady ? '' : ' locked'}`;
       const icon = document.createElement('canvas');
       icon.className = 'item-icon';
       icon.width = 128;
@@ -263,7 +288,7 @@ export class HUD {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'forge-craft';
-      btn.textContent = owned ? 'Owned' : 'Forge';
+      btn.textContent = !this.forgeReady ? 'Locked' : owned ? 'Owned' : 'Forge';
       btn.disabled = !ready;
       const id = recipe.id;
       btn.addEventListener('click', () => this.onForgeCraft?.(id));

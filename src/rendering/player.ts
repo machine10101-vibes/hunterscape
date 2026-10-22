@@ -9,6 +9,7 @@ import {
   SHIELD_FOREARM_Y,
   SHIELD_STRAP_Z,
 } from './yetiGear';
+import { attachBriarWear, createBriarSword } from './briarGear';
 import type { SaveData } from '../game/types';
 
 type PhysOpts = Partial<THREE.MeshPhysicalMaterialParameters>;
@@ -1051,8 +1052,10 @@ export function createPlayerMesh(): THREE.Group {
   toolRoot.add(sword);
 
   attachYetiTools(toolRoot);
+  attachBriarTools(toolRoot);
   attachBowOffhand(g);
   attachYetiWear(g);
+  attachBriarWear(g);
 
   return g;
 }
@@ -1297,9 +1300,10 @@ export type HeldTool =
   | 'frost_hammer'
   | 'frost_spear'
   | 'frost_bow'
+  | 'briar_sword'
   | null;
 
-const COMBAT_TOOLS: HeldTool[] = ['sword', 'frost_sword', 'frost_hammer', 'frost_spear', 'frost_bow'];
+const COMBAT_TOOLS: HeldTool[] = ['sword', 'frost_sword', 'frost_hammer', 'frost_spear', 'frost_bow', 'briar_sword'];
 const ALL_TOOLS: HeldTool[] = ['hatchet', 'pickaxe', ...COMBAT_TOOLS];
 
 export function weaponHeldFromId(id: string | null): HeldTool {
@@ -1308,6 +1312,7 @@ export function weaponHeldFromId(id: string | null): HeldTool {
   if (id === 'frost_hammer') return 'frost_hammer';
   if (id === 'frost_spear') return 'frost_spear';
   if (id === 'frost_bow') return 'frost_bow';
+  if (id === 'briar_sword') return 'briar_sword';
   return null;
 }
 
@@ -1327,6 +1332,14 @@ function attachYetiTools(toolRoot: THREE.Group): void {
   spear.visible = false;
   spear.scale.setScalar(1.22);
   toolRoot.add(spear);
+}
+
+function attachBriarTools(toolRoot: THREE.Group): void {
+  const sword = createBriarSword();
+  sword.name = 'tool_briar_sword';
+  sword.visible = false;
+  sword.scale.setScalar(1.12);
+  toolRoot.add(sword);
 }
 
 function attachBowOffhand(player: THREE.Group): void {
@@ -1426,14 +1439,16 @@ export function poseEquippedTool(player: THREE.Group): void {
   if (root?.visible) poseToolRoot(root, visibleHeldTool(root));
   const bow = player.getObjectByName('bowRoot');
   if (bow?.visible) poseBowRoot(bow);
-  const shield = player.getObjectByName('wear_shield');
-  if (shield?.visible) poseShieldRoot(shield);
+  for (const name of ['wear_shield', 'wear_briar_shield']) {
+    const shield = player.getObjectByName(name);
+    if (shield?.visible) poseShieldRoot(shield);
+  }
 }
 
 export function setPlayerTool(player: THREE.Group, tool: HeldTool): void {
   const root = player.getObjectByName('toolRoot');
   const bow = player.getObjectByName('bowRoot');
-  const rightTools: HeldTool[] = ['hatchet', 'pickaxe', 'sword', 'frost_sword', 'frost_hammer', 'frost_spear'];
+  const rightTools: HeldTool[] = ['hatchet', 'pickaxe', 'sword', 'frost_sword', 'frost_hammer', 'frost_spear', 'briar_sword'];
   if (root) {
     for (const kind of rightTools) {
       const t = root.getObjectByName(`tool_${kind}`);
@@ -1448,8 +1463,12 @@ export function setPlayerTool(player: THREE.Group, tool: HeldTool): void {
     bow.visible = tool === 'frost_bow';
     if (bow.visible) poseBowRoot(bow);
   }
-  const shield = player.getObjectByName('wear_shield');
-  if (shield && tool === 'frost_bow') shield.visible = false;
+  if (tool === 'frost_bow') {
+    for (const name of ['wear_shield', 'wear_briar_shield']) {
+      const shield = player.getObjectByName(name);
+      if (shield) shield.visible = false;
+    }
+  }
 }
 
 export function isCombatWeaponHeld(player: THREE.Group): boolean {
@@ -1467,7 +1486,9 @@ export function heldCombatTool(player: THREE.Group): HeldTool {
 }
 
 export function isShieldWorn(player: THREE.Group): boolean {
-  return !!player.getObjectByName('wear_shield')?.visible;
+  return !!(
+    player.getObjectByName('wear_shield')?.visible || player.getObjectByName('wear_briar_shield')?.visible
+  );
 }
 
 export function syncPlayerGear(player: THREE.Group, save: SaveData): void {

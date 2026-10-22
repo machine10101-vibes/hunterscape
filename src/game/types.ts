@@ -1,3 +1,5 @@
+import type { QuestState } from './quests';
+
 export type SkillId =
   | 'constitution'
   | 'attack'
@@ -46,6 +48,7 @@ export interface SaveData {
     hatchet: string | null;
     pickaxe: string | null;
   };
+  quests: QuestState;
 }
 
 export const SKILL_META: Record<
@@ -201,6 +204,12 @@ export const ITEM_META: Record<
   frost_boots: { name: 'Rimehide Boots', icon: '👢', stackable: false, slot: 'boots' },
   orc_tooth: { name: 'Orc Tooth', icon: '🦷', stackable: true },
   scout_leather: { name: 'Scout Leather', icon: '🦺', stackable: true },
+  wolf_pelt: { name: 'Wolf Pelt', icon: '🐺', stackable: true },
+  wolf_fang: { name: 'Wolf Fang', icon: '🦷', stackable: true },
+  briar_sword: { name: 'Briar Sword', icon: '⚔', stackable: false, slot: 'weapon' },
+  briar_shield: { name: 'Briar Shield', icon: '🛡', stackable: false, slot: 'shield' },
+  briar_vest: { name: 'Briar Vest', icon: '🦺', stackable: false, slot: 'chest' },
+  briar_boots: { name: 'Briar Boots', icon: '👢', stackable: false, slot: 'boots' },
 };
 
 export const EQUIP_SLOTS: { id: EquipSlot; label: string }[] = [
@@ -319,6 +328,48 @@ export const YETI_RECIPES: Recipe[] = [
   },
 ];
 
+/** Briarford anvil — opened after Smith Harl's commission. */
+export const BRIAR_RECIPES: Recipe[] = [
+  {
+    id: 'briar_sword',
+    name: 'Briar Sword',
+    blurb: 'A copper-edged blade with a pelt grip and a wolf fang for a pommel.',
+    cost: [
+      { id: 'wolf_pelt', qty: 1 },
+      { id: 'wolf_fang', qty: 2 },
+      { id: 'copper_ore', qty: 1 },
+      { id: 'whisper_logs', qty: 1 },
+    ],
+  },
+  {
+    id: 'briar_shield',
+    name: 'Briar Shield',
+    blurb: 'A whisper-wood round faced in wolf pelt, bossed in copper.',
+    cost: [
+      { id: 'wolf_pelt', qty: 2 },
+      { id: 'whisper_logs', qty: 1 },
+    ],
+  },
+  {
+    id: 'briar_vest',
+    name: 'Briar Vest',
+    blurb: 'Boiled leather under a wolf-pelt collar, clasped with a fang.',
+    cost: [
+      { id: 'wolf_pelt', qty: 3 },
+      { id: 'wolf_fang', qty: 1 },
+    ],
+  },
+  {
+    id: 'briar_boots',
+    name: 'Briar Boots',
+    blurb: 'Hide boots with a pelt cuff and a copper toe cap.',
+    cost: [
+      { id: 'wolf_pelt', qty: 2 },
+      { id: 'whisper_logs', qty: 1 },
+    ],
+  },
+];
+
 export function countItem(inv: ItemStack[], id: string): number {
   return inv.filter((s) => s.id === id).reduce((n, s) => n + s.qty, 0);
 }
@@ -336,10 +387,13 @@ export function canCraft(save: SaveData, recipe: Recipe): boolean {
 export function armorMitigation(save: SaveData): number {
   let n = 0;
   if (save.equipped.shield === 'frost_shield') n += 3;
+  if (save.equipped.shield === 'briar_shield') n += 1;
   if (save.equipped.chest === 'frost_chest') n += 3;
+  if (save.equipped.chest === 'briar_vest') n += 2;
   if (save.equipped.greaves === 'frost_greaves') n += 2;
   if (save.equipped.legs === 'frost_legs') n += 2;
   if (save.equipped.boots === 'frost_boots') n += 1;
+  if (save.equipped.boots === 'briar_boots') n += 1;
   return n;
 }
 
@@ -347,6 +401,7 @@ export function weaponDamageBonus(id: string | null): number {
   if (id === 'frost_hammer') return 4;
   if (id === 'frost_sword' || id === 'frost_spear') return 3;
   if (id === 'frost_bow') return 2;
+  if (id === 'briar_sword') return 1;
   return 0;
 }
 
@@ -398,6 +453,13 @@ export function defaultSave(): SaveData {
       boots: null,
       hatchet: 'bronze_hatchet',
       pickaxe: 'bronze_pickaxe',
+    },
+    quests: {
+      east_road: 'none',
+      harl_commission: 'none',
+      lanterns: 'none',
+      wolfKills: 0,
+      briarUnlocked: false,
     },
   };
 }

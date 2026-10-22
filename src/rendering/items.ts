@@ -15,6 +15,14 @@ import {
   createYetiBoneItem,
   createYetiHideItem,
 } from './yetiGear';
+import {
+  createBriarBoot,
+  createBriarShield,
+  createBriarSword,
+  createBriarVest,
+  createWolfFangItem,
+  createWolfPeltItem,
+} from './briarGear';
 
 function std(color: number, opts: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
@@ -57,6 +65,12 @@ export function createItemMesh(id: string): THREE.Group {
   if (id === 'frost_boots') return createFrostBoot();
   if (id === 'orc_tooth') return makeTooth();
   if (id === 'scout_leather') return makeLeather();
+  if (id === 'wolf_pelt') return createWolfPeltItem();
+  if (id === 'wolf_fang') return createWolfFangItem();
+  if (id === 'briar_sword') return createBriarSword();
+  if (id === 'briar_shield') return createBriarShield();
+  if (id === 'briar_vest') return createBriarVest();
+  if (id === 'briar_boots') return createBriarBoot();
   return makeUnknown();
 }
 

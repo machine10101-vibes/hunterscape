@@ -38,6 +38,8 @@ export const PLOT_LANDMARKS: PlotLandmark[] = [
   { name: 'Training dummy', x: 2.5, z: -2.5 },
   { name: 'Frost Yeti clearing', x: 4.2, z: 7.2 },
   { name: 'Orc scout trail', x: -6.2, z: -4.8 },
+  { name: 'Briarford', x: 17.2, z: 0.25 },
+  { name: 'East road wolves', x: 8.0, z: 0.8 },
   { name: 'Frost cairn', x: 7.5, z: 42 },
   { name: 'Hunter stumps', x: -5.2, z: -41 },
   { name: 'Stream ford', x: 38, z: -8.4 },

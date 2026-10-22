@@ -124,11 +124,19 @@
 
         <div id="forge-panel" class="panel" hidden>
           <div class="panel-head">
-            <span>Thornrest Forge</span>
+            <span id="forge-title">Thornrest Forge</span>
             <button type="button" class="panel-close" id="forge-close" aria-label="Close">✕</button>
           </div>
           <p id="forge-blurb">Work frost-yeti hide, fur, bone, and claws into a matching set.</p>
           <div id="forge-list"></div>
+        </div>
+
+        <div id="quest-tracker" aria-label="Quests"></div>
+
+        <div id="dialogue" hidden>
+          <div id="dialogue-speaker"></div>
+          <p id="dialogue-body"></p>
+          <div id="dialogue-options"></div>
         </div>
 
         <!-- Skills panel -->
@@ -179,7 +187,7 @@
           <div class="bar thin"><div id="target-hp"></div></div>
         </div>
 
-        <div id="touch-hint">Tap the ground to walk · Pinch to zoom · Plots (P) surveys the wood</div>
+        <div id="touch-hint">Tap to walk · Briarford is east · Pinch to zoom</div>
       </div>
 
       <div id="plots" hidden>

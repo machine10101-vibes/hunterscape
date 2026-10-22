@@ -25,6 +25,7 @@ export function loadSave(): SaveData {
       skills: { ...base.skills, ...data.skills },
       equipped: { ...base.equipped, ...data.equipped },
       inventory: data.inventory ?? base.inventory,
+      quests: { ...base.quests, ...(data.quests ?? {}) },
     });
   } catch {
     return defaultSave();
