@@ -1,6 +1,6 @@
 import { countItem, type SaveData } from './types';
 
-export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve' | 'calder';
+export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve' | 'calder' | 'holt';
 export type QuestStage = 'none' | 'active' | 'done';
 
 export interface QuestState {
@@ -10,11 +10,13 @@ export interface QuestState {
   hearth_boars: QuestStage;
   silk_loom: QuestStage;
   shrine_foxes: QuestStage;
+  kiln_crows: QuestStage;
   wolfKills: number;
   boarKills: number;
   briarUnlocked: boolean;
   roadUnlocked: boolean;
   duskUnlocked: boolean;
+  cinderUnlocked: boolean;
 }
 
 export function defaultQuests(): QuestState {
@@ -25,11 +27,13 @@ export function defaultQuests(): QuestState {
     hearth_boars: 'none',
     silk_loom: 'none',
     shrine_foxes: 'none',
+    kiln_crows: 'none',
     wolfKills: 0,
     boarKills: 0,
     briarUnlocked: false,
     roadUnlocked: false,
     duskUnlocked: false,
+    cinderUnlocked: false,
   };
 }
 
@@ -37,6 +41,7 @@ export const EAST_ROAD_KILLS = 3;
 export const BOAR_KILLS = 2;
 export const SILK_NEEDED = 2;
 export const FUR_NEEDED = 2;
+export const FEATHER_NEEDED = 2;
 
 export interface DialogueOption {
   id: string;
@@ -187,6 +192,39 @@ export function dialogueFor(save: SaveData, npc: NpcId): DialogueScript {
     };
   }
 
+  if (npc === 'holt') {
+    const feathers = countItem(save.inventory, 'soot_feather');
+    if (q.kiln_crows === 'none') {
+      return {
+        speaker: 'Burner Holt',
+        body: 'The west kiln should be smoking, but cinder crows keep kicking the charcoal apart. Bring me 2 soot feathers and I will set a cinder knife in your hand and open those patterns on the anvil.',
+        options: [
+          { id: 'holt_accept', label: 'I will bring the feathers.' },
+          { id: 'close', label: 'The kiln can wait.' },
+        ],
+      };
+    }
+    if (q.kiln_crows === 'active' && feathers < FEATHER_NEEDED) {
+      return {
+        speaker: 'Burner Holt',
+        body: `The mound is still cold. I need ${FEATHER_NEEDED} soot feathers (you have ${feathers}). The crows mob just north of this kiln.`,
+        options: [CLOSE],
+      };
+    }
+    if (q.kiln_crows === 'active') {
+      return {
+        speaker: 'Burner Holt',
+        body: 'Two feathers. That will wrap a Cinder Knife, and the anvil will take feathers, charcoal, copper, and logs for the trousers and buckler.',
+        options: [{ id: 'holt_turnin', label: 'Take the feathers.' }],
+      };
+    }
+    return {
+      speaker: 'Burner Holt',
+      body: 'Cinder patterns are on the anvil. Knife: 1 feather, 1 charcoal, 1 copper, 1 log. Trousers: 2 feathers, 1 charcoal. Buckler: 2 charcoal, 1 feather, 1 copper. The crows are still north of the kiln if you need more.',
+      options: [CLOSE],
+    };
+  }
+
   if (npc === 'maeve') {
     const silk = countItem(save.inventory, 'spider_silk');
     if (q.silk_loom === 'none') {
@@ -243,7 +281,7 @@ export function dialogueFor(save: SaveData, npc: NpcId): DialogueScript {
   }
   return {
     speaker: 'Shopkeep Nessa',
-    body: 'Stall is open, lanterns are lit. Bram feeds the square, Maeve dresses the roadwardens, Calder keeps the north shrine, and I just keep the dark off the stones.',
+    body: 'Stall is open, lanterns are lit. Bram feeds the square, Maeve dresses the roadwardens, Calder keeps the north shrine, Holt burns charcoal out west, and I just keep the dark off the stones.',
     options: [CLOSE],
   };
 }
@@ -285,6 +323,13 @@ export function trackerLines(save: SaveData): string[] {
     const fur = countItem(save.inventory, 'fox_fur');
     lines.push(fur >= FUR_NEEDED ? 'Shrine: return to Sister Calder.' : `Shrine: fox fur ${fur}/${FUR_NEEDED}`);
   }
+  if (q.kiln_crows === 'none') lines.push('Burner Holt needs 2 soot feathers at the west kiln.');
+  else if (q.kiln_crows === 'active') {
+    const feathers = countItem(save.inventory, 'soot_feather');
+    lines.push(
+      feathers >= FEATHER_NEEDED ? 'Kiln: return to Burner Holt.' : `Kiln: soot feathers ${feathers}/${FEATHER_NEEDED}`,
+    );
+  }
   if (q.east_road === 'done' && q.harl_commission === 'none') lines.push('Smith Harl has a commission.');
   else if (q.harl_commission === 'active') lines.push('Harl: 3 pelts, 2 logs, 1 copper.');
   if (q.lanterns === 'none' && q.east_road !== 'none') lines.push('Nessa needs 2 tin ore for the lanterns.');
@@ -293,9 +338,9 @@ export function trackerLines(save: SaveData): string[] {
     const open = ['briar'];
     if (q.roadUnlocked) open.push('roadwarden');
     if (q.duskUnlocked) open.push('dusk');
+    if (q.cinderUnlocked) open.push('cinder');
     if (open.length === 1) lines.push('Briar patterns are open.');
-    else if (open.length === 2) lines.push(`Briarford anvil: ${open[0]} and ${open[1]} patterns.`);
-    else lines.push(`Briarford anvil: ${open[0]}, ${open[1]}, and ${open[2]} patterns.`);
+    else lines.push(`Anvil: ${open.join(', ')}.`);
   }
   if (lines.length === 0) lines.push('Briarford is settled.');
   return lines.slice(0, 6);

@@ -40,6 +40,13 @@ import {
   createDuskFangItem,
   createFoxFurItem,
 } from './duskGear';
+import {
+  createCharcoalItem,
+  createCinderKnife,
+  createCinderLegs,
+  createCinderShield,
+  createSootFeatherItem,
+} from './cinderGear';
 
 function std(color: number, opts: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
@@ -101,6 +108,11 @@ export function createItemMesh(id: string): THREE.Group {
   if (id === 'dusk_dagger') return createDuskDagger();
   if (id === 'dusk_cloak') return createDuskCloak();
   if (id === 'dusk_boots') return createDuskBoot();
+  if (id === 'soot_feather') return createSootFeatherItem();
+  if (id === 'charcoal') return createCharcoalItem();
+  if (id === 'cinder_knife') return createCinderKnife();
+  if (id === 'cinder_legs') return createCinderLegs();
+  if (id === 'cinder_shield') return createCinderShield();
   return makeUnknown();
 }
 

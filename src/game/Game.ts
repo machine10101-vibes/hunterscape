@@ -32,6 +32,7 @@ import { createBriarAnvil } from '../rendering/briarGear';
 import { briarfordProps, createTownNpc } from '../rendering/town';
 import { createBriarWolf, poseBriarWolf, WOLF_HOMES } from '../rendering/wolf';
 import { createDuskFox, FOX_HOMES, poseDuskFox } from '../rendering/duskFox';
+import { CROW_HOMES, createCinderCrow, poseCinderCrow } from '../rendering/cinderCrow';
 import {
   BOAR_HOMES,
   SPIDER_HOMES,
@@ -79,6 +80,7 @@ import { loadSave, writeSave } from './Persistence';
 import {
   COMBAT_SKILLS,
   BRIAR_RECIPES,
+  CINDER_RECIPES,
   DUSK_RECIPES,
   ITEM_META,
   ROAD_RECIPES,
@@ -101,12 +103,13 @@ import {
   trackerLines,
   BOAR_KILLS,
   EAST_ROAD_KILLS,
+  FEATHER_NEEDED,
   FUR_NEEDED,
   SILK_NEEDED,
   type NpcId,
 } from './quests';
 
-type InteractKind = 'tree' | 'rock' | 'dummy' | 'yeti' | 'orc' | 'wolf' | 'boar' | 'spider' | 'fox' | 'forge' | 'npc';
+type InteractKind = 'tree' | 'rock' | 'dummy' | 'yeti' | 'orc' | 'wolf' | 'boar' | 'spider' | 'fox' | 'crow' | 'forge' | 'npc';
 type ForgeBench = 'camp' | 'briar';
 
 interface WorldObject {
@@ -368,6 +371,7 @@ export class Game {
     this.hud.chat('Briarford stands on the east road. Elspeth, Bram, Maeve, and Calder each have a starter task.', 'system');
     this.hud.chat('Briar boars root the bean rows south of the square. Thorn spiders den just east of them.', 'combat');
     this.hud.chat('Dusk foxes den in the thicket north of the wayside shrine.', 'combat');
+    this.hud.chat('Cinder crows mob the charcoal kiln west of camp. Burner Holt wants their feathers.', 'combat');
     this.hud.chat('Scroll, pinch, or use + / − to zoom the camera.', 'system');
 
     window.addEventListener('resize', () => this.onResize());
@@ -704,6 +708,7 @@ export class Game {
       { id: 'bram', x: 14.45, z: -1.15, rot: -0.6 },
       { id: 'maeve', x: 16.9, z: 3.7, rot: Math.PI },
       { id: 'calder', x: 16.55, z: -6.15, rot: 0 },
+      { id: 'holt', x: -13.5, z: -11.2, rot: 0 },
     ];
     for (const n of npcs) {
       const mesh = createTownNpc(n.id);
@@ -826,10 +831,31 @@ export class Game {
         pose: poseDuskFox,
       });
     });
+
+    CROW_HOMES.forEach((home, i) => {
+      this.spawnFoe('crow', createCinderCrow(), home, `crow_${i}`, 20, {
+        aggroR: 2.0,
+        range: 1.4,
+        leash: 2.4,
+        chase: 3.5,
+        dmgMin: 2,
+        dmgMax: 3,
+        knock: 0.8,
+        respawn: 16,
+        label: 'Cinder Crow',
+        snarl: 'A cinder crow shrieks and dives!',
+        engage: 'A cinder crow engages you!',
+        biteLine: 'The cinder crow pecks you for',
+        loseLine: 'The cinder crow flaps back to the kiln.',
+        returnLine: 'A cinder crow settles back over the charcoal kiln.',
+        corpse: 'The cinder crow is dead. Another will mob the kiln.',
+        pose: poseCinderCrow,
+      });
+    });
   }
 
   private spawnFoe(
-    kind: 'wolf' | 'boar' | 'spider' | 'fox',
+    kind: 'wolf' | 'boar' | 'spider' | 'fox' | 'crow',
     mesh: THREE.Group,
     home: { x: number; z: number },
     id: string,
@@ -858,7 +884,7 @@ export class Game {
   }
 
   private isBeast(kind: InteractKind): boolean {
-    return kind === 'wolf' || kind === 'boar' || kind === 'spider' || kind === 'fox';
+    return kind === 'wolf' || kind === 'boar' || kind === 'spider' || kind === 'fox' || kind === 'crow';
   }
 
   private bindInput(canvas: HTMLCanvasElement): void {
@@ -1153,6 +1179,7 @@ export class Game {
       if (obj.meta?.npc === 'bram') return 'Innkeeper Bram';
       if (obj.meta?.npc === 'maeve') return 'Weaver Maeve';
       if (obj.meta?.npc === 'calder') return 'Sister Calder';
+      if (obj.meta?.npc === 'holt') return 'Burner Holt';
       return 'Shopkeep Nessa';
     }
     return obj.kind;
@@ -1380,6 +1407,8 @@ export class Game {
       this.hud.chat('A thorn spider. Its silk is what Weaver Maeve binds into the roadwarden set.', 'combat');
     else if (all.kind === 'fox')
       this.hud.chat('A dusk fox. Fur and fangs are what Sister Calder works into the dusk patterns.', 'combat');
+    else if (all.kind === 'crow')
+      this.hud.chat('A cinder crow. Soot feathers and charcoal are what Burner Holt works into the cinder patterns.', 'combat');
     else if (all.kind === 'npc') this.talkTo(all);
     else if (all.kind === 'forge' && all.meta?.forge === 'briar')
       this.hud.chat('The Briarford anvil. Harl opens it once his commission is paid.', 'system');
@@ -1680,6 +1709,30 @@ export class Game {
       this.save.quests.duskUnlocked = true;
       this.grantXp('defence', 45);
       this.hud.chat('Calder sets a Dusk Cloak in your pack and opens the dusk patterns.', 'loot');
+    } else if (id === 'holt_accept') {
+      this.save.quests.kiln_crows = 'active';
+      this.hud.chat('Quest started: bring Burner Holt 2 soot feathers from the west kiln.', 'system');
+    } else if (
+      id === 'holt_turnin' &&
+      this.save.quests.kiln_crows === 'active' &&
+      countItem(this.save.inventory, 'soot_feather') >= FEATHER_NEEDED
+    ) {
+      if (!this.consumeId('soot_feather', FEATHER_NEEDED)) {
+        this.dialogue.hide();
+        this.refreshUI();
+        return;
+      }
+      if (!this.addItem('cinder_knife', 1)) {
+        this.addItem('soot_feather', FEATHER_NEEDED);
+        this.hud.chat('Your pack is full — Holt will not take the feathers until the knife will fit.', 'system');
+        this.dialogue.hide();
+        this.refreshUI();
+        return;
+      }
+      this.save.quests.kiln_crows = 'done';
+      this.save.quests.cinderUnlocked = true;
+      this.grantXp('strength', 40);
+      this.hud.chat('Holt sets a Cinder Knife in your pack and opens the cinder patterns.', 'loot');
     }
     this.dialogue.hide();
     this.refreshUI();
@@ -1724,33 +1777,35 @@ export class Game {
     const unlocked = this.save.quests.briarUnlocked;
     const road = this.save.quests.roadUnlocked;
     const dusk = this.save.quests.duskUnlocked;
+    const cinder = this.save.quests.cinderUnlocked;
+    const openNames = ['briar'];
+    const held: string[] = [];
+    if (road) openNames.push('roadwarden');
+    else held.push('Maeve holds roadwarden');
+    if (dusk) openNames.push('dusk');
+    else held.push('Calder holds dusk');
+    if (cinder) openNames.push('cinder');
+    else held.push('Holt holds cinder');
     const anvilBlurb = !unlocked
       ? 'Harl keeps the anvil cold until his commission is paid in pelts, logs, and copper.'
-      : road && dusk
-        ? 'Briar, roadwarden, and dusk patterns share this anvil.'
-        : road
-          ? 'Briar and roadwarden patterns are open. Calder still holds the dusk patterns.'
-          : dusk
-            ? 'Briar and dusk patterns are open. Maeve still holds the roadwarden patterns.'
-            : 'The briar set is open. Maeve holds the roadwarden patterns, and Calder holds the dusk patterns.';
+      : held.length
+        ? `${openNames.join(', ')} patterns are open. ${held.join(', ')}.`
+        : 'Briar, roadwarden, dusk, and cinder patterns share this anvil.';
     const anvilChat = !unlocked
       ? 'The anvil is shut. Finish Harl’s commission to forge here.'
-      : road && dusk
-        ? 'The anvil is hot. Briar, roadwarden, and dusk patterns are open.'
-        : road
-          ? 'The anvil is hot. Briar and roadwarden patterns are open. Dusk patterns stay locked until Calder opens them.'
-          : dusk
-            ? 'The anvil is hot. Briar and dusk patterns are open. Roadwarden patterns stay locked until Maeve opens them.'
-            : 'The anvil is hot. Choose a briar pattern. Roadwarden stays locked until Maeve, and dusk until Calder.';
+      : held.length
+        ? `The anvil is hot. ${openNames.join(', ')} patterns are open. ${held.join(', ')}.`
+        : 'The anvil is hot. Briar, roadwarden, dusk, and cinder patterns are open.';
     this.hud.setForgeOpen(true, this.save, briar
       ? {
           title: 'Briarford Anvil',
           blurb: anvilBlurb,
-          recipes: [...BRIAR_RECIPES, ...ROAD_RECIPES, ...DUSK_RECIPES],
+          recipes: [...BRIAR_RECIPES, ...ROAD_RECIPES, ...DUSK_RECIPES, ...CINDER_RECIPES],
           forgeable: unlocked,
           lockedIds: [
             ...(road ? [] : ROAD_RECIPES.map((r) => r.id)),
             ...(dusk ? [] : DUSK_RECIPES.map((r) => r.id)),
+            ...(cinder ? [] : CINDER_RECIPES.map((r) => r.id)),
           ],
         }
       : {
@@ -1764,7 +1819,7 @@ export class Game {
   }
 
   private craftAtForge(recipeId: string): void {
-    const list = this.forgeBench === 'briar' ? [...BRIAR_RECIPES, ...ROAD_RECIPES, ...DUSK_RECIPES] : YETI_RECIPES;
+    const list = this.forgeBench === 'briar' ? [...BRIAR_RECIPES, ...ROAD_RECIPES, ...DUSK_RECIPES, ...CINDER_RECIPES] : YETI_RECIPES;
     const recipe = list.find((r) => r.id === recipeId);
     if (!recipe) return;
     if (this.forgeBench === 'briar' && !this.save.quests.briarUnlocked) {
@@ -1777,6 +1832,10 @@ export class Game {
     }
     if (recipe.id.startsWith('dusk_') && !this.save.quests.duskUnlocked) {
       this.hud.chat('Calder has not opened the dusk patterns.', 'system');
+      return;
+    }
+    if (recipe.id.startsWith('cinder_') && !this.save.quests.cinderUnlocked) {
+      this.hud.chat('Holt has not opened the cinder patterns.', 'system');
       return;
     }
     if (!canCraft(this.save, recipe)) {
@@ -2386,9 +2445,9 @@ export class Game {
       ),
     );
     target.hp -= dmg;
-    const xpAtk = target.kind === 'yeti' ? 18 : target.kind === 'orc' ? 15 : target.kind === 'boar' ? 14 : target.kind === 'wolf' || target.kind === 'fox' ? 12 : target.kind === 'spider' ? 11 : 12;
-    const xpStr = target.kind === 'yeti' ? 14 : target.kind === 'orc' ? 12 : target.kind === 'boar' ? 12 : target.kind === 'wolf' || target.kind === 'fox' ? 10 : target.kind === 'spider' ? 9 : 8;
-    const xpCon = target.kind === 'yeti' ? 8 : target.kind === 'orc' ? 6 : target.kind === 'boar' ? 6 : target.kind === 'wolf' || target.kind === 'fox' ? 5 : target.kind === 'spider' ? 4 : 4;
+    const xpAtk = target.kind === 'yeti' ? 18 : target.kind === 'orc' ? 15 : target.kind === 'boar' ? 14 : target.kind === 'wolf' || target.kind === 'fox' ? 12 : target.kind === 'spider' || target.kind === 'crow' ? 11 : 12;
+    const xpStr = target.kind === 'yeti' ? 14 : target.kind === 'orc' ? 12 : target.kind === 'boar' ? 12 : target.kind === 'wolf' || target.kind === 'fox' ? 10 : target.kind === 'spider' || target.kind === 'crow' ? 9 : 8;
+    const xpCon = target.kind === 'yeti' ? 8 : target.kind === 'orc' ? 6 : target.kind === 'boar' ? 6 : target.kind === 'wolf' || target.kind === 'fox' ? 5 : target.kind === 'spider' || target.kind === 'crow' ? 4 : 4;
     this.grantXp('attack', xpAtk);
     this.grantXp('strength', xpStr);
     this.grantXp('constitution', xpCon);
@@ -2543,7 +2602,7 @@ export class Game {
     this.vfx.spawnHitSparks(target.mesh.position.clone().setY(0.6), 16);
     this.vfx.spawnImpactBurst(target.mesh.position.clone().setY(0.5), 12, false);
     this.grantXp('defence', target.kind === 'boar' ? 18 : 16);
-    this.grantXp('attack', target.kind === 'spider' ? 6 : 8);
+    this.grantXp('attack', target.kind === 'spider' || target.kind === 'crow' ? 6 : 8);
     if (target.kind === 'boar') {
       this.hud.chat('The briar boar drops. Hide and tusk come free.', 'combat');
       if (this.addItem('boar_hide', 1)) this.hud.chat('You skin a Boar Hide.', 'loot');
@@ -2580,6 +2639,19 @@ export class Game {
           n >= FUR_NEEDED
             ? 'Calder has enough fur. Return to the wayside shrine.'
             : `Fox fur gathered: ${n}/${FUR_NEEDED}.`,
+          'system',
+        );
+      }
+    } else if (target.kind === 'crow') {
+      this.hud.chat('The cinder crow drops. A soot feather and a lump of charcoal come free.', 'combat');
+      if (this.addItem('soot_feather', 1)) this.hud.chat('You pluck a Soot Feather.', 'loot');
+      if (Math.random() < 0.45 && this.addItem('charcoal', 1)) this.hud.chat('You knock loose a lump of Charcoal.', 'loot');
+      if (this.save.quests.kiln_crows === 'active') {
+        const n = countItem(this.save.inventory, 'soot_feather');
+        this.hud.chat(
+          n >= FEATHER_NEEDED
+            ? 'Holt has enough feathers. Return to the charcoal kiln.'
+            : `Soot feathers gathered: ${n}/${FEATHER_NEEDED}.`,
           'system',
         );
       }
@@ -3175,6 +3247,7 @@ export class Game {
       else if (o.kind === 'boar') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#a0673a' });
       else if (o.kind === 'spider') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#6a3a78' });
       else if (o.kind === 'fox') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#d07048' });
+      else if (o.kind === 'crow') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#5c5348' });
       else if (o.kind === 'npc') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#f0d070' });
       else if (o.kind === 'forge' && o.meta?.forge === 'briar')
         markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#e09040' });

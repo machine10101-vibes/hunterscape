@@ -431,6 +431,44 @@ function northThicket(): THREE.Group {
   return g;
 }
 
+/** Charcoal mound west of camp. The mouth faces the trail (+Z). */
+function charcoalKiln(): THREE.Group {
+  const g = new THREE.Group();
+  const stone = mat(0x6a6560, { roughness: 0.94 });
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.05, 0.35, 8), stone);
+  base.position.y = 0.18;
+  add(g, base);
+  const mound = new THREE.Mesh(new THREE.ConeGeometry(0.72, 0.9, 7), mat(0x1c1918, { roughness: 0.95 }));
+  mound.position.y = 0.7;
+  add(g, mound);
+  const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.28, 0.12), mat(0x3a2414));
+  mouth.position.set(0, 0.32, 0.78);
+  add(g, mouth);
+  const glow = new THREE.Mesh(
+    new THREE.SphereGeometry(0.08, 6, 5),
+    mat(0xff6622, { emissive: 0xff4411, emissiveIntensity: 1.1, roughness: 0.4 }),
+  );
+  glow.position.set(0, 0.34, 0.86);
+  glow.name = 'flame';
+  g.add(glow);
+  const light = new THREE.PointLight(0xff7722, 0.7, 7, 2);
+  light.position.set(0, 0.6, 0.9);
+  g.add(light);
+  for (const x of [-1.15, 1.2]) {
+    const stump = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.28, 6), mat(0x2a2018));
+    stump.position.set(x, 0.14, 0.2);
+    add(g, stump);
+  }
+  const stack = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.55, 5), mat(0x4a3018));
+  stack.rotation.z = Math.PI / 2;
+  stack.position.set(1.05, 0.28, -0.15);
+  add(g, stack);
+  const sign = paintedBoard('KILN', 0.9, 0.36, '700 42px Georgia, serif');
+  sign.position.set(0, 1.25, 0.55);
+  g.add(sign);
+  return g;
+}
+
 function bench(): THREE.Group {
   const g = new THREE.Group();
   const seat = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.06, 0.32), mat(0x6a4428));
@@ -524,6 +562,29 @@ export function createTownNpc(id: NpcId): THREE.Group {
     g.add(nameplate('Calder'));
     return g;
   }
+  if (id === 'holt') {
+    const g = npcBody(0x6a5344, 0x1a1614, false);
+    const wrap = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.45), mat(0xd8d0c4));
+    wrap.position.y = 1.3;
+    add(g, wrap);
+    const apron = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.42, 0.05), mat(0x8a6840));
+    apron.position.set(0, 0.72, 0.14);
+    add(g, apron);
+    const sack = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 5), mat(0x1c1918));
+    sack.scale.set(1.1, 0.8, 0.9);
+    sack.position.set(0.28, 0.62, 0.1);
+    add(g, sack);
+    const ember = new THREE.Mesh(
+      new THREE.SphereGeometry(0.02, 5, 4),
+      mat(0xff6622, { emissive: 0xff4411, emissiveIntensity: 0.8 }),
+    );
+    ember.position.set(0.3, 0.7, 0.16);
+    ember.name = 'flame';
+    g.add(ember);
+    g.name = 'npc_holt';
+    g.add(nameplate('Holt'));
+    return g;
+  }
   if (id === 'maeve') {
     const g = npcBody(0x4a3068, 0x2a1810, false);
     const shawl = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.16, 0.08), mat(0xc4a0d0));
@@ -610,6 +671,7 @@ export function briarfordProps(): TownPlacement[] {
   rootBits.push({ mesh: hall(), x: 18.7, z: -3.15 });
   rootBits.push({ mesh: waysideShrine(), x: 16.6, z: -7.6 });
   rootBits.push({ mesh: northThicket(), x: 16.7, z: -10.7 });
+  rootBits.push({ mesh: charcoalKiln(), x: -14.4, z: -13.0 });
   rootBits.push({ mesh: hearth(), x: 13.6, z: -2.9 });
   rootBits.push({ mesh: well(), x: 16.35, z: 0.2 });
   rootBits.push({ mesh: stall(), x: 15.15, z: -1.85, rotY: 0.15 });

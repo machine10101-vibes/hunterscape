@@ -223,6 +223,11 @@ export const ITEM_META: Record<
   dusk_dagger: { name: 'Dusk Dagger', icon: '🗡', stackable: false, slot: 'weapon' },
   dusk_cloak: { name: 'Dusk Cloak', icon: '🧥', stackable: false, slot: 'chest' },
   dusk_boots: { name: 'Dusk Boots', icon: '👢', stackable: false, slot: 'boots' },
+  soot_feather: { name: 'Soot Feather', icon: '🪶', stackable: true },
+  charcoal: { name: 'Charcoal', icon: '⬛', stackable: true },
+  cinder_knife: { name: 'Cinder Knife', icon: '🗡', stackable: false, slot: 'weapon' },
+  cinder_legs: { name: 'Cinder Trousers', icon: '👖', stackable: false, slot: 'legs' },
+  cinder_shield: { name: 'Cinder Buckler', icon: '🛡', stackable: false, slot: 'shield' },
 };
 
 export const EQUIP_SLOTS: { id: EquipSlot; label: string }[] = [
@@ -459,6 +464,40 @@ export const DUSK_RECIPES: Recipe[] = [
   },
 ];
 
+/** Briarford anvil, after Burner Holt opens the cinder patterns. */
+export const CINDER_RECIPES: Recipe[] = [
+  {
+    id: 'cinder_knife',
+    name: 'Cinder Knife',
+    blurb: 'A short soot-dark blade with a feathered grip and a copper pommel.',
+    cost: [
+      { id: 'soot_feather', qty: 1 },
+      { id: 'charcoal', qty: 1 },
+      { id: 'copper_ore', qty: 1 },
+      { id: 'whisper_logs', qty: 1 },
+    ],
+  },
+  {
+    id: 'cinder_legs',
+    name: 'Cinder Trousers',
+    blurb: 'Soot-dyed trousers banded in copper, with a crow feather at the hip.',
+    cost: [
+      { id: 'soot_feather', qty: 2 },
+      { id: 'charcoal', qty: 1 },
+    ],
+  },
+  {
+    id: 'cinder_shield',
+    name: 'Cinder Buckler',
+    blurb: 'A charred round with a copper boss and a feathered rim.',
+    cost: [
+      { id: 'charcoal', qty: 2 },
+      { id: 'soot_feather', qty: 1 },
+      { id: 'copper_ore', qty: 1 },
+    ],
+  },
+];
+
 export function countItem(inv: ItemStack[], id: string): number {
   return inv.filter((s) => s.id === id).reduce((n, s) => n + s.qty, 0);
 }
@@ -478,6 +517,7 @@ export function armorMitigation(save: SaveData): number {
   if (save.equipped.shield === 'frost_shield') n += 3;
   if (save.equipped.shield === 'briar_shield') n += 1;
   if (save.equipped.shield === 'road_shield') n += 2;
+  if (save.equipped.shield === 'cinder_shield') n += 1;
   if (save.equipped.chest === 'frost_chest') n += 3;
   if (save.equipped.chest === 'briar_vest') n += 2;
   if (save.equipped.chest === 'dusk_cloak') n += 2;
@@ -485,6 +525,7 @@ export function armorMitigation(save: SaveData): number {
   if (save.equipped.greaves === 'road_greaves') n += 1;
   if (save.equipped.legs === 'frost_legs') n += 2;
   if (save.equipped.legs === 'road_legs') n += 2;
+  if (save.equipped.legs === 'cinder_legs') n += 2;
   if (save.equipped.boots === 'frost_boots') n += 1;
   if (save.equipped.boots === 'briar_boots') n += 1;
   if (save.equipped.boots === 'dusk_boots') n += 1;
@@ -498,6 +539,7 @@ export function weaponDamageBonus(id: string | null): number {
   if (id === 'briar_sword') return 1;
   if (id === 'road_mace') return 2;
   if (id === 'dusk_dagger') return 2;
+  if (id === 'cinder_knife') return 2;
   return 0;
 }
 
@@ -562,6 +604,8 @@ export function defaultSave(): SaveData {
       roadUnlocked: false,
       shrine_foxes: 'none',
       duskUnlocked: false,
+      kiln_crows: 'none',
+      cinderUnlocked: false,
     },
   };
 }

@@ -12,6 +12,7 @@ import {
 import { attachBriarWear, createBriarSword } from './briarGear';
 import { attachRoadMace, attachRoadWear } from './roadGear';
 import { attachDuskDagger, attachDuskWear } from './duskGear';
+import { attachCinderKnife, attachCinderWear } from './cinderGear';
 import type { SaveData } from '../game/types';
 
 type PhysOpts = Partial<THREE.MeshPhysicalMaterialParameters>;
@@ -1057,11 +1058,13 @@ export function createPlayerMesh(): THREE.Group {
   attachBriarTools(toolRoot);
   attachRoadMace(toolRoot);
   attachDuskDagger(toolRoot);
+  attachCinderKnife(toolRoot);
   attachBowOffhand(g);
   attachYetiWear(g);
   attachBriarWear(g);
   attachRoadWear(g);
   attachDuskWear(g);
+  attachCinderWear(g);
 
   return g;
 }
@@ -1309,9 +1312,10 @@ export type HeldTool =
   | 'briar_sword'
   | 'road_mace'
   | 'dusk_dagger'
+  | 'cinder_knife'
   | null;
 
-const COMBAT_TOOLS: HeldTool[] = ['sword', 'frost_sword', 'frost_hammer', 'frost_spear', 'frost_bow', 'briar_sword', 'road_mace', 'dusk_dagger'];
+const COMBAT_TOOLS: HeldTool[] = ['sword', 'frost_sword', 'frost_hammer', 'frost_spear', 'frost_bow', 'briar_sword', 'road_mace', 'dusk_dagger', 'cinder_knife'];
 const ALL_TOOLS: HeldTool[] = ['hatchet', 'pickaxe', ...COMBAT_TOOLS];
 
 export function weaponHeldFromId(id: string | null): HeldTool {
@@ -1323,6 +1327,7 @@ export function weaponHeldFromId(id: string | null): HeldTool {
   if (id === 'briar_sword') return 'briar_sword';
   if (id === 'road_mace') return 'road_mace';
   if (id === 'dusk_dagger') return 'dusk_dagger';
+  if (id === 'cinder_knife') return 'cinder_knife';
   return null;
 }
 
@@ -1449,7 +1454,7 @@ export function poseEquippedTool(player: THREE.Group): void {
   if (root?.visible) poseToolRoot(root, visibleHeldTool(root));
   const bow = player.getObjectByName('bowRoot');
   if (bow?.visible) poseBowRoot(bow);
-  for (const name of ['wear_shield', 'wear_briar_shield', 'wear_road_shield']) {
+  for (const name of ['wear_shield', 'wear_briar_shield', 'wear_road_shield', 'wear_cinder_shield']) {
     const shield = player.getObjectByName(name);
     if (shield?.visible) poseShieldRoot(shield);
   }
@@ -1458,7 +1463,7 @@ export function poseEquippedTool(player: THREE.Group): void {
 export function setPlayerTool(player: THREE.Group, tool: HeldTool): void {
   const root = player.getObjectByName('toolRoot');
   const bow = player.getObjectByName('bowRoot');
-  const rightTools: HeldTool[] = ['hatchet', 'pickaxe', 'sword', 'frost_sword', 'frost_hammer', 'frost_spear', 'briar_sword', 'road_mace', 'dusk_dagger'];
+  const rightTools: HeldTool[] = ['hatchet', 'pickaxe', 'sword', 'frost_sword', 'frost_hammer', 'frost_spear', 'briar_sword', 'road_mace', 'dusk_dagger', 'cinder_knife'];
   if (root) {
     for (const kind of rightTools) {
       const t = root.getObjectByName(`tool_${kind}`);
@@ -1474,7 +1479,7 @@ export function setPlayerTool(player: THREE.Group, tool: HeldTool): void {
     if (bow.visible) poseBowRoot(bow);
   }
   if (tool === 'frost_bow') {
-    for (const name of ['wear_shield', 'wear_briar_shield', 'wear_road_shield']) {
+    for (const name of ['wear_shield', 'wear_briar_shield', 'wear_road_shield', 'wear_cinder_shield']) {
       const shield = player.getObjectByName(name);
       if (shield) shield.visible = false;
     }
@@ -1499,7 +1504,8 @@ export function isShieldWorn(player: THREE.Group): boolean {
   return !!(
     player.getObjectByName('wear_shield')?.visible ||
     player.getObjectByName('wear_briar_shield')?.visible ||
-    player.getObjectByName('wear_road_shield')?.visible
+    player.getObjectByName('wear_road_shield')?.visible ||
+    player.getObjectByName('wear_cinder_shield')?.visible
   );
 }
 
