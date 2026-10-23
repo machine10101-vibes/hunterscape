@@ -28,6 +28,19 @@ export interface ItemStack {
   qty: number;
 }
 
+/** Melee and ranged attack styles. A beast's weakness matches one of these. */
+export type AttackStyle = 'stab' | 'slash' | 'crush' | 'ranged';
+
+/** Which combat skill a successful blow trains, in the RuneScape sense. */
+export type CombatStance = 'accurate' | 'aggressive' | 'defensive' | 'controlled';
+
+export const STANCES: { id: CombatStance; name: string; blurb: string }[] = [
+  { id: 'accurate', name: 'Accurate', blurb: 'Attack experience, and the blow lands more often.' },
+  { id: 'aggressive', name: 'Aggressive', blurb: 'Strength experience, and the blow hits harder.' },
+  { id: 'defensive', name: 'Defensive', blurb: 'Defence experience, and you soak a little more.' },
+  { id: 'controlled', name: 'Controlled', blurb: 'Split the blow across Attack, Strength, and Defence.' },
+];
+
 export interface SaveData {
   version: 1;
   x: number;
@@ -36,6 +49,7 @@ export interface SaveData {
   maxHp: number;
   focus: number;
   stamina: number;
+  stance: CombatStance;
   skills: Record<SkillId, SkillState>;
   inventory: ItemStack[];
   equipped: {
@@ -228,6 +242,11 @@ export const ITEM_META: Record<
   cinder_knife: { name: 'Cinder Knife', icon: '🗡', stackable: false, slot: 'weapon' },
   cinder_legs: { name: 'Cinder Trousers', icon: '👖', stackable: false, slot: 'legs' },
   cinder_shield: { name: 'Cinder Buckler', icon: '🛡', stackable: false, slot: 'shield' },
+  beetle_shell: { name: 'Beetle Shell', icon: '🪲', stackable: true },
+  copper_grit: { name: 'Copper Grit', icon: '🟠', stackable: true },
+  delver_maul: { name: 'Delver Maul', icon: '🔨', stackable: false, slot: 'weapon' },
+  delver_vest: { name: 'Delver Vest', icon: '🦺', stackable: false, slot: 'chest' },
+  delver_boots: { name: 'Delver Boots', icon: '👢', stackable: false, slot: 'boots' },
 };
 
 export const EQUIP_SLOTS: { id: EquipSlot; label: string }[] = [
@@ -498,6 +517,39 @@ export const CINDER_RECIPES: Recipe[] = [
   },
 ];
 
+export const DELVER_RECIPES: Recipe[] = [
+  {
+    id: 'delver_maul',
+    name: 'Delver Maul',
+    blurb: 'A copper-capped maul on a shell-bound haft. Crush.',
+    cost: [
+      { id: 'beetle_shell', qty: 1 },
+      { id: 'copper_grit', qty: 1 },
+      { id: 'copper_ore', qty: 1 },
+      { id: 'whisper_logs', qty: 1 },
+    ],
+  },
+  {
+    id: 'delver_vest',
+    name: 'Delver Vest',
+    blurb: 'Boiled beetle plate over a miner’s vest, banded in copper.',
+    cost: [
+      { id: 'beetle_shell', qty: 2 },
+      { id: 'copper_grit', qty: 1 },
+    ],
+  },
+  {
+    id: 'delver_boots',
+    name: 'Delver Boots',
+    blurb: 'Heavy boots with a shell toe and a copper hobnail.',
+    cost: [
+      { id: 'beetle_shell', qty: 1 },
+      { id: 'copper_ore', qty: 1 },
+      { id: 'whisper_logs', qty: 1 },
+    ],
+  },
+];
+
 export function countItem(inv: ItemStack[], id: string): number {
   return inv.filter((s) => s.id === id).reduce((n, s) => n + s.qty, 0);
 }
@@ -512,35 +564,114 @@ export function canCraft(save: SaveData, recipe: Recipe): boolean {
   return recipe.cost.every((c) => countItem(save.inventory, c.id) >= c.qty);
 }
 
+const ARMOR_BONUS: Record<string, number> = {
+  frost_shield: 3,
+  briar_shield: 1,
+  road_shield: 2,
+  cinder_shield: 1,
+  frost_chest: 3,
+  briar_vest: 2,
+  dusk_cloak: 2,
+  delver_vest: 2,
+  frost_greaves: 2,
+  road_greaves: 1,
+  frost_legs: 2,
+  road_legs: 2,
+  cinder_legs: 2,
+  frost_boots: 1,
+  briar_boots: 1,
+  dusk_boots: 1,
+  delver_boots: 1,
+};
+
+export function itemArmor(id: string | null): number {
+  return id ? (ARMOR_BONUS[id] ?? 0) : 0;
+}
+
 export function armorMitigation(save: SaveData): number {
   let n = 0;
-  if (save.equipped.shield === 'frost_shield') n += 3;
-  if (save.equipped.shield === 'briar_shield') n += 1;
-  if (save.equipped.shield === 'road_shield') n += 2;
-  if (save.equipped.shield === 'cinder_shield') n += 1;
-  if (save.equipped.chest === 'frost_chest') n += 3;
-  if (save.equipped.chest === 'briar_vest') n += 2;
-  if (save.equipped.chest === 'dusk_cloak') n += 2;
-  if (save.equipped.greaves === 'frost_greaves') n += 2;
-  if (save.equipped.greaves === 'road_greaves') n += 1;
-  if (save.equipped.legs === 'frost_legs') n += 2;
-  if (save.equipped.legs === 'road_legs') n += 2;
-  if (save.equipped.legs === 'cinder_legs') n += 2;
-  if (save.equipped.boots === 'frost_boots') n += 1;
-  if (save.equipped.boots === 'briar_boots') n += 1;
-  if (save.equipped.boots === 'dusk_boots') n += 1;
+  for (const id of Object.values(save.equipped)) n += itemArmor(id);
   return n;
 }
 
+const WEAPON_DAMAGE: Record<string, number> = {
+  frost_hammer: 4,
+  frost_sword: 3,
+  frost_spear: 3,
+  frost_bow: 2,
+  briar_sword: 1,
+  road_mace: 2,
+  dusk_dagger: 2,
+  cinder_knife: 2,
+  delver_maul: 3,
+};
+
+const WEAPON_STYLE: Record<string, AttackStyle> = {
+  bronze_sword: 'slash',
+  frost_sword: 'slash',
+  briar_sword: 'slash',
+  frost_spear: 'stab',
+  dusk_dagger: 'stab',
+  cinder_knife: 'stab',
+  frost_hammer: 'crush',
+  road_mace: 'crush',
+  delver_maul: 'crush',
+  frost_bow: 'ranged',
+};
+
 export function weaponDamageBonus(id: string | null): number {
-  if (id === 'frost_hammer') return 4;
-  if (id === 'frost_sword' || id === 'frost_spear') return 3;
-  if (id === 'frost_bow') return 2;
-  if (id === 'briar_sword') return 1;
-  if (id === 'road_mace') return 2;
-  if (id === 'dusk_dagger') return 2;
-  if (id === 'cinder_knife') return 2;
-  return 0;
+  return id ? (WEAPON_DAMAGE[id] ?? 0) : 0;
+}
+
+/** Unarmed and unknown blades swing as slash, the camp sword's style. */
+export function weaponStyle(id: string | null): AttackStyle {
+  return id ? (WEAPON_STYLE[id] ?? 'slash') : 'slash';
+}
+
+export interface MonsterProfile {
+  level: number;
+  weak: AttackStyle;
+}
+
+/** Combat level and the style that bites. Every fightable body has one. */
+export const MONSTER_PROFILE: Record<string, MonsterProfile> = {
+  dummy: { level: 3, weak: 'slash' },
+  wolf: { level: 14, weak: 'slash' },
+  crow: { level: 12, weak: 'stab' },
+  spider: { level: 16, weak: 'crush' },
+  fox: { level: 18, weak: 'slash' },
+  beetle: { level: 20, weak: 'crush' },
+  boar: { level: 22, weak: 'stab' },
+  orc: { level: 33, weak: 'stab' },
+  yeti: { level: 42, weak: 'crush' },
+};
+
+export function monsterProfile(kind: string): MonsterProfile {
+  return MONSTER_PROFILE[kind] ?? { level: 1, weak: 'slash' };
+}
+
+/** OSRS-style combat level from the four combat skills. No prayer term yet. */
+export function combatLevel(save: SaveData): number {
+  const atk = save.skills.attack.level;
+  const str = save.skills.strength.level;
+  const def = save.skills.defence.level;
+  const hp = save.skills.constitution.level;
+  return Math.floor((def + hp) * 0.25 + (atk + str) * 0.325);
+}
+
+export function gearLine(id: string): string {
+  const meta = ITEM_META[id];
+  const name = meta?.name ?? id;
+  const bits = [name];
+  if (meta?.slot === 'weapon') {
+    const style = weaponStyle(id);
+    bits.push(style[0].toUpperCase() + style.slice(1));
+    const dmg = weaponDamageBonus(id);
+    if (dmg) bits.push(`+${dmg} damage`);
+  }
+  const arm = itemArmor(id);
+  if (arm) bits.push(`+${arm} armour`);
+  return bits.join(' · ');
 }
 
 export function weaponReachBonus(id: string | null): number {
@@ -573,6 +704,7 @@ export function defaultSave(): SaveData {
     maxHp: 100,
     focus: 100,
     stamina: 100,
+    stance: 'controlled',
     skills: {
       constitution: { level: 10, xp: xpForLevel(10) },
       attack: { level: 1, xp: 0 },
@@ -606,6 +738,8 @@ export function defaultSave(): SaveData {
       duskUnlocked: false,
       kiln_crows: 'none',
       cinderUnlocked: false,
+      claim_beetles: 'none',
+      delverUnlocked: false,
     },
   };
 }

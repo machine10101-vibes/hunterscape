@@ -33,6 +33,8 @@ import { briarfordProps, createTownNpc } from '../rendering/town';
 import { createBriarWolf, poseBriarWolf, WOLF_HOMES } from '../rendering/wolf';
 import { createDuskFox, FOX_HOMES, poseDuskFox } from '../rendering/duskFox';
 import { CROW_HOMES, createCinderCrow, poseCinderCrow } from '../rendering/cinderCrow';
+import { BEETLE_HOMES, createOreBeetle, poseOreBeetle } from '../rendering/oreBeetle';
+import { addWeaknessMark } from '../rendering/weaknessMark';
 import {
   BOAR_HOMES,
   SPIDER_HOMES,
@@ -81,17 +83,22 @@ import {
   COMBAT_SKILLS,
   BRIAR_RECIPES,
   CINDER_RECIPES,
+  DELVER_RECIPES,
   DUSK_RECIPES,
   ITEM_META,
   ROAD_RECIPES,
+  STANCES,
   YETI_RECIPES,
   armorMitigation,
   canCraft,
   combatSkillUnlocked,
   countItem,
+  gearLine,
   levelFromXp,
+  monsterProfile,
   weaponDamageBonus,
   weaponReachBonus,
+  weaponStyle,
   type CombatSkillId,
   type EquipSlot,
   type SaveData,
@@ -105,11 +112,12 @@ import {
   EAST_ROAD_KILLS,
   FEATHER_NEEDED,
   FUR_NEEDED,
+  SHELL_NEEDED,
   SILK_NEEDED,
   type NpcId,
 } from './quests';
 
-type InteractKind = 'tree' | 'rock' | 'dummy' | 'yeti' | 'orc' | 'wolf' | 'boar' | 'spider' | 'fox' | 'crow' | 'forge' | 'npc';
+type InteractKind = 'tree' | 'rock' | 'dummy' | 'yeti' | 'orc' | 'wolf' | 'boar' | 'spider' | 'fox' | 'crow' | 'beetle' | 'forge' | 'npc';
 type ForgeBench = 'camp' | 'briar';
 
 interface WorldObject {
@@ -360,6 +368,13 @@ export class Game {
     this.hud.onInventoryClick = (i) => this.handleInvClick(i);
     this.hud.onGearSlotClick = (slot) => this.unequipSlot(slot);
     this.hud.onForgeCraft = (id) => this.craftAtForge(id);
+    this.hud.onStance = (id) => {
+      this.save.stance = id;
+      const stance = STANCES.find((s) => s.id === id);
+      this.hud.chat(`Stance set to ${stance?.name ?? id}. ${stance?.blurb ?? ''}`, 'system');
+      this.refreshUI();
+      this.persist();
+    };
     this.dialogue.onChoose = (id) => this.onDialogue(id);
 
     this.refreshUI();
@@ -372,6 +387,7 @@ export class Game {
     this.hud.chat('Briar boars root the bean rows south of the square. Thorn spiders den just east of them.', 'combat');
     this.hud.chat('Dusk foxes den in the thicket north of the wayside shrine.', 'combat');
     this.hud.chat('Cinder crows mob the charcoal kiln west of camp. Burner Holt wants their feathers.', 'combat');
+    this.hud.chat('Skills (K) sets your combat stance. A colored chip on each beast marks the style that bites.', 'system');
     this.hud.chat('Scroll, pinch, or use + / − to zoom the camera.', 'system');
 
     window.addEventListener('resize', () => this.onResize());
@@ -571,6 +587,7 @@ export class Game {
 
     const dummyMesh = createDummy();
     dummyMesh.position.set(2.5, groundHeight(2.5, -2.5), -2.5);
+    addWeaknessMark(dummyMesh, 'slash', 1.1);
     this.scene.add(dummyMesh);
     const dummy: WorldObject = {
       kind: 'dummy',
@@ -590,6 +607,7 @@ export class Game {
     yetiMesh.rotation.y = Math.PI * 0.85; // face roughly toward camp
     yetiMesh.visible = true;
     yetiMesh.scale.setScalar(1.15);
+    addWeaknessMark(yetiMesh, 'crush', 1.55);
     this.scene.add(yetiMesh);
     const yeti: WorldObject = {
       kind: 'yeti',
@@ -640,6 +658,7 @@ export class Game {
     const orcMesh = createOrcScout();
     orcMesh.position.set(ORC_HOME.x, groundHeight(ORC_HOME.x, ORC_HOME.z), ORC_HOME.z);
     orcMesh.rotation.y = Math.PI * 0.25;
+    addWeaknessMark(orcMesh, 'stab', 1.25);
     this.scene.add(orcMesh);
     const orc: WorldObject = {
       kind: 'orc',
@@ -709,6 +728,7 @@ export class Game {
       { id: 'maeve', x: 16.9, z: 3.7, rot: Math.PI },
       { id: 'calder', x: 16.55, z: -6.15, rot: 0 },
       { id: 'holt', x: -13.5, z: -11.2, rot: 0 },
+      { id: 'odell', x: -12.2, z: 7.6, rot: 0 },
     ];
     for (const n of npcs) {
       const mesh = createTownNpc(n.id);
@@ -852,10 +872,31 @@ export class Game {
         pose: poseCinderCrow,
       });
     });
+
+    BEETLE_HOMES.forEach((home, i) => {
+      this.spawnFoe('beetle', createOreBeetle(), home, `beetle_${i}`, 24, {
+        aggroR: 1.6,
+        range: 1.45,
+        leash: 2.2,
+        chase: 2.4,
+        dmgMin: 2,
+        dmgMax: 4,
+        knock: 0.9,
+        respawn: 18,
+        label: 'Ore Beetle',
+        snarl: 'An ore beetle clacks and rushes!',
+        engage: 'An ore beetle engages you!',
+        biteLine: 'The ore beetle bites you for',
+        loseLine: 'The ore beetle scuttles back to the claim.',
+        returnLine: 'An ore beetle settles back onto the copper.',
+        corpse: 'The ore beetle is dead. Another will crawl back to the claim.',
+        pose: poseOreBeetle,
+      });
+    });
   }
 
   private spawnFoe(
-    kind: 'wolf' | 'boar' | 'spider' | 'fox' | 'crow',
+    kind: 'wolf' | 'boar' | 'spider' | 'fox' | 'crow' | 'beetle',
     mesh: THREE.Group,
     home: { x: number; z: number },
     id: string,
@@ -877,6 +918,8 @@ export class Game {
     };
     this.objects.push(obj);
     this.foes.push({ obj, aggro: false, cd: 1.15, biteT: 0, hitDone: false, ...stats });
+    const markY = kind === 'crow' ? 0.95 : kind === 'spider' ? 0.34 : kind === 'beetle' ? 0.48 : kind === 'fox' ? 0.62 : 0.72;
+    addWeaknessMark(mesh, monsterProfile(kind).weak, markY);
   }
 
   private foeOf(obj: WorldObject): FoeRuntime | undefined {
@@ -884,7 +927,7 @@ export class Game {
   }
 
   private isBeast(kind: InteractKind): boolean {
-    return kind === 'wolf' || kind === 'boar' || kind === 'spider' || kind === 'fox' || kind === 'crow';
+    return kind === 'wolf' || kind === 'boar' || kind === 'spider' || kind === 'fox' || kind === 'crow' || kind === 'beetle';
   }
 
   private bindInput(canvas: HTMLCanvasElement): void {
@@ -1046,7 +1089,9 @@ export class Game {
         this.hud.setSkillsOpen(!this.hud.isSkillsOpen());
       }
       if (e.key.toLowerCase() === 'c') {
-        this.hud.setGearOpen(!this.hud.isGearOpen());
+        const open = !this.hud.isGearOpen();
+        this.hud.setGearOpen(open);
+        if (open) this.hud.inspectGear(this.loadoutLine());
       }
       if (e.key.toLowerCase() === 'f') {
         this.approachThenForge();
@@ -1180,9 +1225,25 @@ export class Game {
       if (obj.meta?.npc === 'maeve') return 'Weaver Maeve';
       if (obj.meta?.npc === 'calder') return 'Sister Calder';
       if (obj.meta?.npc === 'holt') return 'Burner Holt';
+      if (obj.meta?.npc === 'odell') return 'Miner Odell';
       return 'Shopkeep Nessa';
     }
     return obj.kind;
+  }
+
+  private combatDetail(obj: WorldObject): string {
+    const profile = monsterProfile(obj.kind);
+    const style = profile.weak[0].toUpperCase() + profile.weak.slice(1);
+    return `Lv ${profile.level} · Weak to ${profile.weak}`;
+  }
+
+  private loadoutLine(): string {
+    const weapon = this.save.equipped.weapon;
+    const style = weaponStyle(weapon);
+    const dmg = weaponDamageBonus(weapon);
+    const arm = armorMitigation(this.save);
+    const name = weapon ? (ITEM_META[weapon]?.name ?? weapon) : 'Empty hands';
+    return `${name} · ${style} · +${dmg} damage · ${arm} armour · ${STANCES.find((s) => s.id === this.save.stance)?.name ?? 'Controlled'}`;
   }
 
   private isMonster(obj: WorldObject): boolean {
@@ -1219,7 +1280,7 @@ export class Game {
       swingSkill: this.queuedSkill ?? 'strike',
     };
     this.syncHeldTool();
-    this.hud.showTarget(this.combatName(obj), obj.hp / obj.maxHp);
+    this.hud.showTarget(this.combatName(obj), obj.hp / obj.maxHp, this.combatDetail(obj));
     this.combatCamPull = 1;
   }
 
@@ -1396,25 +1457,27 @@ export class Game {
         'system',
       );
     else if (all.kind === 'yeti')
-      this.hud.chat('A massive Frost Yeti. Hide, fur, bone, claws, and rime — the camp forge can work them all.', 'combat');
+      this.hud.chat('A massive Frost Yeti. Hide, fur, bone, claws, and rime — the camp forge can work them all. Weak to crush.', 'combat');
     else if (all.kind === 'orc')
-      this.hud.chat('An Orc Scout in spiked tan fur and leather. White tusks and a long spear gleam.', 'combat');
+      this.hud.chat('An Orc Scout in spiked tan fur and leather. White tusks and a long spear gleam. Weak to stab.', 'combat');
     else if (all.kind === 'wolf')
-      this.hud.chat('A briar wolf. Pelt and fangs are what Smith Harl works at the town anvil.', 'combat');
+      this.hud.chat('A briar wolf. Pelt and fangs are what Smith Harl works at the town anvil. Weak to slash.', 'combat');
     else if (all.kind === 'boar')
-      this.hud.chat('A briar boar. Hide and tusks feed the roadwarden patterns. Bram wants two of them off the bean rows.', 'combat');
+      this.hud.chat('A briar boar. Hide and tusks feed the roadwarden patterns. Weak to stab. Bram wants two of them off the bean rows.', 'combat');
     else if (all.kind === 'spider')
-      this.hud.chat('A thorn spider. Its silk is what Weaver Maeve binds into the roadwarden set.', 'combat');
+      this.hud.chat('A thorn spider. Its silk is what Weaver Maeve binds into the roadwarden set. Weak to crush.', 'combat');
     else if (all.kind === 'fox')
-      this.hud.chat('A dusk fox. Fur and fangs are what Sister Calder works into the dusk patterns.', 'combat');
+      this.hud.chat('A dusk fox. Fur and fangs are what Sister Calder works into the dusk patterns. Weak to slash.', 'combat');
     else if (all.kind === 'crow')
-      this.hud.chat('A cinder crow. Soot feathers and charcoal are what Burner Holt works into the cinder patterns.', 'combat');
+      this.hud.chat('A cinder crow. Soot feathers and charcoal are what Burner Holt works into the cinder patterns. Weak to stab.', 'combat');
+    else if (all.kind === 'beetle')
+      this.hud.chat('An ore beetle. Shells and copper grit are what Miner Odell works into the delver patterns. Weak to crush.', 'combat');
     else if (all.kind === 'npc') this.talkTo(all);
     else if (all.kind === 'forge' && all.meta?.forge === 'briar')
       this.hud.chat('The Briarford anvil. Harl opens it once his commission is paid.', 'system');
     else if (all.kind === 'forge')
       this.hud.chat('The Thornrest forge. Bring frost-yeti parts here to smith a matching set.', 'system');
-    else this.hud.chat('A stuffed training dummy. Safe practice for combat skills.', 'system');
+    else this.hud.chat('A stuffed training dummy. Safe practice for combat skills. Weak to slash.', 'system');
   }
 
   private eatFood(): void {
@@ -1485,9 +1548,9 @@ export class Game {
     this.save.equipped[meta.slot] = item.id;
     this.syncHeldTool();
     this.hud.setGearOpen(true);
-    this.hud.chat(`You equip the ${meta.name}.`, 'system');
+    this.hud.chat(`You equip the ${gearLine(item.id)}.`, 'system');
     this.refreshUI();
-    this.hud.setEquipment(this.save, `Equipped ${meta.name}`);
+    this.hud.setEquipment(this.save, `Equipped ${gearLine(item.id)}`);
     this.hud.showSlotPreview(meta.slot, this.save);
     this.persist();
   }
@@ -1733,6 +1796,30 @@ export class Game {
       this.save.quests.cinderUnlocked = true;
       this.grantXp('strength', 40);
       this.hud.chat('Holt sets a Cinder Knife in your pack and opens the cinder patterns.', 'loot');
+    } else if (id === 'odell_accept') {
+      this.save.quests.claim_beetles = 'active';
+      this.hud.chat('Quest started: bring Miner Odell 2 beetle shells from the south claim.', 'system');
+    } else if (
+      id === 'odell_turnin' &&
+      this.save.quests.claim_beetles === 'active' &&
+      countItem(this.save.inventory, 'beetle_shell') >= SHELL_NEEDED
+    ) {
+      if (!this.consumeId('beetle_shell', SHELL_NEEDED)) {
+        this.dialogue.hide();
+        this.refreshUI();
+        return;
+      }
+      if (!this.addItem('delver_maul', 1)) {
+        this.addItem('beetle_shell', SHELL_NEEDED);
+        this.hud.chat('Your pack is full — Odell will not take the shells until the maul will fit.', 'system');
+        this.dialogue.hide();
+        this.refreshUI();
+        return;
+      }
+      this.save.quests.claim_beetles = 'done';
+      this.save.quests.delverUnlocked = true;
+      this.grantXp('strength', 40);
+      this.hud.chat('Odell sets a Delver Maul in your pack and opens the delver patterns.', 'loot');
     }
     this.dialogue.hide();
     this.refreshUI();
@@ -1778,6 +1865,7 @@ export class Game {
     const road = this.save.quests.roadUnlocked;
     const dusk = this.save.quests.duskUnlocked;
     const cinder = this.save.quests.cinderUnlocked;
+    const delver = this.save.quests.delverUnlocked;
     const openNames = ['briar'];
     const held: string[] = [];
     if (road) openNames.push('roadwarden');
@@ -1786,26 +1874,29 @@ export class Game {
     else held.push('Calder holds dusk');
     if (cinder) openNames.push('cinder');
     else held.push('Holt holds cinder');
+    if (delver) openNames.push('delver');
+    else held.push('Odell holds delver');
     const anvilBlurb = !unlocked
       ? 'Harl keeps the anvil cold until his commission is paid in pelts, logs, and copper.'
       : held.length
         ? `${openNames.join(', ')} patterns are open. ${held.join(', ')}.`
-        : 'Briar, roadwarden, dusk, and cinder patterns share this anvil.';
+        : 'Briar, roadwarden, dusk, cinder, and delver patterns share this anvil.';
     const anvilChat = !unlocked
       ? 'The anvil is shut. Finish Harl’s commission to forge here.'
       : held.length
         ? `The anvil is hot. ${openNames.join(', ')} patterns are open. ${held.join(', ')}.`
-        : 'The anvil is hot. Briar, roadwarden, dusk, and cinder patterns are open.';
+        : 'The anvil is hot. Briar, roadwarden, dusk, cinder, and delver patterns are open.';
     this.hud.setForgeOpen(true, this.save, briar
       ? {
           title: 'Briarford Anvil',
           blurb: anvilBlurb,
-          recipes: [...BRIAR_RECIPES, ...ROAD_RECIPES, ...DUSK_RECIPES, ...CINDER_RECIPES],
+          recipes: [...BRIAR_RECIPES, ...ROAD_RECIPES, ...DUSK_RECIPES, ...CINDER_RECIPES, ...DELVER_RECIPES],
           forgeable: unlocked,
           lockedIds: [
             ...(road ? [] : ROAD_RECIPES.map((r) => r.id)),
             ...(dusk ? [] : DUSK_RECIPES.map((r) => r.id)),
             ...(cinder ? [] : CINDER_RECIPES.map((r) => r.id)),
+            ...(delver ? [] : DELVER_RECIPES.map((r) => r.id)),
           ],
         }
       : {
@@ -1819,7 +1910,7 @@ export class Game {
   }
 
   private craftAtForge(recipeId: string): void {
-    const list = this.forgeBench === 'briar' ? [...BRIAR_RECIPES, ...ROAD_RECIPES, ...DUSK_RECIPES, ...CINDER_RECIPES] : YETI_RECIPES;
+    const list = this.forgeBench === 'briar' ? [...BRIAR_RECIPES, ...ROAD_RECIPES, ...DUSK_RECIPES, ...CINDER_RECIPES, ...DELVER_RECIPES] : YETI_RECIPES;
     const recipe = list.find((r) => r.id === recipeId);
     if (!recipe) return;
     if (this.forgeBench === 'briar' && !this.save.quests.briarUnlocked) {
@@ -1836,6 +1927,10 @@ export class Game {
     }
     if (recipe.id.startsWith('cinder_') && !this.save.quests.cinderUnlocked) {
       this.hud.chat('Holt has not opened the cinder patterns.', 'system');
+      return;
+    }
+    if (recipe.id.startsWith('delver_') && !this.save.quests.delverUnlocked) {
+      this.hud.chat('Odell has not opened the delver patterns.', 'system');
       return;
     }
     if (!canCraft(this.save, recipe)) {
@@ -1860,6 +1955,32 @@ export class Game {
     this.refreshUI();
     this.hud.setForgeRecipes(this.save);
     this.persist();
+  }
+
+  /** Per-hit experience follows the stance. A kill still grants its own bonus. */
+  private grantSwingXp(target: WorldObject): void {
+    const table: Record<string, [number, number, number]> = {
+      yeti: [18, 14, 8],
+      orc: [15, 12, 6],
+      boar: [14, 12, 6],
+      beetle: [14, 12, 6],
+      wolf: [12, 10, 5],
+      fox: [12, 10, 5],
+      spider: [11, 9, 4],
+      crow: [11, 9, 4],
+    };
+    const [xpAtk, xpStr, xpCon] = table[target.kind] ?? [12, 8, 4];
+    const pool = xpAtk + xpStr;
+    this.grantXp('constitution', xpCon);
+    if (this.save.stance === 'accurate') this.grantXp('attack', pool);
+    else if (this.save.stance === 'aggressive') this.grantXp('strength', pool);
+    else if (this.save.stance === 'defensive') this.grantXp('defence', pool);
+    else {
+      const share = Math.floor(pool / 3);
+      this.grantXp('attack', pool - share * 2);
+      this.grantXp('strength', share);
+      this.grantXp('defence', share);
+    }
   }
 
   private grantXp(skill: SkillId, amount: number): void {
@@ -2215,7 +2336,7 @@ export class Game {
     } else if (this.activity.type === 'combat') {
       const act = this.activity;
       const target = act.target;
-      this.hud.showTarget(this.combatName(target), Math.max(0, target.hp) / target.maxHp);
+      this.hud.showTarget(this.combatName(target), Math.max(0, target.hp) / target.maxHp, this.combatDetail(target));
       if (target.hp <= 0 || target.depleted) {
         this.activity = { type: 'idle' };
         this.syncHeldTool();
@@ -2431,26 +2552,29 @@ export class Game {
     const art = COMBAT_SKILLS.find((s) => s.id === skillId) ?? COMBAT_SKILLS[0];
     const atk = this.save.skills.attack.level;
     const str = this.save.skills.strength.level;
-    const hitChance = 0.65 + atk * 0.01 + art.accBonus;
+    const style = weaponStyle(this.save.equipped.weapon);
+    const weak = monsterProfile(target.kind).weak;
+    const matched = style === weak;
+    let hitChance = 0.65 + atk * 0.01 + art.accBonus;
+    if (this.save.stance === 'accurate') hitChance += 0.08;
+    if (matched) hitChance += 0.12;
+    else if (style !== 'ranged') hitChance -= 0.04;
     const label = this.combatName(target);
     if (Math.random() > hitChance) {
       this.hud.chat(`You miss the ${label} with ${art.name}.`, 'combat');
       return;
     }
-    const dmg = Math.max(
+    let dmg = Math.max(
       1,
       Math.floor(
         (3 + weaponDamageBonus(this.save.equipped.weapon) + Math.floor(Math.random() * (4 + str)) + art.hitBonus) *
           art.hitMult,
       ),
     );
+    if (this.save.stance === 'aggressive') dmg += 1;
+    if (matched) dmg += 1;
     target.hp -= dmg;
-    const xpAtk = target.kind === 'yeti' ? 18 : target.kind === 'orc' ? 15 : target.kind === 'boar' ? 14 : target.kind === 'wolf' || target.kind === 'fox' ? 12 : target.kind === 'spider' || target.kind === 'crow' ? 11 : 12;
-    const xpStr = target.kind === 'yeti' ? 14 : target.kind === 'orc' ? 12 : target.kind === 'boar' ? 12 : target.kind === 'wolf' || target.kind === 'fox' ? 10 : target.kind === 'spider' || target.kind === 'crow' ? 9 : 8;
-    const xpCon = target.kind === 'yeti' ? 8 : target.kind === 'orc' ? 6 : target.kind === 'boar' ? 6 : target.kind === 'wolf' || target.kind === 'fox' ? 5 : target.kind === 'spider' || target.kind === 'crow' ? 4 : 4;
-    this.grantXp('attack', xpAtk);
-    this.grantXp('strength', xpStr);
-    this.grantXp('constitution', xpCon);
+    this.grantSwingXp(target);
     const hitPos = target.mesh.position.clone().setY(1.25);
     // Impact VFX synced to actual connect frame
     this.vfx.spawnHitSparks(hitPos, 14 + Math.min(12, dmg));
@@ -2501,7 +2625,7 @@ export class Game {
       else if (this.isBeast(target.kind)) this.onFoeDeath(target);
       else this.onDummyDeath(target);
     } else {
-      this.hud.showTarget(label, target.hp / target.maxHp);
+      this.hud.showTarget(label, target.hp / target.maxHp, this.combatDetail(target));
     }
     this.refreshUI();
     this.persist();
@@ -2601,7 +2725,7 @@ export class Game {
     target.mesh.visible = false;
     this.vfx.spawnHitSparks(target.mesh.position.clone().setY(0.6), 16);
     this.vfx.spawnImpactBurst(target.mesh.position.clone().setY(0.5), 12, false);
-    this.grantXp('defence', target.kind === 'boar' ? 18 : 16);
+    this.grantXp('defence', target.kind === 'boar' || target.kind === 'beetle' ? 18 : 16);
     this.grantXp('attack', target.kind === 'spider' || target.kind === 'crow' ? 6 : 8);
     if (target.kind === 'boar') {
       this.hud.chat('The briar boar drops. Hide and tusk come free.', 'combat');
@@ -2639,6 +2763,19 @@ export class Game {
           n >= FUR_NEEDED
             ? 'Calder has enough fur. Return to the wayside shrine.'
             : `Fox fur gathered: ${n}/${FUR_NEEDED}.`,
+          'system',
+        );
+      }
+    } else if (target.kind === 'beetle') {
+      this.hud.chat('The ore beetle cracks. A shell plate and a pinch of grit come free.', 'combat');
+      if (this.addItem('beetle_shell', 1)) this.hud.chat('You pry off a Beetle Shell.', 'loot');
+      if (Math.random() < 0.45 && this.addItem('copper_grit', 1)) this.hud.chat('You scoop a pinch of Copper Grit.', 'loot');
+      if (this.save.quests.claim_beetles === 'active') {
+        const n = countItem(this.save.inventory, 'beetle_shell');
+        this.hud.chat(
+          n >= SHELL_NEEDED
+            ? 'Odell has enough shells. Return to the copper claim.'
+            : `Beetle shells gathered: ${n}/${SHELL_NEEDED}.`,
           'system',
         );
       }
@@ -3248,6 +3385,7 @@ export class Game {
       else if (o.kind === 'spider') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#6a3a78' });
       else if (o.kind === 'fox') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#d07048' });
       else if (o.kind === 'crow') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#5c5348' });
+      else if (o.kind === 'beetle') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#6a8a48' });
       else if (o.kind === 'npc') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#f0d070' });
       else if (o.kind === 'forge' && o.meta?.forge === 'briar')
         markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#e09040' });
@@ -3261,6 +3399,7 @@ export class Game {
   private mitigateIncoming(raw: number): number {
     const def = this.save.skills.defence.level;
     let mit = Math.floor(def / 5) + armorMitigation(this.save);
+    if (this.save.stance === 'defensive') mit += 2;
     if (this.guardLeft > 0) mit += 4;
     return Math.max(1, raw - mit);
   }

@@ -4,13 +4,17 @@ import {
   EQUIP_SLOTS,
   ITEM_META,
   SKILL_META,
+  STANCES,
   YETI_RECIPES,
   canCraft,
+  combatLevel,
   combatSkillUnlocked,
   countItem,
+  gearLine,
   ownsItem,
   xpForLevel,
   type CombatSkillId,
+  type CombatStance,
   type EquipSlot,
   type ItemStack,
   type Recipe,
@@ -63,6 +67,7 @@ export class HUD {
   onInventoryClick: ((index: number) => void) | null = null;
   onGearSlotClick: ((slot: EquipSlot) => void) | null = null;
   onForgeCraft: ((recipeId: string) => void) | null = null;
+  onStance: ((stance: CombatStance) => void) | null = null;
 
   constructor() {
     this.chatLog = el('chat-log');
@@ -385,7 +390,7 @@ export class HUD {
         icon.height = 128;
         paintItemIcon(icon, item.id);
         slot.appendChild(icon);
-        slot.title = `${meta?.name ?? item.id}${item.qty > 1 ? ` ×${item.qty}` : ''}${
+        slot.title = `${gearLine(item.id)}${item.qty > 1 ? ` ×${item.qty}` : ''}${
           meta?.slot ? ' — click to equip' : item.id === 'camp_rations' ? ' — click to eat' : ''
         }`;
         if (item.qty > 1) {
@@ -404,6 +409,22 @@ export class HUD {
 
   setSkills(save: SaveData): void {
     this.skillsList.innerHTML = '';
+    const levelHead = document.createElement('div');
+    levelHead.className = 'skills-kicker';
+    levelHead.textContent = `Combat level ${combatLevel(save)}`;
+    this.skillsList.appendChild(levelHead);
+    const stanceRow = document.createElement('div');
+    stanceRow.className = 'stance-row';
+    for (const stance of STANCES) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `stance-btn${save.stance === stance.id ? ' on' : ''}`;
+      btn.textContent = stance.name;
+      btn.title = stance.blurb;
+      btn.addEventListener('click', () => this.onStance?.(stance.id));
+      stanceRow.appendChild(btn);
+    }
+    this.skillsList.appendChild(stanceRow);
     const trainHead = document.createElement('div');
     trainHead.className = 'skills-kicker';
     trainHead.textContent = 'Training';
@@ -472,9 +493,11 @@ export class HUD {
     this.progressFill.style.width = '0%';
   }
 
-  showTarget(name: string, hpRatio: number): void {
+  showTarget(name: string, hpRatio: number, detail = ''): void {
     this.targetInfo.hidden = false;
     this.targetName.textContent = name;
+    const extra = document.getElementById('target-detail');
+    if (extra) extra.textContent = detail;
     this.targetHp.style.width = `${Math.max(0, Math.min(100, hpRatio * 100))}%`;
   }
 

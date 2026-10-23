@@ -1,6 +1,6 @@
 import { countItem, type SaveData } from './types';
 
-export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve' | 'calder' | 'holt';
+export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve' | 'calder' | 'holt' | 'odell';
 export type QuestStage = 'none' | 'active' | 'done';
 
 export interface QuestState {
@@ -11,12 +11,14 @@ export interface QuestState {
   silk_loom: QuestStage;
   shrine_foxes: QuestStage;
   kiln_crows: QuestStage;
+  claim_beetles: QuestStage;
   wolfKills: number;
   boarKills: number;
   briarUnlocked: boolean;
   roadUnlocked: boolean;
   duskUnlocked: boolean;
   cinderUnlocked: boolean;
+  delverUnlocked: boolean;
 }
 
 export function defaultQuests(): QuestState {
@@ -28,12 +30,14 @@ export function defaultQuests(): QuestState {
     silk_loom: 'none',
     shrine_foxes: 'none',
     kiln_crows: 'none',
+    claim_beetles: 'none',
     wolfKills: 0,
     boarKills: 0,
     briarUnlocked: false,
     roadUnlocked: false,
     duskUnlocked: false,
     cinderUnlocked: false,
+    delverUnlocked: false,
   };
 }
 
@@ -42,6 +46,7 @@ export const BOAR_KILLS = 2;
 export const SILK_NEEDED = 2;
 export const FUR_NEEDED = 2;
 export const FEATHER_NEEDED = 2;
+export const SHELL_NEEDED = 2;
 
 export interface DialogueOption {
   id: string;
@@ -220,7 +225,40 @@ export function dialogueFor(save: SaveData, npc: NpcId): DialogueScript {
     }
     return {
       speaker: 'Burner Holt',
-      body: 'Cinder patterns are on the anvil. Knife: 1 feather, 1 charcoal, 1 copper, 1 log. Trousers: 2 feathers, 1 charcoal. Buckler: 2 charcoal, 1 feather, 1 copper. The crows are still north of the kiln if you need more.',
+      body: 'Cinder patterns are on the anvil. Knife: 1 feather, 1 charcoal, 1 copper, 1 log. Trousers: 2 feathers, 1 charcoal. Buckler: 2 charcoal, 1 feather, 1 copper. Miner Odell at the south claim wants beetle shells if the kiln is quiet.',
+      options: [CLOSE],
+    };
+  }
+
+  if (npc === 'odell') {
+    const shells = countItem(save.inventory, 'beetle_shell');
+    if (q.claim_beetles === 'none') {
+      return {
+        speaker: 'Miner Odell',
+        body: 'The south claim is crawling. Ore beetles crack the copper faster than I can bag it. Bring me 2 beetle shells and I will set a delver maul in your hand and open those patterns on the anvil. Their shells take crush.',
+        options: [
+          { id: 'odell_accept', label: 'I will bring the shells.' },
+          { id: 'close', label: 'The claim can wait.' },
+        ],
+      };
+    }
+    if (q.claim_beetles === 'active' && shells < SHELL_NEEDED) {
+      return {
+        speaker: 'Miner Odell',
+        body: `The vein is still loud. I need ${SHELL_NEEDED} beetle shells (you have ${shells}). They graze just south of this claim, and a crush weapon splits them.`,
+        options: [CLOSE],
+      };
+    }
+    if (q.claim_beetles === 'active') {
+      return {
+        speaker: 'Miner Odell',
+        body: 'Two shells. That will haft a Delver Maul, and the anvil will take shells, grit, copper, and logs for the vest and boots.',
+        options: [{ id: 'odell_turnin', label: 'Take the shells.' }],
+      };
+    }
+    return {
+      speaker: 'Miner Odell',
+      body: 'Delver patterns are on the anvil. Maul: 1 shell, 1 grit, 1 copper, 1 log. Vest: 2 shells, 1 grit. Boots: 1 shell, 1 copper, 1 log. The beetles are still south of the claim if you need more.',
       options: [CLOSE],
     };
   }
@@ -330,6 +368,14 @@ export function trackerLines(save: SaveData): string[] {
       feathers >= FEATHER_NEEDED ? 'Kiln: return to Burner Holt.' : `Kiln: soot feathers ${feathers}/${FEATHER_NEEDED}`,
     );
   }
+  if (q.kiln_crows === 'done' && q.claim_beetles === 'none') {
+    lines.push('Miner Odell needs 2 beetle shells at the south claim.');
+  } else if (q.claim_beetles === 'active') {
+    const shells = countItem(save.inventory, 'beetle_shell');
+    lines.push(
+      shells >= SHELL_NEEDED ? 'Claim: return to Miner Odell.' : `Claim: beetle shells ${shells}/${SHELL_NEEDED}`,
+    );
+  }
   if (q.east_road === 'done' && q.harl_commission === 'none') lines.push('Smith Harl has a commission.');
   else if (q.harl_commission === 'active') lines.push('Harl: 3 pelts, 2 logs, 1 copper.');
   if (q.lanterns === 'none' && q.east_road !== 'none') lines.push('Nessa needs 2 tin ore for the lanterns.');
@@ -339,6 +385,7 @@ export function trackerLines(save: SaveData): string[] {
     if (q.roadUnlocked) open.push('roadwarden');
     if (q.duskUnlocked) open.push('dusk');
     if (q.cinderUnlocked) open.push('cinder');
+    if (q.delverUnlocked) open.push('delver');
     if (open.length === 1) lines.push('Briar patterns are open.');
     else lines.push(`Anvil: ${open.join(', ')}.`);
   }

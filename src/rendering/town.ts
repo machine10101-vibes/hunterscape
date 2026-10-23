@@ -469,6 +469,29 @@ function charcoalKiln(): THREE.Group {
   return g;
 }
 
+function oreClaim(): THREE.Group {
+  const g = new THREE.Group();
+  const pit = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.7, 0.18, 8), mat(0x6a5840, { roughness: 0.96 }));
+  pit.position.y = 0.06;
+  add(g, pit);
+  const vein = new THREE.Mesh(new THREE.DodecahedronGeometry(0.22, 0), mat(0xc47a3a, { metalness: 0.45, roughness: 0.4 }));
+  vein.position.set(0.1, 0.18, 0.05);
+  add(g, vein);
+  const grit = new THREE.Mesh(new THREE.DodecahedronGeometry(0.1, 0), mat(0xd8a060, { metalness: 0.35, roughness: 0.5 }));
+  grit.position.set(-0.28, 0.14, 0.2);
+  add(g, grit);
+  const timber = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.08, 0.1), mat(0x4a3018));
+  timber.position.set(0, 0.28, 0.55);
+  add(g, timber);
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.7, 5), mat(0x3a2816));
+  post.position.set(-0.7, 0.4, 0.5);
+  add(g, post);
+  const sign = paintedBoard('CLAIM', 0.9, 0.36, '700 42px Georgia, serif');
+  sign.position.set(-0.7, 0.85, 0.5);
+  g.add(sign);
+  return g;
+}
+
 function bench(): THREE.Group {
   const g = new THREE.Group();
   const seat = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.06, 0.32), mat(0x6a4428));
@@ -585,6 +608,28 @@ export function createTownNpc(id: NpcId): THREE.Group {
     g.add(nameplate('Holt'));
     return g;
   }
+  if (id === 'odell') {
+    const g = npcBody(0x8a6840, 0x2a2018, false);
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.48), mat(0x4a3424));
+    cap.position.y = 1.28;
+    add(g, cap);
+    const lamp = new THREE.Mesh(
+      new THREE.SphereGeometry(0.035, 6, 5),
+      mat(0xffcc66, { emissive: 0xffaa33, emissiveIntensity: 1.1 }),
+    );
+    lamp.position.set(0.1, 1.32, 0.08);
+    lamp.name = 'flame';
+    g.add(lamp);
+    const bib = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.34, 0.05), mat(0x6a5030));
+    bib.position.set(0, 0.78, 0.14);
+    add(g, bib);
+    const nugget = new THREE.Mesh(new THREE.DodecahedronGeometry(0.045, 0), mat(0xc47a3a, { metalness: 0.6, roughness: 0.35 }));
+    nugget.position.set(0.28, 0.7, 0.08);
+    add(g, nugget);
+    g.name = 'npc_odell';
+    g.add(nameplate('Odell'));
+    return g;
+  }
   if (id === 'maeve') {
     const g = npcBody(0x4a3068, 0x2a1810, false);
     const shawl = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.16, 0.08), mat(0xc4a0d0));
@@ -672,6 +717,7 @@ export function briarfordProps(): TownPlacement[] {
   rootBits.push({ mesh: waysideShrine(), x: 16.6, z: -7.6 });
   rootBits.push({ mesh: northThicket(), x: 16.7, z: -10.7 });
   rootBits.push({ mesh: charcoalKiln(), x: -14.4, z: -13.0 });
+  rootBits.push({ mesh: oreClaim(), x: -13.0, z: 8.4 });
   rootBits.push({ mesh: hearth(), x: 13.6, z: -2.9 });
   rootBits.push({ mesh: well(), x: 16.35, z: 0.2 });
   rootBits.push({ mesh: stall(), x: 15.15, z: -1.85, rotY: 0.15 });

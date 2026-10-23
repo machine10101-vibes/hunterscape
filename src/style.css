@@ -1241,6 +1241,31 @@ html, body {
   margin-bottom: 2px;
 }
 #target-name { color: var(--gold); font-weight: 600; font-size: 13px; }
+#target-detail {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.stance-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+.stance-btn {
+  padding: 5px 4px;
+  background: var(--slot);
+  border: 1px solid #5a4420;
+  border-radius: 7px;
+  color: var(--text-dim);
+  font-size: 11px;
+  cursor: pointer;
+}
+.stance-btn.on {
+  border-color: var(--gold);
+  color: var(--gold);
+}
 
 .bar.thin {
   margin-top: 4px;

@@ -47,6 +47,13 @@ import {
   createCinderShield,
   createSootFeatherItem,
 } from './cinderGear';
+import {
+  createBeetleShellItem,
+  createCopperGritItem,
+  createDelverBoot,
+  createDelverMaul,
+  createDelverVest,
+} from './delverGear';
 
 function std(color: number, opts: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
@@ -113,6 +120,11 @@ export function createItemMesh(id: string): THREE.Group {
   if (id === 'cinder_knife') return createCinderKnife();
   if (id === 'cinder_legs') return createCinderLegs();
   if (id === 'cinder_shield') return createCinderShield();
+  if (id === 'beetle_shell') return createBeetleShellItem();
+  if (id === 'copper_grit') return createCopperGritItem();
+  if (id === 'delver_maul') return createDelverMaul();
+  if (id === 'delver_vest') return createDelverVest();
+  if (id === 'delver_boots') return createDelverBoot();
   return makeUnknown();
 }
 

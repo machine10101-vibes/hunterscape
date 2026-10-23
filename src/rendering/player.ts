@@ -13,6 +13,7 @@ import { attachBriarWear, createBriarSword } from './briarGear';
 import { attachRoadMace, attachRoadWear } from './roadGear';
 import { attachDuskDagger, attachDuskWear } from './duskGear';
 import { attachCinderKnife, attachCinderWear } from './cinderGear';
+import { attachDelverMaul, attachDelverWear } from './delverGear';
 import type { SaveData } from '../game/types';
 
 type PhysOpts = Partial<THREE.MeshPhysicalMaterialParameters>;
@@ -1059,12 +1060,14 @@ export function createPlayerMesh(): THREE.Group {
   attachRoadMace(toolRoot);
   attachDuskDagger(toolRoot);
   attachCinderKnife(toolRoot);
+  attachDelverMaul(toolRoot);
   attachBowOffhand(g);
   attachYetiWear(g);
   attachBriarWear(g);
   attachRoadWear(g);
   attachDuskWear(g);
   attachCinderWear(g);
+  attachDelverWear(g);
 
   return g;
 }
@@ -1313,9 +1316,10 @@ export type HeldTool =
   | 'road_mace'
   | 'dusk_dagger'
   | 'cinder_knife'
+  | 'delver_maul'
   | null;
 
-const COMBAT_TOOLS: HeldTool[] = ['sword', 'frost_sword', 'frost_hammer', 'frost_spear', 'frost_bow', 'briar_sword', 'road_mace', 'dusk_dagger', 'cinder_knife'];
+const COMBAT_TOOLS: HeldTool[] = ['sword', 'frost_sword', 'frost_hammer', 'frost_spear', 'frost_bow', 'briar_sword', 'road_mace', 'dusk_dagger', 'cinder_knife', 'delver_maul'];
 const ALL_TOOLS: HeldTool[] = ['hatchet', 'pickaxe', ...COMBAT_TOOLS];
 
 export function weaponHeldFromId(id: string | null): HeldTool {
@@ -1328,6 +1332,7 @@ export function weaponHeldFromId(id: string | null): HeldTool {
   if (id === 'road_mace') return 'road_mace';
   if (id === 'dusk_dagger') return 'dusk_dagger';
   if (id === 'cinder_knife') return 'cinder_knife';
+  if (id === 'delver_maul') return 'delver_maul';
   return null;
 }
 
@@ -1378,7 +1383,7 @@ function attachBowOffhand(player: THREE.Group): void {
  */
 function poseToolRoot(root: THREE.Object3D, tool: HeldTool): void {
   root.position.copy(GRIP_POINT);
-  if (tool === 'hatchet' || tool === 'frost_hammer' || tool === 'road_mace') {
+  if (tool === 'hatchet' || tool === 'frost_hammer' || tool === 'road_mace' || tool === 'delver_maul') {
     // Haft stands out of the thumb side; the head sits above the fist.
     root.rotation.set(0.16, -0.12, -Math.PI / 2);
   } else if (tool === 'pickaxe') {
@@ -1463,7 +1468,7 @@ export function poseEquippedTool(player: THREE.Group): void {
 export function setPlayerTool(player: THREE.Group, tool: HeldTool): void {
   const root = player.getObjectByName('toolRoot');
   const bow = player.getObjectByName('bowRoot');
-  const rightTools: HeldTool[] = ['hatchet', 'pickaxe', 'sword', 'frost_sword', 'frost_hammer', 'frost_spear', 'briar_sword', 'road_mace', 'dusk_dagger', 'cinder_knife'];
+  const rightTools: HeldTool[] = ['hatchet', 'pickaxe', 'sword', 'frost_sword', 'frost_hammer', 'frost_spear', 'briar_sword', 'road_mace', 'dusk_dagger', 'cinder_knife', 'delver_maul'];
   if (root) {
     for (const kind of rightTools) {
       const t = root.getObjectByName(`tool_${kind}`);
