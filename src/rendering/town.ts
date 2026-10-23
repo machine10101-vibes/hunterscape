@@ -342,28 +342,92 @@ function noticeBoard(): THREE.Group {
   }
   const canvas = document.createElement('canvas');
   canvas.width = 256;
-  canvas.height = 160;
+  canvas.height = 192;
   const ctx = canvas.getContext('2d')!;
   ctx.fillStyle = '#efe2c4';
-  ctx.fillRect(0, 0, 256, 160);
+  ctx.fillRect(0, 0, 256, 192);
   ctx.strokeStyle = '#6a4428';
   ctx.lineWidth = 8;
-  ctx.strokeRect(6, 6, 244, 148);
+  ctx.strokeRect(6, 6, 244, 180);
   ctx.fillStyle = '#3a2814';
   ctx.textAlign = 'center';
-  ctx.font = '700 28px Georgia, serif';
-  ctx.fillText('NOTICE', 128, 42);
-  ctx.font = '600 18px Georgia, serif';
-  ctx.fillText('Boars — bean rows, south', 128, 84);
-  ctx.fillText('Spiders — dens, southeast', 128, 114);
+  ctx.font = '700 26px Georgia, serif';
+  ctx.fillText('NOTICE', 128, 36);
+  ctx.font = '600 16px Georgia, serif';
+  ctx.fillText('Boars — bean rows, south', 128, 78);
+  ctx.fillText('Spiders — dens, southeast', 128, 108);
+  ctx.fillText('Foxes — thicket, north', 128, 138);
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   const board = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.15, 0.72),
+    new THREE.PlaneGeometry(1.15, 0.86),
     new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8 }),
   );
   board.position.y = 1.05;
   g.add(board);
+  return g;
+}
+
+/** Stone wayside shrine. Doorless, so the candles face the square (+Z). */
+function waysideShrine(): THREE.Group {
+  const g = new THREE.Group();
+  const stone = mat(0x8a8680, { roughness: 0.94 });
+  const plinth = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.82, 0.28, 8), stone);
+  plinth.position.y = 0.14;
+  add(g, plinth);
+  const altar = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.42, 0.38), mat(0xcbb892, { roughness: 0.9 }));
+  altar.position.set(0, 0.46, -0.05);
+  add(g, altar);
+  for (const x of [-0.55, 0.55]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 1.7, 6), mat(0x4a3018));
+    post.position.set(x, 0.95, 0);
+    add(g, post);
+  }
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.08, 0.1), mat(0x4a3018));
+  beam.position.y = 1.75;
+  add(g, beam);
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.06, 0.9), mat(0x6a3030));
+  roof.position.set(0, 1.88, 0);
+  roof.rotation.x = -0.12;
+  add(g, roof);
+  for (const x of [-0.18, 0.18]) {
+    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.018, 0.22, 5), mat(0xe8dcc0));
+    stick.position.set(x, 0.78, 0.08);
+    add(g, stick);
+    const flame = new THREE.Mesh(
+      new THREE.SphereGeometry(0.035, 6, 5),
+      mat(0xffcc66, { emissive: 0xffaa33, emissiveIntensity: 1.2, roughness: 0.4 }),
+    );
+    flame.position.set(x, 0.92, 0.08);
+    flame.name = 'flame';
+    g.add(flame);
+  }
+  const light = new THREE.PointLight(0xffaa55, 0.55, 6, 2);
+  light.position.set(0, 1.1, 0.2);
+  g.add(light);
+  const sign = paintedBoard('SHRINE', 0.85, 0.28, '700 40px Georgia, serif');
+  sign.position.set(0, 1.45, 0.28);
+  g.add(sign);
+  return g;
+}
+
+/** A few young pines so the fox dens read as a thicket, not bare grass. */
+function northThicket(): THREE.Group {
+  const g = new THREE.Group();
+  const spots: [number, number, number][] = [
+    [-1.5, 0.7, 0.9],
+    [1.4, -0.4, 1.15],
+    [0.2, 1.1, 0.75],
+    [-0.4, -1.2, 1.0],
+  ];
+  for (const [x, z, s] of spots) {
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 0.4, 5), mat(0x4a3018));
+    trunk.position.set(x, 0.2, z);
+    add(g, trunk);
+    const crown = new THREE.Mesh(new THREE.ConeGeometry(0.28 * s, 0.9 * s, 6), mat(0x2f6a34, { roughness: 0.9 }));
+    crown.position.set(x, 0.7 * s, z);
+    add(g, crown);
+  }
   return g;
 }
 
@@ -435,6 +499,29 @@ export function createTownNpc(id: NpcId): THREE.Group {
     add(g, mug);
     g.name = 'npc_bram';
     g.add(nameplate('Bram'));
+    return g;
+  }
+  if (id === 'calder') {
+    const g = npcBody(0x5a4868, 0xc8b8a0, true);
+    const cord = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.012, 5, 10), mat(0xc47a3a, { metalness: 0.45, roughness: 0.4 }));
+    cord.rotation.x = Math.PI / 2;
+    cord.position.y = 0.78;
+    g.add(cord);
+    const stole = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.07, 0.14), mat(0xc4622a));
+    stole.position.set(0, 1.02, 0.1);
+    add(g, stole);
+    const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.026, 0.16, 6), mat(0xf4efe2));
+    candle.position.set(0.2, 0.96, 0.3);
+    add(g, candle);
+    const flame = new THREE.Mesh(
+      new THREE.SphereGeometry(0.028, 6, 5),
+      mat(0xffcc66, { emissive: 0xffaa33, emissiveIntensity: 1.2, roughness: 0.4 }),
+    );
+    flame.position.set(0.2, 1.07, 0.3);
+    flame.name = 'flame';
+    g.add(flame);
+    g.name = 'npc_calder';
+    g.add(nameplate('Calder'));
     return g;
   }
   if (id === 'maeve') {
@@ -521,6 +608,8 @@ export function briarfordProps(): TownPlacement[] {
   // Hall sits on the far side of the road so the camera, which looks from +Z,
   // sees the door instead of standing under the roof.
   rootBits.push({ mesh: hall(), x: 18.7, z: -3.15 });
+  rootBits.push({ mesh: waysideShrine(), x: 16.6, z: -7.6 });
+  rootBits.push({ mesh: northThicket(), x: 16.7, z: -10.7 });
   rootBits.push({ mesh: hearth(), x: 13.6, z: -2.9 });
   rootBits.push({ mesh: well(), x: 16.35, z: 0.2 });
   rootBits.push({ mesh: stall(), x: 15.15, z: -1.85, rotY: 0.15 });

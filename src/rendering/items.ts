@@ -33,6 +33,13 @@ import {
   createRoadShield,
   createSpiderSilkItem,
 } from './roadGear';
+import {
+  createDuskBoot,
+  createDuskCloak,
+  createDuskDagger,
+  createDuskFangItem,
+  createFoxFurItem,
+} from './duskGear';
 
 function std(color: number, opts: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
@@ -89,6 +96,11 @@ export function createItemMesh(id: string): THREE.Group {
   if (id === 'road_shield') return createRoadShield();
   if (id === 'road_legs') return createRoadLegs();
   if (id === 'road_greaves') return createRoadGreaves();
+  if (id === 'fox_fur') return createFoxFurItem();
+  if (id === 'dusk_fang') return createDuskFangItem();
+  if (id === 'dusk_dagger') return createDuskDagger();
+  if (id === 'dusk_cloak') return createDuskCloak();
+  if (id === 'dusk_boots') return createDuskBoot();
   return makeUnknown();
 }
 

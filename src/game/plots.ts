@@ -44,6 +44,8 @@ export const PLOT_LANDMARKS: PlotLandmark[] = [
   { name: "Weaver's loom", x: 16.8, z: 2.2 },
   { name: 'Bean rows', x: 11.5, z: 6.35 },
   { name: 'Thorn spiders', x: 19.2, z: 6.2 },
+  { name: 'Wayside shrine', x: 16.6, z: -7.6 },
+  { name: 'Dusk foxes', x: 16.8, z: -10.8 },
   { name: 'Frost cairn', x: 7.5, z: 42 },
   { name: 'Hunter stumps', x: -5.2, z: -41 },
   { name: 'Stream ford', x: 38, z: -8.4 },

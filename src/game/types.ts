@@ -218,6 +218,11 @@ export const ITEM_META: Record<
   road_shield: { name: 'Roadwarden Shield', icon: '🛡', stackable: false, slot: 'shield' },
   road_legs: { name: 'Roadwarden Chaps', icon: '👖', stackable: false, slot: 'legs' },
   road_greaves: { name: 'Roadwarden Greaves', icon: '🦵', stackable: false, slot: 'greaves' },
+  fox_fur: { name: 'Fox Fur', icon: '🦊', stackable: true },
+  dusk_fang: { name: 'Dusk Fang', icon: '🦷', stackable: true },
+  dusk_dagger: { name: 'Dusk Dagger', icon: '🗡', stackable: false, slot: 'weapon' },
+  dusk_cloak: { name: 'Dusk Cloak', icon: '🧥', stackable: false, slot: 'chest' },
+  dusk_boots: { name: 'Dusk Boots', icon: '👢', stackable: false, slot: 'boots' },
 };
 
 export const EQUIP_SLOTS: { id: EquipSlot; label: string }[] = [
@@ -421,6 +426,39 @@ export const ROAD_RECIPES: Recipe[] = [
   },
 ];
 
+/** Briarford anvil, after Sister Calder opens the dusk patterns. */
+export const DUSK_RECIPES: Recipe[] = [
+  {
+    id: 'dusk_dagger',
+    name: 'Dusk Dagger',
+    blurb: 'A short steel blade with a fox-fur grip and a fang pommel.',
+    cost: [
+      { id: 'dusk_fang', qty: 1 },
+      { id: 'fox_fur', qty: 1 },
+      { id: 'copper_ore', qty: 1 },
+      { id: 'whisper_logs', qty: 1 },
+    ],
+  },
+  {
+    id: 'dusk_cloak',
+    name: 'Dusk Cloak',
+    blurb: 'A short cloak lined in dusk-fox fur and clasped in copper.',
+    cost: [
+      { id: 'fox_fur', qty: 3 },
+      { id: 'spider_silk', qty: 1 },
+    ],
+  },
+  {
+    id: 'dusk_boots',
+    name: 'Dusk Boots',
+    blurb: 'Dark boots with a fox-fur cuff and a copper toe.',
+    cost: [
+      { id: 'fox_fur', qty: 2 },
+      { id: 'whisper_logs', qty: 1 },
+    ],
+  },
+];
+
 export function countItem(inv: ItemStack[], id: string): number {
   return inv.filter((s) => s.id === id).reduce((n, s) => n + s.qty, 0);
 }
@@ -442,12 +480,14 @@ export function armorMitigation(save: SaveData): number {
   if (save.equipped.shield === 'road_shield') n += 2;
   if (save.equipped.chest === 'frost_chest') n += 3;
   if (save.equipped.chest === 'briar_vest') n += 2;
+  if (save.equipped.chest === 'dusk_cloak') n += 2;
   if (save.equipped.greaves === 'frost_greaves') n += 2;
   if (save.equipped.greaves === 'road_greaves') n += 1;
   if (save.equipped.legs === 'frost_legs') n += 2;
   if (save.equipped.legs === 'road_legs') n += 2;
   if (save.equipped.boots === 'frost_boots') n += 1;
   if (save.equipped.boots === 'briar_boots') n += 1;
+  if (save.equipped.boots === 'dusk_boots') n += 1;
   return n;
 }
 
@@ -457,6 +497,7 @@ export function weaponDamageBonus(id: string | null): number {
   if (id === 'frost_bow') return 2;
   if (id === 'briar_sword') return 1;
   if (id === 'road_mace') return 2;
+  if (id === 'dusk_dagger') return 2;
   return 0;
 }
 
@@ -519,6 +560,8 @@ export function defaultSave(): SaveData {
       hearth_boars: 'none',
       silk_loom: 'none',
       roadUnlocked: false,
+      shrine_foxes: 'none',
+      duskUnlocked: false,
     },
   };
 }

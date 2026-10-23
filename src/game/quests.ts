@@ -1,6 +1,6 @@
 import { countItem, type SaveData } from './types';
 
-export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve';
+export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve' | 'calder';
 export type QuestStage = 'none' | 'active' | 'done';
 
 export interface QuestState {
@@ -9,10 +9,12 @@ export interface QuestState {
   lanterns: QuestStage;
   hearth_boars: QuestStage;
   silk_loom: QuestStage;
+  shrine_foxes: QuestStage;
   wolfKills: number;
   boarKills: number;
   briarUnlocked: boolean;
   roadUnlocked: boolean;
+  duskUnlocked: boolean;
 }
 
 export function defaultQuests(): QuestState {
@@ -22,16 +24,19 @@ export function defaultQuests(): QuestState {
     lanterns: 'none',
     hearth_boars: 'none',
     silk_loom: 'none',
+    shrine_foxes: 'none',
     wolfKills: 0,
     boarKills: 0,
     briarUnlocked: false,
     roadUnlocked: false,
+    duskUnlocked: false,
   };
 }
 
 export const EAST_ROAD_KILLS = 3;
 export const BOAR_KILLS = 2;
 export const SILK_NEEDED = 2;
+export const FUR_NEEDED = 2;
 
 export interface DialogueOption {
   id: string;
@@ -75,7 +80,7 @@ export function dialogueFor(save: SaveData, npc: NpcId): DialogueScript {
     }
     return {
       speaker: 'Warden Elspeth',
-      body: 'Briarford holds. Bram keeps the hearth, and the bean rows south of the square are his. Maeve’s loom stands on the near side — her roadwarden patterns open once she has spider silk. Harl’s anvil still cuts the briar set.',
+      body: 'Briarford holds. Bram keeps the hearth, Maeve the loom, and Sister Calder the shrine north of the hall. Her dusk patterns open once she has fox fur. Harl’s anvil still cuts the briar set.',
       options: [CLOSE],
     };
   }
@@ -149,6 +154,39 @@ export function dialogueFor(save: SaveData, npc: NpcId): DialogueScript {
     };
   }
 
+  if (npc === 'calder') {
+    const fur = countItem(save.inventory, 'fox_fur');
+    if (q.shrine_foxes === 'none') {
+      return {
+        speaker: 'Sister Calder',
+        body: 'The wayside shrine keeps the north road. Dusk foxes have denned in the thicket beyond it. Bring me 2 fox furs and I will set a dusk cloak on your shoulders and open those patterns on the anvil.',
+        options: [
+          { id: 'calder_accept', label: 'I will bring the furs.' },
+          { id: 'close', label: 'The thicket can wait.' },
+        ],
+      };
+    }
+    if (q.shrine_foxes === 'active' && fur < FUR_NEEDED) {
+      return {
+        speaker: 'Sister Calder',
+        body: `The candles are still uneasy. I need ${FUR_NEEDED} fox fur (you have ${fur}). The dens are north of this shrine.`,
+        options: [CLOSE],
+      };
+    }
+    if (q.shrine_foxes === 'active') {
+      return {
+        speaker: 'Sister Calder',
+        body: 'Two furs. That will line a Dusk Cloak, and the anvil will take fur, fangs, copper, silk, and logs for the dagger and boots.',
+        options: [{ id: 'calder_turnin', label: 'Take the furs.' }],
+      };
+    }
+    return {
+      speaker: 'Sister Calder',
+      body: 'Dusk patterns are on the anvil. Dagger: 1 fang, 1 fur, 1 copper, 1 log. Cloak: 3 furs, 1 silk. Boots: 2 furs, 1 log. The thicket still has foxes if you need more.',
+      options: [CLOSE],
+    };
+  }
+
   if (npc === 'maeve') {
     const silk = countItem(save.inventory, 'spider_silk');
     if (q.silk_loom === 'none') {
@@ -205,7 +243,7 @@ export function dialogueFor(save: SaveData, npc: NpcId): DialogueScript {
   }
   return {
     speaker: 'Shopkeep Nessa',
-    body: 'Stall is open, lanterns are lit. Bram feeds the square, Maeve dresses the roadwardens, and I just keep the dark off the stones.',
+    body: 'Stall is open, lanterns are lit. Bram feeds the square, Maeve dresses the roadwardens, Calder keeps the north shrine, and I just keep the dark off the stones.',
     options: [CLOSE],
   };
 }
@@ -242,12 +280,23 @@ export function trackerLines(save: SaveData): string[] {
     const silk = countItem(save.inventory, 'spider_silk');
     lines.push(silk >= SILK_NEEDED ? 'Loom: return to Weaver Maeve.' : `Loom: spider silk ${silk}/${SILK_NEEDED}`);
   }
+  if (q.shrine_foxes === 'none') lines.push('Sister Calder needs 2 fox fur from the north thicket.');
+  else if (q.shrine_foxes === 'active') {
+    const fur = countItem(save.inventory, 'fox_fur');
+    lines.push(fur >= FUR_NEEDED ? 'Shrine: return to Sister Calder.' : `Shrine: fox fur ${fur}/${FUR_NEEDED}`);
+  }
   if (q.east_road === 'done' && q.harl_commission === 'none') lines.push('Smith Harl has a commission.');
   else if (q.harl_commission === 'active') lines.push('Harl: 3 pelts, 2 logs, 1 copper.');
   if (q.lanterns === 'none' && q.east_road !== 'none') lines.push('Nessa needs 2 tin ore for the lanterns.');
   else if (q.lanterns === 'active') lines.push(`Nessa: tin ore ${Math.min(countItem(save.inventory, 'tin_ore'), 2)}/2`);
-  if (q.roadUnlocked) lines.push('Briarford anvil: briar and roadwarden patterns.');
-  else if (q.briarUnlocked) lines.push('Briar patterns are open. Maeve still holds the roadwarden set.');
+  if (q.briarUnlocked) {
+    const open = ['briar'];
+    if (q.roadUnlocked) open.push('roadwarden');
+    if (q.duskUnlocked) open.push('dusk');
+    if (open.length === 1) lines.push('Briar patterns are open.');
+    else if (open.length === 2) lines.push(`Briarford anvil: ${open[0]} and ${open[1]} patterns.`);
+    else lines.push(`Briarford anvil: ${open[0]}, ${open[1]}, and ${open[2]} patterns.`);
+  }
   if (lines.length === 0) lines.push('Briarford is settled.');
-  return lines.slice(0, 5);
+  return lines.slice(0, 6);
 }

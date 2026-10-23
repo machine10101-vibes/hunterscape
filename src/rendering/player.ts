@@ -11,6 +11,7 @@ import {
 } from './yetiGear';
 import { attachBriarWear, createBriarSword } from './briarGear';
 import { attachRoadMace, attachRoadWear } from './roadGear';
+import { attachDuskDagger, attachDuskWear } from './duskGear';
 import type { SaveData } from '../game/types';
 
 type PhysOpts = Partial<THREE.MeshPhysicalMaterialParameters>;
@@ -1055,10 +1056,12 @@ export function createPlayerMesh(): THREE.Group {
   attachYetiTools(toolRoot);
   attachBriarTools(toolRoot);
   attachRoadMace(toolRoot);
+  attachDuskDagger(toolRoot);
   attachBowOffhand(g);
   attachYetiWear(g);
   attachBriarWear(g);
   attachRoadWear(g);
+  attachDuskWear(g);
 
   return g;
 }
@@ -1305,9 +1308,10 @@ export type HeldTool =
   | 'frost_bow'
   | 'briar_sword'
   | 'road_mace'
+  | 'dusk_dagger'
   | null;
 
-const COMBAT_TOOLS: HeldTool[] = ['sword', 'frost_sword', 'frost_hammer', 'frost_spear', 'frost_bow', 'briar_sword', 'road_mace'];
+const COMBAT_TOOLS: HeldTool[] = ['sword', 'frost_sword', 'frost_hammer', 'frost_spear', 'frost_bow', 'briar_sword', 'road_mace', 'dusk_dagger'];
 const ALL_TOOLS: HeldTool[] = ['hatchet', 'pickaxe', ...COMBAT_TOOLS];
 
 export function weaponHeldFromId(id: string | null): HeldTool {
@@ -1318,6 +1322,7 @@ export function weaponHeldFromId(id: string | null): HeldTool {
   if (id === 'frost_bow') return 'frost_bow';
   if (id === 'briar_sword') return 'briar_sword';
   if (id === 'road_mace') return 'road_mace';
+  if (id === 'dusk_dagger') return 'dusk_dagger';
   return null;
 }
 
@@ -1453,7 +1458,7 @@ export function poseEquippedTool(player: THREE.Group): void {
 export function setPlayerTool(player: THREE.Group, tool: HeldTool): void {
   const root = player.getObjectByName('toolRoot');
   const bow = player.getObjectByName('bowRoot');
-  const rightTools: HeldTool[] = ['hatchet', 'pickaxe', 'sword', 'frost_sword', 'frost_hammer', 'frost_spear', 'briar_sword', 'road_mace'];
+  const rightTools: HeldTool[] = ['hatchet', 'pickaxe', 'sword', 'frost_sword', 'frost_hammer', 'frost_spear', 'briar_sword', 'road_mace', 'dusk_dagger'];
   if (root) {
     for (const kind of rightTools) {
       const t = root.getObjectByName(`tool_${kind}`);

@@ -31,6 +31,7 @@ import { createTerrainFoliage, groundHeight, tickTerrainFoliage } from '../rende
 import { createBriarAnvil } from '../rendering/briarGear';
 import { briarfordProps, createTownNpc } from '../rendering/town';
 import { createBriarWolf, poseBriarWolf, WOLF_HOMES } from '../rendering/wolf';
+import { createDuskFox, FOX_HOMES, poseDuskFox } from '../rendering/duskFox';
 import {
   BOAR_HOMES,
   SPIDER_HOMES,
@@ -78,6 +79,7 @@ import { loadSave, writeSave } from './Persistence';
 import {
   COMBAT_SKILLS,
   BRIAR_RECIPES,
+  DUSK_RECIPES,
   ITEM_META,
   ROAD_RECIPES,
   YETI_RECIPES,
@@ -99,11 +101,12 @@ import {
   trackerLines,
   BOAR_KILLS,
   EAST_ROAD_KILLS,
+  FUR_NEEDED,
   SILK_NEEDED,
   type NpcId,
 } from './quests';
 
-type InteractKind = 'tree' | 'rock' | 'dummy' | 'yeti' | 'orc' | 'wolf' | 'boar' | 'spider' | 'forge' | 'npc';
+type InteractKind = 'tree' | 'rock' | 'dummy' | 'yeti' | 'orc' | 'wolf' | 'boar' | 'spider' | 'fox' | 'forge' | 'npc';
 type ForgeBench = 'camp' | 'briar';
 
 interface WorldObject {
@@ -362,8 +365,9 @@ export class Game {
     this.hud.chat('Tap trees and rocks to chop and mine. Eat rations from your inventory.', 'system');
     this.hud.chat('A Frost Yeti hunts the north-east snow. An Orc Scout prowls the south-west trail.', 'combat');
     this.hud.chat('Open Plots (P) to survey 500 sections. The four around Thornrest are already wooded.', 'system');
-    this.hud.chat('Briarford stands on the east road. Elspeth, Bram, and Maeve each have a starter task.', 'system');
+    this.hud.chat('Briarford stands on the east road. Elspeth, Bram, Maeve, and Calder each have a starter task.', 'system');
     this.hud.chat('Briar boars root the bean rows south of the square. Thorn spiders den just east of them.', 'combat');
+    this.hud.chat('Dusk foxes den in the thicket north of the wayside shrine.', 'combat');
     this.hud.chat('Scroll, pinch, or use + / − to zoom the camera.', 'system');
 
     window.addEventListener('resize', () => this.onResize());
@@ -699,6 +703,7 @@ export class Game {
       { id: 'nessa', x: 15.45, z: -0.72, rot: 0.4 },
       { id: 'bram', x: 14.45, z: -1.15, rot: -0.6 },
       { id: 'maeve', x: 16.9, z: 3.7, rot: Math.PI },
+      { id: 'calder', x: 16.55, z: -6.15, rot: 0 },
     ];
     for (const n of npcs) {
       const mesh = createTownNpc(n.id);
@@ -800,10 +805,31 @@ export class Game {
         pose: poseThornSpider,
       });
     });
+
+    FOX_HOMES.forEach((home, i) => {
+      this.spawnFoe('fox', createDuskFox(), home, `fox_${i}`, 26, {
+        aggroR: 2.6,
+        range: 1.5,
+        leash: 2.8,
+        chase: 3.2,
+        dmgMin: 2,
+        dmgMax: 4,
+        knock: 1.1,
+        respawn: 18,
+        label: 'Dusk Fox',
+        snarl: 'A dusk fox yips and darts in!',
+        engage: 'A dusk fox engages you!',
+        biteLine: 'The dusk fox bites you for',
+        loseLine: 'The dusk fox slips back into the thicket.',
+        returnLine: 'A dusk fox pads back into the north thicket.',
+        corpse: 'The dusk fox lies dead. Another will return to the den.',
+        pose: poseDuskFox,
+      });
+    });
   }
 
   private spawnFoe(
-    kind: 'wolf' | 'boar' | 'spider',
+    kind: 'wolf' | 'boar' | 'spider' | 'fox',
     mesh: THREE.Group,
     home: { x: number; z: number },
     id: string,
@@ -832,7 +858,7 @@ export class Game {
   }
 
   private isBeast(kind: InteractKind): boolean {
-    return kind === 'wolf' || kind === 'boar' || kind === 'spider';
+    return kind === 'wolf' || kind === 'boar' || kind === 'spider' || kind === 'fox';
   }
 
   private bindInput(canvas: HTMLCanvasElement): void {
@@ -1126,6 +1152,7 @@ export class Game {
       if (obj.meta?.npc === 'harl') return 'Smith Harl';
       if (obj.meta?.npc === 'bram') return 'Innkeeper Bram';
       if (obj.meta?.npc === 'maeve') return 'Weaver Maeve';
+      if (obj.meta?.npc === 'calder') return 'Sister Calder';
       return 'Shopkeep Nessa';
     }
     return obj.kind;
@@ -1351,6 +1378,8 @@ export class Game {
       this.hud.chat('A briar boar. Hide and tusks feed the roadwarden patterns. Bram wants two of them off the bean rows.', 'combat');
     else if (all.kind === 'spider')
       this.hud.chat('A thorn spider. Its silk is what Weaver Maeve binds into the roadwarden set.', 'combat');
+    else if (all.kind === 'fox')
+      this.hud.chat('A dusk fox. Fur and fangs are what Sister Calder works into the dusk patterns.', 'combat');
     else if (all.kind === 'npc') this.talkTo(all);
     else if (all.kind === 'forge' && all.meta?.forge === 'briar')
       this.hud.chat('The Briarford anvil. Harl opens it once his commission is paid.', 'system');
@@ -1627,6 +1656,30 @@ export class Game {
       this.save.quests.roadUnlocked = true;
       this.grantXp('defence', 45);
       this.hud.chat('Maeve sets a Roadwarden Mace in your pack and opens the roadwarden patterns.', 'loot');
+    } else if (id === 'calder_accept') {
+      this.save.quests.shrine_foxes = 'active';
+      this.hud.chat('Quest started: bring Sister Calder 2 fox fur from the north thicket.', 'system');
+    } else if (
+      id === 'calder_turnin' &&
+      this.save.quests.shrine_foxes === 'active' &&
+      countItem(this.save.inventory, 'fox_fur') >= FUR_NEEDED
+    ) {
+      if (!this.consumeId('fox_fur', FUR_NEEDED)) {
+        this.dialogue.hide();
+        this.refreshUI();
+        return;
+      }
+      if (!this.addItem('dusk_cloak', 1)) {
+        this.addItem('fox_fur', FUR_NEEDED);
+        this.hud.chat('Your pack is full — Calder will not take the fur until the cloak will fit.', 'system');
+        this.dialogue.hide();
+        this.refreshUI();
+        return;
+      }
+      this.save.quests.shrine_foxes = 'done';
+      this.save.quests.duskUnlocked = true;
+      this.grantXp('defence', 45);
+      this.hud.chat('Calder sets a Dusk Cloak in your pack and opens the dusk patterns.', 'loot');
     }
     this.dialogue.hide();
     this.refreshUI();
@@ -1670,17 +1723,35 @@ export class Game {
     this.forgeBench = briar ? 'briar' : 'camp';
     const unlocked = this.save.quests.briarUnlocked;
     const road = this.save.quests.roadUnlocked;
+    const dusk = this.save.quests.duskUnlocked;
+    const anvilBlurb = !unlocked
+      ? 'Harl keeps the anvil cold until his commission is paid in pelts, logs, and copper.'
+      : road && dusk
+        ? 'Briar, roadwarden, and dusk patterns share this anvil.'
+        : road
+          ? 'Briar and roadwarden patterns are open. Calder still holds the dusk patterns.'
+          : dusk
+            ? 'Briar and dusk patterns are open. Maeve still holds the roadwarden patterns.'
+            : 'The briar set is open. Maeve holds the roadwarden patterns, and Calder holds the dusk patterns.';
+    const anvilChat = !unlocked
+      ? 'The anvil is shut. Finish Harl’s commission to forge here.'
+      : road && dusk
+        ? 'The anvil is hot. Briar, roadwarden, and dusk patterns are open.'
+        : road
+          ? 'The anvil is hot. Briar and roadwarden patterns are open. Dusk patterns stay locked until Calder opens them.'
+          : dusk
+            ? 'The anvil is hot. Briar and dusk patterns are open. Roadwarden patterns stay locked until Maeve opens them.'
+            : 'The anvil is hot. Choose a briar pattern. Roadwarden stays locked until Maeve, and dusk until Calder.';
     this.hud.setForgeOpen(true, this.save, briar
       ? {
           title: 'Briarford Anvil',
-          blurb: !unlocked
-            ? 'Harl keeps the anvil cold until his commission is paid in pelts, logs, and copper.'
-            : road
-              ? 'Briar patterns and roadwarden patterns share this anvil.'
-              : 'The briar set is open. Maeve still holds the roadwarden patterns.',
-          recipes: [...BRIAR_RECIPES, ...ROAD_RECIPES],
+          blurb: anvilBlurb,
+          recipes: [...BRIAR_RECIPES, ...ROAD_RECIPES, ...DUSK_RECIPES],
           forgeable: unlocked,
-          lockedIds: road ? [] : ROAD_RECIPES.map((r) => r.id),
+          lockedIds: [
+            ...(road ? [] : ROAD_RECIPES.map((r) => r.id)),
+            ...(dusk ? [] : DUSK_RECIPES.map((r) => r.id)),
+          ],
         }
       : {
           title: 'Thornrest Forge',
@@ -1688,21 +1759,12 @@ export class Game {
           recipes: YETI_RECIPES,
           forgeable: true,
         });
-    this.hud.chat(
-      briar
-        ? !unlocked
-          ? 'The anvil is shut. Finish Harl’s commission to forge here.'
-          : road
-            ? 'The anvil is hot. Briar and roadwarden patterns are both open.'
-            : 'The anvil is hot. Choose a briar pattern. Roadwarden patterns stay locked until Maeve opens them.'
-        : 'The forge is hot. Choose a frost-yeti pattern to work.',
-      'system',
-    );
+    this.hud.chat(briar ? anvilChat : 'The forge is hot. Choose a frost-yeti pattern to work.', 'system');
     this.pendingForge = null;
   }
 
   private craftAtForge(recipeId: string): void {
-    const list = this.forgeBench === 'briar' ? [...BRIAR_RECIPES, ...ROAD_RECIPES] : YETI_RECIPES;
+    const list = this.forgeBench === 'briar' ? [...BRIAR_RECIPES, ...ROAD_RECIPES, ...DUSK_RECIPES] : YETI_RECIPES;
     const recipe = list.find((r) => r.id === recipeId);
     if (!recipe) return;
     if (this.forgeBench === 'briar' && !this.save.quests.briarUnlocked) {
@@ -1711,6 +1773,10 @@ export class Game {
     }
     if (recipe.id.startsWith('road_') && !this.save.quests.roadUnlocked) {
       this.hud.chat('Maeve has not opened the roadwarden patterns.', 'system');
+      return;
+    }
+    if (recipe.id.startsWith('dusk_') && !this.save.quests.duskUnlocked) {
+      this.hud.chat('Calder has not opened the dusk patterns.', 'system');
       return;
     }
     if (!canCraft(this.save, recipe)) {
@@ -2320,9 +2386,9 @@ export class Game {
       ),
     );
     target.hp -= dmg;
-    const xpAtk = target.kind === 'yeti' ? 18 : target.kind === 'orc' ? 15 : target.kind === 'boar' ? 14 : target.kind === 'wolf' ? 12 : target.kind === 'spider' ? 11 : 12;
-    const xpStr = target.kind === 'yeti' ? 14 : target.kind === 'orc' ? 12 : target.kind === 'boar' ? 12 : target.kind === 'wolf' ? 10 : target.kind === 'spider' ? 9 : 8;
-    const xpCon = target.kind === 'yeti' ? 8 : target.kind === 'orc' ? 6 : target.kind === 'boar' ? 6 : target.kind === 'wolf' ? 5 : target.kind === 'spider' ? 4 : 4;
+    const xpAtk = target.kind === 'yeti' ? 18 : target.kind === 'orc' ? 15 : target.kind === 'boar' ? 14 : target.kind === 'wolf' || target.kind === 'fox' ? 12 : target.kind === 'spider' ? 11 : 12;
+    const xpStr = target.kind === 'yeti' ? 14 : target.kind === 'orc' ? 12 : target.kind === 'boar' ? 12 : target.kind === 'wolf' || target.kind === 'fox' ? 10 : target.kind === 'spider' ? 9 : 8;
+    const xpCon = target.kind === 'yeti' ? 8 : target.kind === 'orc' ? 6 : target.kind === 'boar' ? 6 : target.kind === 'wolf' || target.kind === 'fox' ? 5 : target.kind === 'spider' ? 4 : 4;
     this.grantXp('attack', xpAtk);
     this.grantXp('strength', xpStr);
     this.grantXp('constitution', xpCon);
@@ -2501,6 +2567,19 @@ export class Game {
           n >= SILK_NEEDED
             ? 'Maeve has enough silk. Return to the loom.'
             : `Spider silk gathered: ${n}/${SILK_NEEDED}.`,
+          'system',
+        );
+      }
+    } else if (target.kind === 'fox') {
+      this.hud.chat('The dusk fox drops. Fur and a fang come free of the hide.', 'combat');
+      if (this.addItem('fox_fur', 1)) this.hud.chat('You skin a Fox Fur.', 'loot');
+      if (Math.random() < 0.4 && this.addItem('dusk_fang', 1)) this.hud.chat('You pull a Dusk Fang.', 'loot');
+      if (this.save.quests.shrine_foxes === 'active') {
+        const n = countItem(this.save.inventory, 'fox_fur');
+        this.hud.chat(
+          n >= FUR_NEEDED
+            ? 'Calder has enough fur. Return to the wayside shrine.'
+            : `Fox fur gathered: ${n}/${FUR_NEEDED}.`,
           'system',
         );
       }
@@ -3095,6 +3174,7 @@ export class Game {
       else if (o.kind === 'wolf') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#c4783a' });
       else if (o.kind === 'boar') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#a0673a' });
       else if (o.kind === 'spider') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#6a3a78' });
+      else if (o.kind === 'fox') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#d07048' });
       else if (o.kind === 'npc') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#f0d070' });
       else if (o.kind === 'forge' && o.meta?.forge === 'briar')
         markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#e09040' });
