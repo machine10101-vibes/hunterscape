@@ -252,6 +252,11 @@ export const ITEM_META: Record<
   mire_dagger: { name: 'Mire Dagger', icon: '🗡', stackable: false, slot: 'weapon' },
   mire_cloak: { name: 'Mire Cloak', icon: '🧥', stackable: false, slot: 'chest' },
   mire_boots: { name: 'Mire Boots', icon: '👢', stackable: false, slot: 'boots' },
+  bones: { name: 'Bones', icon: '🦴', stackable: true },
+  skull_chip: { name: 'Skull Chip', icon: '💀', stackable: true },
+  bone_sword: { name: 'Bone Sword', icon: '🗡', stackable: false, slot: 'weapon' },
+  bone_ribs: { name: 'Bone Ribs', icon: '🦺', stackable: false, slot: 'chest' },
+  bone_boots: { name: 'Bone Boots', icon: '👢', stackable: false, slot: 'boots' },
 };
 
 export const EQUIP_SLOTS: { id: EquipSlot; label: string }[] = [
@@ -587,6 +592,38 @@ export const MIRE_RECIPES: Recipe[] = [
   },
 ];
 
+export const BONE_RECIPES: Recipe[] = [
+  {
+    id: 'bone_sword',
+    name: 'Bone Sword',
+    blurb: 'A pale blade with a skull pommel. Slash. Measured speed. Special: Rattle.',
+    cost: [
+      { id: 'bones', qty: 1 },
+      { id: 'skull_chip', qty: 1 },
+      { id: 'copper_ore', qty: 1 },
+      { id: 'whisper_logs', qty: 1 },
+    ],
+  },
+  {
+    id: 'bone_ribs',
+    name: 'Bone Ribs',
+    blurb: 'A ribcage cuirass. Soaks crush.',
+    cost: [
+      { id: 'bones', qty: 3 },
+      { id: 'skull_chip', qty: 1 },
+    ],
+  },
+  {
+    id: 'bone_boots',
+    name: 'Bone Boots',
+    blurb: 'Bone plates over a dark boot. Soaks stab.',
+    cost: [
+      { id: 'bones', qty: 2 },
+      { id: 'whisper_logs', qty: 1 },
+    ],
+  },
+];
+
 export function countItem(inv: ItemStack[], id: string): number {
   return inv.filter((s) => s.id === id).reduce((n, s) => n + s.qty, 0);
 }
@@ -611,6 +648,7 @@ const ARMOR_BONUS: Record<string, number> = {
   dusk_cloak: 2,
   delver_vest: 2,
   mire_cloak: 2,
+  bone_ribs: 2,
   frost_greaves: 2,
   road_greaves: 1,
   frost_legs: 2,
@@ -621,6 +659,7 @@ const ARMOR_BONUS: Record<string, number> = {
   dusk_boots: 1,
   delver_boots: 1,
   mire_boots: 1,
+  bone_boots: 1,
 };
 
 /** Two or more worn pieces from one family add a point of armour. */
@@ -632,6 +671,7 @@ const ARMOR_FAMILIES: Record<string, string[]> = {
   cinder: ['cinder_shield', 'cinder_legs'],
   delver: ['delver_vest', 'delver_boots'],
   mire: ['mire_cloak', 'mire_boots'],
+  bone: ['bone_ribs', 'bone_boots'],
 };
 
 export function setBonus(save: SaveData): number {
@@ -645,6 +685,44 @@ export function setBonus(save: SaveData): number {
 
 export function itemArmor(id: string | null): number {
   return id ? (ARMOR_BONUS[id] ?? 0) : 0;
+}
+
+/** Which incoming style this piece soaks an extra point against. */
+const ARMOR_DEFENCE: Record<string, AttackStyle> = {
+  frost_shield: 'crush',
+  frost_chest: 'crush',
+  frost_greaves: 'crush',
+  frost_legs: 'slash',
+  frost_boots: 'stab',
+  briar_shield: 'slash',
+  briar_vest: 'slash',
+  briar_boots: 'slash',
+  road_shield: 'stab',
+  road_legs: 'stab',
+  road_greaves: 'crush',
+  dusk_cloak: 'slash',
+  dusk_boots: 'stab',
+  cinder_shield: 'slash',
+  cinder_legs: 'stab',
+  delver_vest: 'crush',
+  delver_boots: 'crush',
+  mire_cloak: 'stab',
+  mire_boots: 'slash',
+  bone_ribs: 'crush',
+  bone_boots: 'stab',
+};
+
+export function itemDefenceStyle(id: string | null): AttackStyle | null {
+  return id ? (ARMOR_DEFENCE[id] ?? null) : null;
+}
+
+/** Extra armour against the style a monster is biting with. */
+export function styleMitigation(save: SaveData, style: AttackStyle): number {
+  let n = 0;
+  for (const id of Object.values(save.equipped)) {
+    if (id && ARMOR_DEFENCE[id] === style) n += 1;
+  }
+  return n;
 }
 
 export function armorMitigation(save: SaveData): number {
@@ -664,6 +742,7 @@ const WEAPON_DAMAGE: Record<string, number> = {
   cinder_knife: 2,
   delver_maul: 3,
   mire_dagger: 2,
+  bone_sword: 2,
 };
 
 const WEAPON_STYLE: Record<string, AttackStyle> = {
@@ -677,8 +756,36 @@ const WEAPON_STYLE: Record<string, AttackStyle> = {
   road_mace: 'crush',
   delver_maul: 'crush',
   mire_dagger: 'stab',
+  bone_sword: 'slash',
   frost_bow: 'ranged',
 };
+
+/** Seconds after a swing before the next one starts. Daggers are fast, mauls are heavy. */
+const WEAPON_RECOVERY: Record<string, number> = {
+  bronze_sword: 0.72,
+  frost_sword: 0.74,
+  briar_sword: 0.66,
+  dusk_dagger: 0.4,
+  cinder_knife: 0.42,
+  mire_dagger: 0.44,
+  bone_sword: 0.62,
+  frost_spear: 0.7,
+  frost_bow: 0.9,
+  road_mace: 1.0,
+  frost_hammer: 1.16,
+  delver_maul: 1.24,
+};
+
+export function weaponRecovery(id: string | null): number {
+  return id ? (WEAPON_RECOVERY[id] ?? 0.72) : 0.72;
+}
+
+export function weaponSpeedLabel(id: string | null): string {
+  const t = weaponRecovery(id);
+  if (t <= 0.5) return 'Fast';
+  if (t <= 0.9) return 'Measured';
+  return 'Heavy';
+}
 
 export interface WeaponSpec {
   name: string;
@@ -706,6 +813,7 @@ export const WEAPON_SPECS: Record<string, WeaponSpec> = {
   cinder_knife: { name: 'Ember Jab', cost: 30, blurb: 'The edge stays hot.', mult: 1.2, heal: 0, bleed: 2, stun: 0 },
   delver_maul: { name: 'Shellbreak', cost: 40, blurb: 'Built to crack plate.', mult: 1.65, heal: 0, bleed: 0, stun: 0.6 },
   mire_dagger: { name: 'Venom', cost: 35, blurb: 'The cut keeps working.', mult: 1.1, heal: 0, bleed: 3, stun: 0 },
+  bone_sword: { name: 'Rattle', cost: 32, blurb: 'The blow rings the bones.', mult: 1.25, heal: 0, bleed: 0, stun: 1.2 },
 };
 
 export function weaponSpec(id: string | null): WeaponSpec | null {
@@ -735,6 +843,7 @@ export const MONSTER_PROFILE: Record<string, MonsterProfile> = {
   fox: { level: 18, weak: 'slash' },
   beetle: { level: 20, weak: 'crush' },
   toad: { level: 17, weak: 'slash' },
+  skeleton: { level: 19, weak: 'crush' },
   boar: { level: 22, weak: 'stab' },
   orc: { level: 33, weak: 'stab' },
   yeti: { level: 42, weak: 'crush' },
@@ -742,6 +851,25 @@ export const MONSTER_PROFILE: Record<string, MonsterProfile> = {
 
 export function monsterProfile(kind: string): MonsterProfile {
   return MONSTER_PROFILE[kind] ?? { level: 1, weak: 'slash' };
+}
+
+/** The style each body bites with. Armour that soaks that style turns more of it. */
+const MONSTER_ATTACK: Record<string, AttackStyle> = {
+  dummy: 'slash',
+  wolf: 'slash',
+  crow: 'stab',
+  spider: 'crush',
+  fox: 'slash',
+  beetle: 'crush',
+  toad: 'crush',
+  skeleton: 'slash',
+  boar: 'stab',
+  orc: 'stab',
+  yeti: 'crush',
+};
+
+export function monsterAttack(kind: string): AttackStyle {
+  return MONSTER_ATTACK[kind] ?? 'slash';
 }
 
 /** OSRS-style combat level from the four combat skills. No prayer term yet. */
@@ -764,9 +892,12 @@ export function gearLine(id: string): string {
     if (dmg) bits.push(`+${dmg} damage`);
     const spec = weaponSpec(id);
     if (spec) bits.push(`${spec.name} (${spec.cost} focus)`);
+    bits.push(weaponSpeedLabel(id));
   }
   const arm = itemArmor(id);
   if (arm) bits.push(`+${arm} armour`);
+  const soak = itemDefenceStyle(id);
+  if (soak) bits.push(`soaks ${soak}`);
   return bits.join(' · ');
 }
 
@@ -838,6 +969,8 @@ export function defaultSave(): SaveData {
       delverUnlocked: false,
       mire_toads: 'none',
       mireUnlocked: false,
+      barrow_bones: 'none',
+      boneUnlocked: false,
     },
   };
 }

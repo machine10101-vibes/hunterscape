@@ -1,6 +1,6 @@
 import { countItem, type SaveData } from './types';
 
-export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve' | 'calder' | 'holt' | 'odell' | 'wren';
+export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve' | 'calder' | 'holt' | 'odell' | 'wren' | 'marr';
 export type QuestStage = 'none' | 'active' | 'done';
 
 export interface QuestState {
@@ -13,6 +13,7 @@ export interface QuestState {
   kiln_crows: QuestStage;
   claim_beetles: QuestStage;
   mire_toads: QuestStage;
+  barrow_bones: QuestStage;
   wolfKills: number;
   boarKills: number;
   briarUnlocked: boolean;
@@ -21,6 +22,7 @@ export interface QuestState {
   cinderUnlocked: boolean;
   delverUnlocked: boolean;
   mireUnlocked: boolean;
+  boneUnlocked: boolean;
 }
 
 export function defaultQuests(): QuestState {
@@ -34,6 +36,7 @@ export function defaultQuests(): QuestState {
     kiln_crows: 'none',
     claim_beetles: 'none',
     mire_toads: 'none',
+    barrow_bones: 'none',
     wolfKills: 0,
     boarKills: 0,
     briarUnlocked: false,
@@ -42,6 +45,7 @@ export function defaultQuests(): QuestState {
     cinderUnlocked: false,
     delverUnlocked: false,
     mireUnlocked: false,
+    boneUnlocked: false,
   };
 }
 
@@ -52,6 +56,7 @@ export const FUR_NEEDED = 2;
 export const FEATHER_NEEDED = 2;
 export const SHELL_NEEDED = 2;
 export const HIDE_NEEDED = 2;
+export const BONE_NEEDED = 2;
 
 export interface DialogueOption {
   id: string;
@@ -296,7 +301,40 @@ export function dialogueFor(save: SaveData, npc: NpcId): DialogueScript {
     }
     return {
       speaker: 'Reed Wren',
-      body: 'Mire patterns are on the anvil. Dagger: 1 hide, 1 venom sac, 1 copper, 1 log. Cloak: 3 hides, 1 venom sac. Boots: 2 hides, 1 log. The toads are still south of the pool if you need more. Press 6 to spend Focus on a weapon special.',
+      body: 'Mire patterns are on the anvil. Dagger: 1 hide, 1 venom sac, 1 copper, 1 log. Cloak: 3 hides, 1 venom sac. Boots: 2 hides, 1 log. The toads are still south of the pool if you need more. Sexton Marr at the north barrow wants bones if the mire is quiet.',
+      options: [CLOSE],
+    };
+  }
+
+  if (npc === 'marr') {
+    const bones = countItem(save.inventory, 'bones');
+    if (q.barrow_bones === 'none') {
+      return {
+        speaker: 'Sexton Marr',
+        body: 'The north barrow will not stay quiet. Restless bones walk the mound, and they strike with slash. Crush breaks them. Bring me 2 bones and I will set a bone sword in your hand and open those patterns on the anvil. A fast weapon recovers sooner. Armour soaks the style a beast bites with.',
+        options: [
+          { id: 'marr_accept', label: 'I will bring the bones.' },
+          { id: 'close', label: 'The barrow can wait.' },
+        ],
+      };
+    }
+    if (q.barrow_bones === 'active' && bones < BONE_NEEDED) {
+      return {
+        speaker: 'Sexton Marr',
+        body: `The mound is still walking. I need ${BONE_NEEDED} bones (you have ${bones}). They pace just north of this barrow, and a crush weapon splits them.`,
+        options: [CLOSE],
+      };
+    }
+    if (q.barrow_bones === 'active') {
+      return {
+        speaker: 'Sexton Marr',
+        body: 'Two bones. That will haft a Bone Sword, and the anvil will take bones, skull chips, copper, and logs for the ribs and boots. Its special is Rattle, and it spends Focus.',
+        options: [{ id: 'marr_turnin', label: 'Take the bones.' }],
+      };
+    }
+    return {
+      speaker: 'Sexton Marr',
+      body: 'Bone patterns are on the anvil. Sword: 1 bone, 1 skull chip, 1 copper, 1 log. Ribs: 3 bones, 1 skull chip. Boots: 2 bones, 1 log. The ribs soak crush and the boots soak stab. The bones are still north of the mound if you need more.',
       options: [CLOSE],
     };
   }
@@ -420,6 +458,12 @@ export function trackerLines(save: SaveData): string[] {
     const hides = countItem(save.inventory, 'toad_hide');
     lines.push(hides >= HIDE_NEEDED ? 'Mire: return to Reed Wren.' : `Mire: toad hides ${hides}/${HIDE_NEEDED}`);
   }
+  if (q.mire_toads === 'done' && q.barrow_bones === 'none') {
+    lines.push('Sexton Marr needs 2 bones at the north barrow.');
+  } else if (q.barrow_bones === 'active') {
+    const bones = countItem(save.inventory, 'bones');
+    lines.push(bones >= BONE_NEEDED ? 'Barrow: return to Sexton Marr.' : `Barrow: bones ${bones}/${BONE_NEEDED}`);
+  }
   if (q.east_road === 'done' && q.harl_commission === 'none') lines.push('Smith Harl has a commission.');
   else if (q.harl_commission === 'active') lines.push('Harl: 3 pelts, 2 logs, 1 copper.');
   if (q.lanterns === 'none' && q.east_road !== 'none') lines.push('Nessa needs 2 tin ore for the lanterns.');
@@ -431,6 +475,7 @@ export function trackerLines(save: SaveData): string[] {
     if (q.cinderUnlocked) open.push('cinder');
     if (q.delverUnlocked) open.push('delver');
     if (q.mireUnlocked) open.push('mire');
+    if (q.boneUnlocked) open.push('bone');
     if (open.length === 1) lines.push('Briar patterns are open.');
     else lines.push(`Anvil: ${open.join(', ')}.`);
   }

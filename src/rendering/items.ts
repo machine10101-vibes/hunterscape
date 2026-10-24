@@ -61,6 +61,13 @@ import {
   createToadHideItem,
   createVenomSacItem,
 } from './mireGear';
+import {
+  createBoneBoot,
+  createBoneRibs,
+  createBoneSword,
+  createBonesItem,
+  createSkullChipItem,
+} from './boneGear';
 
 function std(color: number, opts: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
@@ -137,6 +144,11 @@ export function createItemMesh(id: string): THREE.Group {
   if (id === 'mire_dagger') return createMireDagger();
   if (id === 'mire_cloak') return createMireCloak();
   if (id === 'mire_boots') return createMireBoot();
+  if (id === 'bones') return createBonesItem();
+  if (id === 'skull_chip') return createSkullChipItem();
+  if (id === 'bone_sword') return createBoneSword();
+  if (id === 'bone_ribs') return createBoneRibs();
+  if (id === 'bone_boots') return createBoneBoot();
   return makeUnknown();
 }
 

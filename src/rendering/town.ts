@@ -492,6 +492,37 @@ function oreClaim(): THREE.Group {
   return g;
 }
 
+function barrowMound(): THREE.Group {
+  const g = new THREE.Group();
+  const earth = mat(0x4a4034, { roughness: 0.95 });
+  const mound = new THREE.Mesh(new THREE.SphereGeometry(1.35, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.45), earth);
+  mound.scale.set(1.3, 0.45, 1);
+  mound.position.y = 0.05;
+  add(g, mound);
+  for (const [x, z, h] of [[-0.85, 0.15, 0.85], [0.7, -0.25, 0.7]] as const) {
+    const stone = new THREE.Mesh(new THREE.BoxGeometry(0.16, h, 0.1), mat(0x6a6860, { roughness: 0.9 }));
+    stone.position.set(x, h * 0.45, z);
+    stone.rotation.z = x < 0 ? 0.08 : -0.12;
+    add(g, stone);
+  }
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.08, 0.36), mat(0x8a8478));
+  slab.position.set(0.1, 0.2, 0.35);
+  slab.rotation.z = 0.15;
+  slab.rotation.y = 0.3;
+  add(g, slab);
+  const glow = new THREE.Mesh(
+    new THREE.SphereGeometry(0.06, 6, 5),
+    mat(0x9ecf8a, { emissive: 0x3a6a32, emissiveIntensity: 0.8 }),
+  );
+  glow.position.set(-0.2, 0.42, 0.1);
+  glow.name = 'flame';
+  g.add(glow);
+  const sign = paintedBoard('BARROW', 0.95, 0.36, '700 36px Georgia, serif');
+  sign.position.set(1.05, 0.72, 0.55);
+  g.add(sign);
+  return g;
+}
+
 function reedPool(): THREE.Group {
   const g = new THREE.Group();
   const water = new THREE.Mesh(new THREE.CircleGeometry(1.15, 10), mat(0x3a6a58, { roughness: 0.35, metalness: 0.15 }));
@@ -675,6 +706,25 @@ export function createTownNpc(id: NpcId): THREE.Group {
     g.add(nameplate('Wren'));
     return g;
   }
+  if (id === 'marr') {
+    const g = npcBody(0x2c3038, 0xd8d4cc, true);
+    const stole = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.42, 0.04), mat(0x6a6458));
+    stole.position.set(0, 0.78, 0.12);
+    add(g, stole);
+    const charm = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 5), mat(0xe6decc, { roughness: 0.5 }));
+    charm.position.set(0.16, 0.95, 0.1);
+    add(g, charm);
+    const socket = new THREE.Mesh(
+      new THREE.SphereGeometry(0.012, 4, 3),
+      mat(0xc45a3a, { emissive: 0x8a2a18, emissiveIntensity: 0.6 }),
+    );
+    socket.position.set(0.16, 0.96, 0.13);
+    socket.name = 'flame';
+    g.add(socket);
+    g.name = 'npc_marr';
+    g.add(nameplate('Marr'));
+    return g;
+  }
   if (id === 'maeve') {
     const g = npcBody(0x4a3068, 0x2a1810, false);
     const shawl = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.16, 0.08), mat(0xc4a0d0));
@@ -764,6 +814,7 @@ export function briarfordProps(): TownPlacement[] {
   rootBits.push({ mesh: charcoalKiln(), x: -14.4, z: -13.0 });
   rootBits.push({ mesh: oreClaim(), x: -13.0, z: 8.4 });
   rootBits.push({ mesh: reedPool(), x: -4.4, z: 10.2 });
+  rootBits.push({ mesh: barrowMound(), x: 1.2, z: -11.2 });
   rootBits.push({ mesh: hearth(), x: 13.6, z: -2.9 });
   rootBits.push({ mesh: well(), x: 16.35, z: 0.2 });
   rootBits.push({ mesh: stall(), x: 15.15, z: -1.85, rotY: 0.15 });

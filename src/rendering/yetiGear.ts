@@ -953,6 +953,8 @@ export function setYetiWear(player: THREE.Group, equipped: {
   const delverBoots = equipped.boots === 'delver_boots';
   const mireCloak = equipped.chest === 'mire_cloak';
   const mireBoots = equipped.boots === 'mire_boots';
+  const boneChest = equipped.chest === 'bone_ribs';
+  const boneBoots = equipped.boots === 'bone_boots';
   show('wear_shield', shieldOn);
   show('wear_briar_shield', briarShield);
   show('wear_road_shield', roadShield);
@@ -962,6 +964,7 @@ export function setYetiWear(player: THREE.Group, equipped: {
   show('wear_dusk_chest', duskCloak);
   show('wear_delver_chest', delverChest);
   show('wear_mire_chest', mireCloak);
+  show('wear_bone_chest', boneChest);
   show('wear_bracerL', chestOn && !shieldOn && !briarShield && !roadShield && !cinderShield);
   show('wear_bracerR', chestOn);
   show('wear_legL', legsOn);
@@ -984,8 +987,10 @@ export function setYetiWear(player: THREE.Group, equipped: {
   show('wear_delver_bootR', delverBoots);
   show('wear_mire_bootL', mireBoots);
   show('wear_mire_bootR', mireBoots);
-  setBaseLayer(player, 'chest', !chestOn && !briarChest && !duskCloak && !delverChest && !mireCloak);
+  show('wear_bone_bootL', boneBoots);
+  show('wear_bone_bootR', boneBoots);
+  setBaseLayer(player, 'chest', !chestOn && !briarChest && !duskCloak && !delverChest && !mireCloak && !boneChest);
   setBaseLayer(player, 'legs', !legsOn && !roadLegs && !cinderLegs);
   setBaseLayer(player, 'greaves', !greavesOn && !roadGreaves);
-  setBaseLayer(player, 'boots', !bootsOn && !briarBoots && !duskBoots && !delverBoots && !mireBoots);
+  setBaseLayer(player, 'boots', !bootsOn && !briarBoots && !duskBoots && !delverBoots && !mireBoots && !boneBoots);
 }
