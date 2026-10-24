@@ -68,6 +68,7 @@ export class HUD {
   onGearSlotClick: ((slot: EquipSlot) => void) | null = null;
   onForgeCraft: ((recipeId: string) => void) | null = null;
   onStance: ((stance: CombatStance) => void) | null = null;
+  onSpec: (() => void) | null = null;
 
   constructor() {
     this.chatLog = el('chat-log');
@@ -130,6 +131,7 @@ export class HUD {
     }
     this.syncInventoryForViewport();
     this.buildSkillBar();
+    el('btn-spec').addEventListener('click', () => this.onSpec?.());
 
     setTimeout(() => this.touchHint.classList.add('fade'), 8000);
   }
@@ -184,6 +186,21 @@ export class HUD {
         ? `${skill.name} (${skill.key}) — ${skill.blurb}${skill.costKind ? ` · ${skill.cost} ${skill.costKind}` : ''}`
         : `${skill.name} locked — learn at ${unlock}`;
     }
+  }
+
+  /** Focus special beside the five arts. Armed spends Focus on the next hit. */
+  setSpec(name: string, armed: boolean, focus: number, cost: number): void {
+    const btn = el('btn-spec') as HTMLButtonElement;
+    const label = btn.querySelector('.ab-spec-name');
+    const costEl = btn.querySelector('.ab-spec-cost');
+    if (label) label.textContent = armed ? 'Armed' : 'Spec';
+    if (costEl) costEl.textContent = cost > 0 ? String(cost) : '';
+    btn.classList.toggle('armed', armed);
+    btn.setAttribute('aria-pressed', armed ? 'true' : 'false');
+    const ready = cost > 0 && focus >= cost;
+    btn.title = cost > 0
+      ? `${name} (${cost} Focus)${armed ? ' — armed' : ''}${ready ? '' : ' — not enough Focus'}`
+      : 'Equip a weapon to arm its special (6)';
   }
 
   /** Narrow (≤480px): inventory closed by default. Desktop: open once, user may close. */

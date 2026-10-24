@@ -1,6 +1,6 @@
 import { countItem, type SaveData } from './types';
 
-export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve' | 'calder' | 'holt' | 'odell';
+export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve' | 'calder' | 'holt' | 'odell' | 'wren';
 export type QuestStage = 'none' | 'active' | 'done';
 
 export interface QuestState {
@@ -12,6 +12,7 @@ export interface QuestState {
   shrine_foxes: QuestStage;
   kiln_crows: QuestStage;
   claim_beetles: QuestStage;
+  mire_toads: QuestStage;
   wolfKills: number;
   boarKills: number;
   briarUnlocked: boolean;
@@ -19,6 +20,7 @@ export interface QuestState {
   duskUnlocked: boolean;
   cinderUnlocked: boolean;
   delverUnlocked: boolean;
+  mireUnlocked: boolean;
 }
 
 export function defaultQuests(): QuestState {
@@ -31,6 +33,7 @@ export function defaultQuests(): QuestState {
     shrine_foxes: 'none',
     kiln_crows: 'none',
     claim_beetles: 'none',
+    mire_toads: 'none',
     wolfKills: 0,
     boarKills: 0,
     briarUnlocked: false,
@@ -38,6 +41,7 @@ export function defaultQuests(): QuestState {
     duskUnlocked: false,
     cinderUnlocked: false,
     delverUnlocked: false,
+    mireUnlocked: false,
   };
 }
 
@@ -47,6 +51,7 @@ export const SILK_NEEDED = 2;
 export const FUR_NEEDED = 2;
 export const FEATHER_NEEDED = 2;
 export const SHELL_NEEDED = 2;
+export const HIDE_NEEDED = 2;
 
 export interface DialogueOption {
   id: string;
@@ -258,7 +263,40 @@ export function dialogueFor(save: SaveData, npc: NpcId): DialogueScript {
     }
     return {
       speaker: 'Miner Odell',
-      body: 'Delver patterns are on the anvil. Maul: 1 shell, 1 grit, 1 copper, 1 log. Vest: 2 shells, 1 grit. Boots: 1 shell, 1 copper, 1 log. The beetles are still south of the claim if you need more.',
+      body: 'Delver patterns are on the anvil. Maul: 1 shell, 1 grit, 1 copper, 1 log. Vest: 2 shells, 1 grit. Boots: 1 shell, 1 copper, 1 log. Reed Wren at the south mire wants toad hides if the claim is quiet.',
+      options: [CLOSE],
+    };
+  }
+
+  if (npc === 'wren') {
+    const hides = countItem(save.inventory, 'toad_hide');
+    if (q.mire_toads === 'none') {
+      return {
+        speaker: 'Reed Wren',
+        body: 'The south mire is thick with toads, and their hides still carry venom. Bring me 2 toad hides and I will set a mire dagger in your hand and open those patterns on the anvil. Slash finds the soft belly. Two pieces of one set, cloak and boots included, add a point of armour.',
+        options: [
+          { id: 'wren_accept', label: 'I will bring the hides.' },
+          { id: 'close', label: 'The mire can wait.' },
+        ],
+      };
+    }
+    if (q.mire_toads === 'active' && hides < HIDE_NEEDED) {
+      return {
+        speaker: 'Reed Wren',
+        body: `The pool is still croaking. I need ${HIDE_NEEDED} toad hides (you have ${hides}). They sit just south of this mire, and a slash weapon opens them.`,
+        options: [CLOSE],
+      };
+    }
+    if (q.mire_toads === 'active') {
+      return {
+        speaker: 'Reed Wren',
+        body: 'Two hides. That will wrap a Mire Dagger, and the anvil will take hides, venom, copper, and logs for the cloak and boots. Its special is Venom, and it spends Focus.',
+        options: [{ id: 'wren_turnin', label: 'Take the hides.' }],
+      };
+    }
+    return {
+      speaker: 'Reed Wren',
+      body: 'Mire patterns are on the anvil. Dagger: 1 hide, 1 venom sac, 1 copper, 1 log. Cloak: 3 hides, 1 venom sac. Boots: 2 hides, 1 log. The toads are still south of the pool if you need more. Press 6 to spend Focus on a weapon special.',
       options: [CLOSE],
     };
   }
@@ -376,6 +414,12 @@ export function trackerLines(save: SaveData): string[] {
       shells >= SHELL_NEEDED ? 'Claim: return to Miner Odell.' : `Claim: beetle shells ${shells}/${SHELL_NEEDED}`,
     );
   }
+  if (q.claim_beetles === 'done' && q.mire_toads === 'none') {
+    lines.push('Reed Wren needs 2 toad hides at the south mire.');
+  } else if (q.mire_toads === 'active') {
+    const hides = countItem(save.inventory, 'toad_hide');
+    lines.push(hides >= HIDE_NEEDED ? 'Mire: return to Reed Wren.' : `Mire: toad hides ${hides}/${HIDE_NEEDED}`);
+  }
   if (q.east_road === 'done' && q.harl_commission === 'none') lines.push('Smith Harl has a commission.');
   else if (q.harl_commission === 'active') lines.push('Harl: 3 pelts, 2 logs, 1 copper.');
   if (q.lanterns === 'none' && q.east_road !== 'none') lines.push('Nessa needs 2 tin ore for the lanterns.');
@@ -386,6 +430,7 @@ export function trackerLines(save: SaveData): string[] {
     if (q.duskUnlocked) open.push('dusk');
     if (q.cinderUnlocked) open.push('cinder');
     if (q.delverUnlocked) open.push('delver');
+    if (q.mireUnlocked) open.push('mire');
     if (open.length === 1) lines.push('Briar patterns are open.');
     else lines.push(`Anvil: ${open.join(', ')}.`);
   }

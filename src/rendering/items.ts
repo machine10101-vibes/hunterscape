@@ -54,6 +54,13 @@ import {
   createDelverMaul,
   createDelverVest,
 } from './delverGear';
+import {
+  createMireBoot,
+  createMireCloak,
+  createMireDagger,
+  createToadHideItem,
+  createVenomSacItem,
+} from './mireGear';
 
 function std(color: number, opts: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
@@ -125,6 +132,11 @@ export function createItemMesh(id: string): THREE.Group {
   if (id === 'delver_maul') return createDelverMaul();
   if (id === 'delver_vest') return createDelverVest();
   if (id === 'delver_boots') return createDelverBoot();
+  if (id === 'toad_hide') return createToadHideItem();
+  if (id === 'venom_sac') return createVenomSacItem();
+  if (id === 'mire_dagger') return createMireDagger();
+  if (id === 'mire_cloak') return createMireCloak();
+  if (id === 'mire_boots') return createMireBoot();
   return makeUnknown();
 }
 

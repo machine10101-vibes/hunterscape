@@ -247,6 +247,11 @@ export const ITEM_META: Record<
   delver_maul: { name: 'Delver Maul', icon: '🔨', stackable: false, slot: 'weapon' },
   delver_vest: { name: 'Delver Vest', icon: '🦺', stackable: false, slot: 'chest' },
   delver_boots: { name: 'Delver Boots', icon: '👢', stackable: false, slot: 'boots' },
+  toad_hide: { name: 'Toad Hide', icon: '🐸', stackable: true },
+  venom_sac: { name: 'Venom Sac', icon: '💧', stackable: true },
+  mire_dagger: { name: 'Mire Dagger', icon: '🗡', stackable: false, slot: 'weapon' },
+  mire_cloak: { name: 'Mire Cloak', icon: '🧥', stackable: false, slot: 'chest' },
+  mire_boots: { name: 'Mire Boots', icon: '👢', stackable: false, slot: 'boots' },
 };
 
 export const EQUIP_SLOTS: { id: EquipSlot; label: string }[] = [
@@ -550,6 +555,38 @@ export const DELVER_RECIPES: Recipe[] = [
   },
 ];
 
+export const MIRE_RECIPES: Recipe[] = [
+  {
+    id: 'mire_dagger',
+    name: 'Mire Dagger',
+    blurb: 'A reed-wrapped dagger with a venom groove. Stab. Special: Venom.',
+    cost: [
+      { id: 'toad_hide', qty: 1 },
+      { id: 'venom_sac', qty: 1 },
+      { id: 'copper_ore', qty: 1 },
+      { id: 'whisper_logs', qty: 1 },
+    ],
+  },
+  {
+    id: 'mire_cloak',
+    name: 'Mire Cloak',
+    blurb: 'A toad-hide cloak lined in reed, clasped in copper.',
+    cost: [
+      { id: 'toad_hide', qty: 3 },
+      { id: 'venom_sac', qty: 1 },
+    ],
+  },
+  {
+    id: 'mire_boots',
+    name: 'Mire Boots',
+    blurb: 'Soft hide boots with a reed wrap and a copper hobnail.',
+    cost: [
+      { id: 'toad_hide', qty: 2 },
+      { id: 'whisper_logs', qty: 1 },
+    ],
+  },
+];
+
 export function countItem(inv: ItemStack[], id: string): number {
   return inv.filter((s) => s.id === id).reduce((n, s) => n + s.qty, 0);
 }
@@ -573,6 +610,7 @@ const ARMOR_BONUS: Record<string, number> = {
   briar_vest: 2,
   dusk_cloak: 2,
   delver_vest: 2,
+  mire_cloak: 2,
   frost_greaves: 2,
   road_greaves: 1,
   frost_legs: 2,
@@ -582,7 +620,28 @@ const ARMOR_BONUS: Record<string, number> = {
   briar_boots: 1,
   dusk_boots: 1,
   delver_boots: 1,
+  mire_boots: 1,
 };
+
+/** Two or more worn pieces from one family add a point of armour. */
+const ARMOR_FAMILIES: Record<string, string[]> = {
+  frost: ['frost_shield', 'frost_chest', 'frost_greaves', 'frost_legs', 'frost_boots'],
+  briar: ['briar_shield', 'briar_vest', 'briar_boots'],
+  road: ['road_shield', 'road_legs', 'road_greaves'],
+  dusk: ['dusk_cloak', 'dusk_boots'],
+  cinder: ['cinder_shield', 'cinder_legs'],
+  delver: ['delver_vest', 'delver_boots'],
+  mire: ['mire_cloak', 'mire_boots'],
+};
+
+export function setBonus(save: SaveData): number {
+  const worn = new Set(Object.values(save.equipped));
+  let n = 0;
+  for (const pieces of Object.values(ARMOR_FAMILIES)) {
+    if (pieces.filter((id) => worn.has(id)).length >= 2) n += 1;
+  }
+  return n;
+}
 
 export function itemArmor(id: string | null): number {
   return id ? (ARMOR_BONUS[id] ?? 0) : 0;
@@ -591,7 +650,7 @@ export function itemArmor(id: string | null): number {
 export function armorMitigation(save: SaveData): number {
   let n = 0;
   for (const id of Object.values(save.equipped)) n += itemArmor(id);
-  return n;
+  return n + setBonus(save);
 }
 
 const WEAPON_DAMAGE: Record<string, number> = {
@@ -604,6 +663,7 @@ const WEAPON_DAMAGE: Record<string, number> = {
   dusk_dagger: 2,
   cinder_knife: 2,
   delver_maul: 3,
+  mire_dagger: 2,
 };
 
 const WEAPON_STYLE: Record<string, AttackStyle> = {
@@ -616,8 +676,41 @@ const WEAPON_STYLE: Record<string, AttackStyle> = {
   frost_hammer: 'crush',
   road_mace: 'crush',
   delver_maul: 'crush',
+  mire_dagger: 'stab',
   frost_bow: 'ranged',
 };
+
+export interface WeaponSpec {
+  name: string;
+  cost: number;
+  blurb: string;
+  /** Multiplier on the blow that spends the special. */
+  mult: number;
+  heal: number;
+  /** Damage each second for three seconds. */
+  bleed: number;
+  /** Extra seconds before the target can strike back. */
+  stun: number;
+}
+
+/** Every held weapon has a Focus special. Bronze is the camp default. */
+export const WEAPON_SPECS: Record<string, WeaponSpec> = {
+  bronze_sword: { name: 'Cleave', cost: 30, blurb: 'A wide cut.', mult: 1.45, heal: 0, bleed: 0, stun: 0 },
+  frost_sword: { name: 'Rime Edge', cost: 35, blurb: 'Frost bites and slows the next strike.', mult: 1.3, heal: 0, bleed: 0, stun: 1.4 },
+  frost_spear: { name: 'Impale', cost: 40, blurb: 'A deep thrust.', mult: 1.55, heal: 0, bleed: 0, stun: 0 },
+  frost_hammer: { name: 'Quake', cost: 45, blurb: 'The head rings the ground.', mult: 1.6, heal: 0, bleed: 0, stun: 0.8 },
+  frost_bow: { name: 'Volley', cost: 35, blurb: 'A focused shot.', mult: 1.4, heal: 0, bleed: 0, stun: 0 },
+  briar_sword: { name: 'Briar Cut', cost: 30, blurb: 'Thorns keep working.', mult: 1.15, heal: 0, bleed: 2, stun: 0 },
+  road_mace: { name: 'Bell Ringer', cost: 35, blurb: 'A blow that stuns.', mult: 1.25, heal: 0, bleed: 0, stun: 2 },
+  dusk_dagger: { name: 'Night Nick', cost: 30, blurb: 'You take a little of the wound back.', mult: 1.2, heal: 6, bleed: 0, stun: 0 },
+  cinder_knife: { name: 'Ember Jab', cost: 30, blurb: 'The edge stays hot.', mult: 1.2, heal: 0, bleed: 2, stun: 0 },
+  delver_maul: { name: 'Shellbreak', cost: 40, blurb: 'Built to crack plate.', mult: 1.65, heal: 0, bleed: 0, stun: 0.6 },
+  mire_dagger: { name: 'Venom', cost: 35, blurb: 'The cut keeps working.', mult: 1.1, heal: 0, bleed: 3, stun: 0 },
+};
+
+export function weaponSpec(id: string | null): WeaponSpec | null {
+  return id ? (WEAPON_SPECS[id] ?? null) : null;
+}
 
 export function weaponDamageBonus(id: string | null): number {
   return id ? (WEAPON_DAMAGE[id] ?? 0) : 0;
@@ -641,6 +734,7 @@ export const MONSTER_PROFILE: Record<string, MonsterProfile> = {
   spider: { level: 16, weak: 'crush' },
   fox: { level: 18, weak: 'slash' },
   beetle: { level: 20, weak: 'crush' },
+  toad: { level: 17, weak: 'slash' },
   boar: { level: 22, weak: 'stab' },
   orc: { level: 33, weak: 'stab' },
   yeti: { level: 42, weak: 'crush' },
@@ -668,6 +762,8 @@ export function gearLine(id: string): string {
     bits.push(style[0].toUpperCase() + style.slice(1));
     const dmg = weaponDamageBonus(id);
     if (dmg) bits.push(`+${dmg} damage`);
+    const spec = weaponSpec(id);
+    if (spec) bits.push(`${spec.name} (${spec.cost} focus)`);
   }
   const arm = itemArmor(id);
   if (arm) bits.push(`+${arm} armour`);
@@ -740,6 +836,8 @@ export function defaultSave(): SaveData {
       cinderUnlocked: false,
       claim_beetles: 'none',
       delverUnlocked: false,
+      mire_toads: 'none',
+      mireUnlocked: false,
     },
   };
 }

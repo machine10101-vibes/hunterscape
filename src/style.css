@@ -1074,6 +1074,53 @@ html, body {
 }
 .ab-slot.locked .ab-lock { display: block; }
 
+.ab-spec {
+  position: relative;
+  width: 58px;
+  min-width: 58px;
+  padding: 8px 4px 6px;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(40, 70, 110, 0.4), transparent 58%),
+    var(--slot);
+  border: 1px solid #3a6288;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: #d6ecff;
+  box-shadow: var(--inset);
+}
+
+.ab-spec-name {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9fd4f5;
+  line-height: 1.05;
+  text-align: center;
+}
+
+.ab-spec-cost {
+  font-size: 9px;
+  font-weight: 700;
+  color: #7ec8ef;
+  line-height: 1;
+}
+
+.ab-spec.armed {
+  border-color: #7ec8ef;
+  box-shadow: 0 0 12px rgba(126, 200, 239, 0.5);
+}
+
+.ab-spec:hover, .ab-spec:focus-visible {
+  border-color: #b7e4ff;
+  outline: none;
+}
+
 .ab-cd {
   position: absolute;
   left: 0;
@@ -1347,6 +1394,9 @@ html, body {
   }
 
   .ab-slot { width: 46px; height: 58px; }
+  .ab-spec { width: 42px; min-width: 42px; height: 58px; padding: 4px 2px; }
+  .ab-spec-name { font-size: 8px; }
+  .ab-spec-cost { font-size: 8px; }
   .ab-icon { width: 24px; height: 24px; font-size: 13px; }
   .ab-name { font-size: 8px; }
   .ab-key { display: none; }

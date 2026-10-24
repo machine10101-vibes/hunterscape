@@ -34,6 +34,7 @@ import { createBriarWolf, poseBriarWolf, WOLF_HOMES } from '../rendering/wolf';
 import { createDuskFox, FOX_HOMES, poseDuskFox } from '../rendering/duskFox';
 import { CROW_HOMES, createCinderCrow, poseCinderCrow } from '../rendering/cinderCrow';
 import { BEETLE_HOMES, createOreBeetle, poseOreBeetle } from '../rendering/oreBeetle';
+import { TOAD_HOMES, createMireToad, poseMireToad } from '../rendering/mireToad';
 import { addWeaknessMark } from '../rendering/weaknessMark';
 import {
   BOAR_HOMES,
@@ -86,6 +87,7 @@ import {
   DELVER_RECIPES,
   DUSK_RECIPES,
   ITEM_META,
+  MIRE_RECIPES,
   ROAD_RECIPES,
   STANCES,
   YETI_RECIPES,
@@ -96,8 +98,10 @@ import {
   gearLine,
   levelFromXp,
   monsterProfile,
+  setBonus,
   weaponDamageBonus,
   weaponReachBonus,
+  weaponSpec,
   weaponStyle,
   type CombatSkillId,
   type EquipSlot,
@@ -112,12 +116,13 @@ import {
   EAST_ROAD_KILLS,
   FEATHER_NEEDED,
   FUR_NEEDED,
+  HIDE_NEEDED,
   SHELL_NEEDED,
   SILK_NEEDED,
   type NpcId,
 } from './quests';
 
-type InteractKind = 'tree' | 'rock' | 'dummy' | 'yeti' | 'orc' | 'wolf' | 'boar' | 'spider' | 'fox' | 'crow' | 'beetle' | 'forge' | 'npc';
+type InteractKind = 'tree' | 'rock' | 'dummy' | 'yeti' | 'orc' | 'wolf' | 'boar' | 'spider' | 'fox' | 'crow' | 'beetle' | 'toad' | 'forge' | 'npc';
 type ForgeBench = 'camp' | 'briar';
 
 interface WorldObject {
@@ -128,6 +133,12 @@ interface WorldObject {
   maxHp: number;
   depleted: boolean;
   respawnAt: number;
+  /** Remaining once-per-second bleed ticks from a weapon special. */
+  bleedTicks?: number;
+  bleedDmg?: number;
+  bleedAcc?: number;
+  /** Set the first time this body drops under 40% health. */
+  enraged?: boolean;
   meta?: { ore?: 'copper' | 'tin'; npc?: NpcId; forge?: ForgeBench; homeX?: number; homeZ?: number };
 }
 
@@ -251,6 +262,8 @@ export class Game {
   private orcAttackCd = 0;
   private orcSwipeT = 0;
   private orcAggroed = false;
+  /** Next connecting swing spends Focus on the equipped weapon's special. */
+  private specArmed = false;
   private running = true;
   private sun!: THREE.DirectionalLight;
   private rim!: THREE.DirectionalLight;
@@ -376,6 +389,7 @@ export class Game {
       this.persist();
     };
     this.dialogue.onChoose = (id) => this.onDialogue(id);
+    this.hud.onSpec = () => this.toggleSpec();
 
     this.refreshUI();
     this.hud.chat('Welcome to Thornrest Camp.', 'system');
@@ -388,6 +402,9 @@ export class Game {
     this.hud.chat('Dusk foxes den in the thicket north of the wayside shrine.', 'combat');
     this.hud.chat('Cinder crows mob the charcoal kiln west of camp. Burner Holt wants their feathers.', 'combat');
     this.hud.chat('Skills (K) sets your combat stance. A colored chip on each beast marks the style that bites.', 'system');
+    this.hud.chat('Reed Wren waits by the south mire. Mire toads croak just past her pool.', 'combat');
+    this.hud.chat('Press 6 to arm a weapon special. The next hit spends Focus.', 'system');
+    this.hud.chat('Two pieces of one armour family add a point of armour. Beasts enrage below 40% health.', 'system');
     this.hud.chat('Scroll, pinch, or use + / − to zoom the camera.', 'system');
 
     window.addEventListener('resize', () => this.onResize());
@@ -729,6 +746,7 @@ export class Game {
       { id: 'calder', x: 16.55, z: -6.15, rot: 0 },
       { id: 'holt', x: -13.5, z: -11.2, rot: 0 },
       { id: 'odell', x: -12.2, z: 7.6, rot: 0 },
+      { id: 'wren', x: -4.2, z: 9.4, rot: 0 },
     ];
     for (const n of npcs) {
       const mesh = createTownNpc(n.id);
@@ -893,10 +911,31 @@ export class Game {
         pose: poseOreBeetle,
       });
     });
+
+    TOAD_HOMES.forEach((home, i) => {
+      this.spawnFoe('toad', createMireToad(), home, `toad_${i}`, 26, {
+        aggroR: 1.45,
+        range: 1.45,
+        leash: 2.2,
+        chase: 2.6,
+        dmgMin: 2,
+        dmgMax: 4,
+        knock: 1.0,
+        respawn: 18,
+        label: 'Mire Toad',
+        snarl: 'A mire toad croaks and hops in!',
+        engage: 'A mire toad engages you!',
+        biteLine: 'The mire toad bites you for',
+        loseLine: 'The mire toad hops back into the reeds.',
+        returnLine: 'A mire toad settles back into the south mire.',
+        corpse: 'The mire toad is dead. Another will croak back into the pool.',
+        pose: poseMireToad,
+      });
+    });
   }
 
   private spawnFoe(
-    kind: 'wolf' | 'boar' | 'spider' | 'fox' | 'crow' | 'beetle',
+    kind: 'wolf' | 'boar' | 'spider' | 'fox' | 'crow' | 'beetle' | 'toad',
     mesh: THREE.Group,
     home: { x: number; z: number },
     id: string,
@@ -918,7 +957,7 @@ export class Game {
     };
     this.objects.push(obj);
     this.foes.push({ obj, aggro: false, cd: 1.15, biteT: 0, hitDone: false, ...stats });
-    const markY = kind === 'crow' ? 0.95 : kind === 'spider' ? 0.34 : kind === 'beetle' ? 0.48 : kind === 'fox' ? 0.62 : 0.72;
+    const markY = kind === 'crow' ? 0.95 : kind === 'spider' ? 0.34 : kind === 'beetle' ? 0.48 : kind === 'toad' ? 0.58 : kind === 'fox' ? 0.62 : 0.72;
     addWeaknessMark(mesh, monsterProfile(kind).weak, markY);
   }
 
@@ -927,7 +966,7 @@ export class Game {
   }
 
   private isBeast(kind: InteractKind): boolean {
-    return kind === 'wolf' || kind === 'boar' || kind === 'spider' || kind === 'fox' || kind === 'crow' || kind === 'beetle';
+    return kind === 'wolf' || kind === 'boar' || kind === 'spider' || kind === 'fox' || kind === 'crow' || kind === 'beetle' || kind === 'toad';
   }
 
   private bindInput(canvas: HTMLCanvasElement): void {
@@ -1083,6 +1122,7 @@ export class Game {
       this.keys.add(e.key.toLowerCase());
       const art = COMBAT_SKILLS.find((s) => s.key === e.key);
       if (art) this.handleCombatSkill(art.id);
+      if (e.key === '6') this.toggleSpec();
       if (e.key === '-' || e.key === '_') this.nudgeZoom(1, 0.16);
       if (e.key === '=' || e.key === '+') this.nudgeZoom(-1, 0.16);
       if (e.key.toLowerCase() === 'k') {
@@ -1226,6 +1266,7 @@ export class Game {
       if (obj.meta?.npc === 'calder') return 'Sister Calder';
       if (obj.meta?.npc === 'holt') return 'Burner Holt';
       if (obj.meta?.npc === 'odell') return 'Miner Odell';
+      if (obj.meta?.npc === 'wren') return 'Reed Wren';
       return 'Shopkeep Nessa';
     }
     return obj.kind;
@@ -1242,8 +1283,10 @@ export class Game {
     const style = weaponStyle(weapon);
     const dmg = weaponDamageBonus(weapon);
     const arm = armorMitigation(this.save);
+    const bonus = setBonus(this.save);
     const name = weapon ? (ITEM_META[weapon]?.name ?? weapon) : 'Empty hands';
-    return `${name} · ${style} · +${dmg} damage · ${arm} armour · ${STANCES.find((s) => s.id === this.save.stance)?.name ?? 'Controlled'}`;
+    const setBit = bonus > 0 ? ` · set +${bonus}` : '';
+    return `${name} · ${style} · +${dmg} damage · ${arm} armour${setBit} · ${STANCES.find((s) => s.id === this.save.stance)?.name ?? 'Controlled'}`;
   }
 
   private isMonster(obj: WorldObject): boolean {
@@ -1418,6 +1461,107 @@ export class Game {
     this.beginCombat(target, `You ready ${skill.name} against the ${this.combatName(target)}!`);
   }
 
+  private toggleSpec(): void {
+    const spec = weaponSpec(this.save.equipped.weapon);
+    if (!spec) {
+      this.specArmed = false;
+      this.hud.chat('Equip a weapon to arm a special.', 'system');
+      this.refreshSpecButton();
+      return;
+    }
+    this.specArmed = !this.specArmed;
+    this.hud.chat(
+      this.specArmed
+        ? `${spec.name} armed. The next hit spends ${spec.cost} Focus. ${spec.blurb}`
+        : `${spec.name} lowered.`,
+      'system',
+    );
+    this.refreshSpecButton();
+  }
+
+  private refreshSpecButton(): void {
+    const spec = weaponSpec(this.save.equipped.weapon);
+    this.hud.setSpec(spec?.name ?? 'Spec', this.specArmed && !!spec, this.save.focus, spec?.cost ?? 0);
+  }
+
+  /** Spend Focus on a connecting hit. A short pool leaves the swing plain and the arm up. */
+  private applyArmedSpec(target: WorldObject, dmg: number): { spec: NonNullable<ReturnType<typeof weaponSpec>>; dmg: number } | null {
+    if (!this.specArmed) return null;
+    const spec = weaponSpec(this.save.equipped.weapon);
+    if (!spec) {
+      this.specArmed = false;
+      this.hud.chat('That weapon has no special. The swing lands plain.', 'system');
+      return null;
+    }
+    if (this.save.focus < spec.cost) {
+      this.hud.chat(`Not enough Focus for ${spec.name}. The swing lands plain.`, 'system');
+      return null;
+    }
+    this.save.focus -= spec.cost;
+    this.specArmed = false;
+    const next = Math.max(1, Math.floor(dmg * spec.mult));
+    if (spec.heal > 0) {
+      const before = this.save.hp;
+      this.save.hp = Math.min(this.save.maxHp, this.save.hp + spec.heal);
+      const gained = this.save.hp - before;
+      if (gained > 0) this.hud.chat(`${spec.name} restores ${gained} health.`, 'loot');
+    }
+    if (spec.bleed > 0) {
+      target.bleedTicks = 3;
+      target.bleedDmg = spec.bleed;
+      target.bleedAcc = 0;
+    }
+    if (spec.stun > 0) {
+      const foe = this.foeOf(target);
+      if (foe) foe.cd += spec.stun;
+      if (target.kind === 'yeti') this.yetiAttackCd += spec.stun;
+      if (target.kind === 'orc') this.orcAttackCd += spec.stun;
+    }
+    return { spec, dmg: next };
+  }
+
+  private tickBleeds(dt: number): void {
+    for (const o of this.objects) {
+      if (!o.bleedTicks || o.bleedTicks <= 0 || o.hp <= 0 || o.depleted) continue;
+      o.bleedAcc = (o.bleedAcc ?? 0) + dt;
+      if (o.bleedAcc < 1) continue;
+      o.bleedAcc -= 1;
+      o.bleedTicks -= 1;
+      const dmg = o.bleedDmg ?? 1;
+      o.hp = Math.max(0, o.hp - dmg);
+      this.vfx.spawnDamage(o.mesh.position.clone().setY(1.35), dmg);
+      this.hud.chat(`The wound on the ${this.combatName(o)} bleeds for ${dmg}.`, 'combat');
+      if (o.hp <= 0) {
+        o.bleedTicks = 0;
+        if (o.kind === 'yeti') this.onYetiDeath(o);
+        else if (o.kind === 'orc') this.onOrcDeath(o);
+        else if (this.isBeast(o.kind)) this.onFoeDeath(o);
+        else this.onDummyDeath(o);
+      } else if (this.activity.type === 'combat' && this.activity.target === o) {
+        this.hud.showTarget(this.combatName(o), o.hp / o.maxHp, this.combatDetail(o));
+      }
+    }
+  }
+
+  private clearWound(o: WorldObject): void {
+    o.bleedTicks = 0;
+    o.bleedDmg = 0;
+    o.bleedAcc = 0;
+    o.enraged = false;
+  }
+
+  /** Below 40% health every monster hits harder, and says so once. */
+  private enragedRaw(obj: WorldObject, raw: number): number {
+    if (obj.maxHp > 0 && obj.hp / obj.maxHp < 0.4) {
+      if (!obj.enraged) {
+        obj.enraged = true;
+        this.hud.chat(`The ${this.combatName(obj)} enrages!`, 'combat');
+      }
+      return raw + 2;
+    }
+    return raw;
+  }
+
   private trySpendSkill(skill: (typeof COMBAT_SKILLS)[number]): boolean {
     if (!skill.costKind || skill.cost <= 0) return true;
     const pool = skill.costKind === 'stamina' ? this.save.stamina : this.save.focus;
@@ -1472,6 +1616,8 @@ export class Game {
       this.hud.chat('A cinder crow. Soot feathers and charcoal are what Burner Holt works into the cinder patterns. Weak to stab.', 'combat');
     else if (all.kind === 'beetle')
       this.hud.chat('An ore beetle. Shells and copper grit are what Miner Odell works into the delver patterns. Weak to crush.', 'combat');
+    else if (all.kind === 'toad')
+      this.hud.chat('A mire toad. Hide and a venom sac are what Reed Wren works into the mire patterns. Weak to slash. It enrages below 40% health.', 'combat');
     else if (all.kind === 'npc') this.talkTo(all);
     else if (all.kind === 'forge' && all.meta?.forge === 'briar')
       this.hud.chat('The Briarford anvil. Harl opens it once his commission is paid.', 'system');
@@ -1820,6 +1966,30 @@ export class Game {
       this.save.quests.delverUnlocked = true;
       this.grantXp('strength', 40);
       this.hud.chat('Odell sets a Delver Maul in your pack and opens the delver patterns.', 'loot');
+    } else if (id === 'wren_accept') {
+      this.save.quests.mire_toads = 'active';
+      this.hud.chat('Quest started: bring Reed Wren 2 toad hides from the south mire.', 'system');
+    } else if (
+      id === 'wren_turnin' &&
+      this.save.quests.mire_toads === 'active' &&
+      countItem(this.save.inventory, 'toad_hide') >= HIDE_NEEDED
+    ) {
+      if (!this.consumeId('toad_hide', HIDE_NEEDED)) {
+        this.dialogue.hide();
+        this.refreshUI();
+        return;
+      }
+      if (!this.addItem('mire_dagger', 1)) {
+        this.addItem('toad_hide', HIDE_NEEDED);
+        this.hud.chat('Your pack is full — Wren will not take the hides until the dagger will fit.', 'system');
+        this.dialogue.hide();
+        this.refreshUI();
+        return;
+      }
+      this.save.quests.mire_toads = 'done';
+      this.save.quests.mireUnlocked = true;
+      this.grantXp('strength', 40);
+      this.hud.chat('Wren sets a Mire Dagger in your pack and opens the mire patterns.', 'loot');
     }
     this.dialogue.hide();
     this.refreshUI();
@@ -1866,6 +2036,7 @@ export class Game {
     const dusk = this.save.quests.duskUnlocked;
     const cinder = this.save.quests.cinderUnlocked;
     const delver = this.save.quests.delverUnlocked;
+    const mire = this.save.quests.mireUnlocked;
     const openNames = ['briar'];
     const held: string[] = [];
     if (road) openNames.push('roadwarden');
@@ -1876,27 +2047,30 @@ export class Game {
     else held.push('Holt holds cinder');
     if (delver) openNames.push('delver');
     else held.push('Odell holds delver');
+    if (mire) openNames.push('mire');
+    else held.push('Wren holds mire');
     const anvilBlurb = !unlocked
       ? 'Harl keeps the anvil cold until his commission is paid in pelts, logs, and copper.'
       : held.length
         ? `${openNames.join(', ')} patterns are open. ${held.join(', ')}.`
-        : 'Briar, roadwarden, dusk, cinder, and delver patterns share this anvil.';
+        : 'Briar, roadwarden, dusk, cinder, delver, and mire patterns share this anvil.';
     const anvilChat = !unlocked
       ? 'The anvil is shut. Finish Harl’s commission to forge here.'
       : held.length
         ? `The anvil is hot. ${openNames.join(', ')} patterns are open. ${held.join(', ')}.`
-        : 'The anvil is hot. Briar, roadwarden, dusk, cinder, and delver patterns are open.';
+        : 'The anvil is hot. Briar, roadwarden, dusk, cinder, delver, and mire patterns are open.';
     this.hud.setForgeOpen(true, this.save, briar
       ? {
           title: 'Briarford Anvil',
           blurb: anvilBlurb,
-          recipes: [...BRIAR_RECIPES, ...ROAD_RECIPES, ...DUSK_RECIPES, ...CINDER_RECIPES, ...DELVER_RECIPES],
+          recipes: [...BRIAR_RECIPES, ...ROAD_RECIPES, ...DUSK_RECIPES, ...CINDER_RECIPES, ...DELVER_RECIPES, ...MIRE_RECIPES],
           forgeable: unlocked,
           lockedIds: [
             ...(road ? [] : ROAD_RECIPES.map((r) => r.id)),
             ...(dusk ? [] : DUSK_RECIPES.map((r) => r.id)),
             ...(cinder ? [] : CINDER_RECIPES.map((r) => r.id)),
             ...(delver ? [] : DELVER_RECIPES.map((r) => r.id)),
+            ...(mire ? [] : MIRE_RECIPES.map((r) => r.id)),
           ],
         }
       : {
@@ -1910,7 +2084,7 @@ export class Game {
   }
 
   private craftAtForge(recipeId: string): void {
-    const list = this.forgeBench === 'briar' ? [...BRIAR_RECIPES, ...ROAD_RECIPES, ...DUSK_RECIPES, ...CINDER_RECIPES, ...DELVER_RECIPES] : YETI_RECIPES;
+    const list = this.forgeBench === 'briar' ? [...BRIAR_RECIPES, ...ROAD_RECIPES, ...DUSK_RECIPES, ...CINDER_RECIPES, ...DELVER_RECIPES, ...MIRE_RECIPES] : YETI_RECIPES;
     const recipe = list.find((r) => r.id === recipeId);
     if (!recipe) return;
     if (this.forgeBench === 'briar' && !this.save.quests.briarUnlocked) {
@@ -1931,6 +2105,10 @@ export class Game {
     }
     if (recipe.id.startsWith('delver_') && !this.save.quests.delverUnlocked) {
       this.hud.chat('Odell has not opened the delver patterns.', 'system');
+      return;
+    }
+    if (recipe.id.startsWith('mire_') && !this.save.quests.mireUnlocked) {
+      this.hud.chat('Wren has not opened the mire patterns.', 'system');
       return;
     }
     if (!canCraft(this.save, recipe)) {
@@ -1966,6 +2144,7 @@ export class Game {
       beetle: [14, 12, 6],
       wolf: [12, 10, 5],
       fox: [12, 10, 5],
+      toad: [12, 10, 5],
       spider: [11, 9, 4],
       crow: [11, 9, 4],
     };
@@ -2016,6 +2195,8 @@ export class Game {
       this.skillCd[id] = Math.max(0, this.skillCd[id] - dt);
     }
     this.hud.setSkillBar(this.save, this.skillCd, this.guardLeft);
+    this.refreshSpecButton();
+    this.tickBleeds(dt);
     if (this.save.hp < this.save.maxHp) {
       this.save.hp = Math.min(this.save.maxHp, this.save.hp + dt * 1.5);
     }
@@ -2037,6 +2218,7 @@ export class Game {
         o.mesh.rotation.set(0, 0, 0);
         o.mesh.position.y = groundHeight(o.mesh.position.x, o.mesh.position.z);
         o.mesh.scale.setScalar(1);
+        this.clearWound(o);
         this.hud.chat('The training dummy is patched up and ready again.', 'system');
       }
       if (o.kind === 'yeti' && o.depleted && now >= o.respawnAt) {
@@ -2056,6 +2238,7 @@ export class Game {
         this.yetiMoveBlend = 0;
         this.yetiGait = 0;
         this.yetiSmoother.reset();
+        this.clearWound(o);
         animateYetiSwipe(o.mesh, 0);
         animateYetiWalk(o.mesh, this.animTime, false);
         this.hud.chat('A Frost Yeti stomps back into the north-east clearing!', 'combat');
@@ -2073,6 +2256,7 @@ export class Game {
         this.orcHitDone = false;
         this.orcGait = 0;
         this.orcSmoother.reset();
+        this.clearWound(o);
         animateOrcSpear(o.mesh, 0);
         animateOrcWalk(o.mesh, this.animTime, false);
         this.hud.chat('An Orc Scout stalks back onto the south-west trail!', 'combat');
@@ -2082,7 +2266,7 @@ export class Game {
         o.depleted = false;
         o.mesh.visible = true;
         o.mesh.rotation.set(0, o.kind === 'spider' ? -0.4 : Math.PI * 0.5, 0);
-        o.mesh.scale.setScalar(1);
+        this.clearWound(o);
         const hx = o.meta?.homeX ?? o.mesh.position.x;
         const hz = o.meta?.homeZ ?? o.mesh.position.z;
         o.mesh.position.set(hx, groundHeight(hx, hz), hz);
@@ -2573,6 +2757,8 @@ export class Game {
     );
     if (this.save.stance === 'aggressive') dmg += 1;
     if (matched) dmg += 1;
+    const specUsed = this.applyArmedSpec(target, dmg);
+    if (specUsed) dmg = specUsed.dmg;
     target.hp -= dmg;
     this.grantSwingXp(target);
     const hitPos = target.mesh.position.clone().setY(1.25);
@@ -2602,20 +2788,21 @@ export class Game {
     const struck = this.foeOf(target);
     if (struck) struck.aggro = true;
 
+    const specTag = specUsed ? ` (${specUsed.spec.name})` : '';
     if (target.kind === 'dummy') {
       const recoil = Math.random() < 0.15 ? 1 : 0;
       if (recoil) {
         this.save.hp = Math.max(1, this.save.hp - recoil);
-        this.hud.chat(`You hit the dummy with ${art.name} for ${dmg}. Splinter grazes you (-${recoil}).`, 'combat');
+        this.hud.chat(`You hit the dummy with ${art.name} for ${dmg}${specTag}. Splinter grazes you (-${recoil}).`, 'combat');
       } else {
-        this.hud.chat(`You hit the training dummy with ${art.name} for ${dmg} damage.`, 'combat');
+        this.hud.chat(`You hit the training dummy with ${art.name} for ${dmg} damage${specTag}.`, 'combat');
       }
     } else if (target.kind === 'orc') {
-      this.hud.chat(`You ${art.name.toLowerCase()} the Orc Scout for ${dmg} damage!`, 'combat');
+      this.hud.chat(`You ${art.name.toLowerCase()} the Orc Scout for ${dmg} damage${specTag}!`, 'combat');
     } else if (this.isBeast(target.kind)) {
-      this.hud.chat(`You ${art.name.toLowerCase()} the ${this.foeOf(target)?.label ?? 'beast'} for ${dmg} damage!`, 'combat');
+      this.hud.chat(`You ${art.name.toLowerCase()} the ${this.foeOf(target)?.label ?? 'beast'} for ${dmg} damage${specTag}!`, 'combat');
     } else {
-      this.hud.chat(`You ${art.name.toLowerCase()} the Frost Yeti for ${dmg} damage!`, 'combat');
+      this.hud.chat(`You ${art.name.toLowerCase()} the Frost Yeti for ${dmg} damage${specTag}!`, 'combat');
     }
 
     if (target.hp <= 0) {
@@ -2628,6 +2815,7 @@ export class Game {
       this.hud.showTarget(label, target.hp / target.maxHp, this.combatDetail(target));
     }
     this.refreshUI();
+    this.refreshSpecButton();
     this.persist();
   }
 
@@ -2779,6 +2967,19 @@ export class Game {
           'system',
         );
       }
+    } else if (target.kind === 'toad') {
+      this.hud.chat('The mire toad drops. A hide and a venom sac come free.', 'combat');
+      if (this.addItem('toad_hide', 1)) this.hud.chat('You skin a Toad Hide.', 'loot');
+      if (Math.random() < 0.4 && this.addItem('venom_sac', 1)) this.hud.chat('You cut free a Venom Sac.', 'loot');
+      if (this.save.quests.mire_toads === 'active') {
+        const n = countItem(this.save.inventory, 'toad_hide');
+        this.hud.chat(
+          n >= HIDE_NEEDED
+            ? 'Wren has enough hides. Return to the south mire.'
+            : `Toad hides gathered: ${n}/${HIDE_NEEDED}.`,
+          'system',
+        );
+      }
     } else if (target.kind === 'crow') {
       this.hud.chat('The cinder crow drops. A soot feather and a lump of charcoal come free.', 'combat');
       if (this.addItem('soot_feather', 1)) this.hud.chat('You pluck a Soot Feather.', 'loot');
@@ -2900,7 +3101,7 @@ export class Game {
     const foe = this.foeOf(beast);
     const min = foe?.dmgMin ?? 2;
     const max = foe?.dmgMax ?? 4;
-    const raw = min + Math.floor(Math.random() * (max - min + 1));
+    const raw = this.enragedRaw(beast, min + Math.floor(Math.random() * (max - min + 1)));
     const mitigated = this.mitigateIncoming(raw);
     this.save.hp = Math.max(0, this.save.hp - mitigated);
     this.vfx.spawnHitSparks(this.player.position.clone().setY(0.9), 10);
@@ -3066,7 +3267,7 @@ export class Game {
   private yetiMeleeHit(yeti: WorldObject): void {
     const dist = this.distTo(yeti);
     if (dist > YETI_ATTACK_RANGE + 0.65) return;
-    const raw = YETI_DMG_MIN + Math.floor(Math.random() * (YETI_DMG_MAX - YETI_DMG_MIN + 1));
+    const raw = this.enragedRaw(yeti, YETI_DMG_MIN + Math.floor(Math.random() * (YETI_DMG_MAX - YETI_DMG_MIN + 1)));
     const mitigated = this.mitigateIncoming(raw);
     this.save.hp = Math.max(0, this.save.hp - mitigated);
     this.vfx.spawnClawSlash(this.player.position.clone(), 14);
@@ -3209,7 +3410,7 @@ export class Game {
   private orcMeleeHit(orc: WorldObject): void {
     const dist = this.distTo(orc);
     if (dist > ORC_ATTACK_RANGE + 0.65) return;
-    const raw = ORC_DMG_MIN + Math.floor(Math.random() * (ORC_DMG_MAX - ORC_DMG_MIN + 1));
+    const raw = this.enragedRaw(orc, ORC_DMG_MIN + Math.floor(Math.random() * (ORC_DMG_MAX - ORC_DMG_MIN + 1)));
     const mitigated = this.mitigateIncoming(raw);
     this.save.hp = Math.max(0, this.save.hp - mitigated);
     this.vfx.spawnSpearThrust(this.player.position.clone(), 14);
@@ -3386,6 +3587,7 @@ export class Game {
       else if (o.kind === 'fox') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#d07048' });
       else if (o.kind === 'crow') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#5c5348' });
       else if (o.kind === 'beetle') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#6a8a48' });
+      else if (o.kind === 'toad') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#3e7a3a' });
       else if (o.kind === 'npc') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#f0d070' });
       else if (o.kind === 'forge' && o.meta?.forge === 'briar')
         markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#e09040' });

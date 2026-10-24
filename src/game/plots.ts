@@ -50,6 +50,8 @@ export const PLOT_LANDMARKS: PlotLandmark[] = [
   { name: 'Cinder crows', x: -11.7, z: -14.8 },
   { name: 'Copper claim', x: -13.0, z: 8.4 },
   { name: 'Ore beetles', x: -13.0, z: 11.7 },
+  { name: 'Reed mire', x: -4.4, z: 10.2 },
+  { name: 'Mire toads', x: -4.0, z: 12.5 },
   { name: 'Frost cairn', x: 7.5, z: 42 },
   { name: 'Hunter stumps', x: -5.2, z: -41 },
   { name: 'Stream ford', x: 38, z: -8.4 },
