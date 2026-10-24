@@ -1,4 +1,4 @@
-import { defaultSave, ITEM_META, type SaveData } from './types';
+import { defaultSave, ITEM_META, STANCES, type SaveData } from './types';
 
 const KEY = 'hunterscape_save_v1';
 
@@ -25,6 +25,8 @@ export function loadSave(): SaveData {
       skills: { ...base.skills, ...data.skills },
       equipped: { ...base.equipped, ...data.equipped },
       inventory: data.inventory ?? base.inventory,
+      quests: { ...base.quests, ...(data.quests ?? {}) },
+      stance: STANCES.some((s) => s.id === data.stance) ? data.stance : base.stance,
     });
   } catch {
     return defaultSave();
