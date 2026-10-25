@@ -403,7 +403,7 @@ function combatGuardOf(player: THREE.Group): BodyPose {
   const tool = heldCombatTool(player);
   const shield = isShieldWorn(player);
   if (tool === 'frost_bow') return BOW_GUARD;
-  if (tool === 'frost_spear') return shield ? withShieldArm(SPEAR_GUARD) : SPEAR_GUARD;
+  if (tool === 'frost_spear' || tool === 'gale_spear') return shield ? withShieldArm(SPEAR_GUARD) : SPEAR_GUARD;
   if (tool === 'frost_hammer') return shield ? withShieldArm(HAMMER_GUARD) : HAMMER_GUARD;
   return shield ? withShieldArm(SWORD_GUARD) : SWORD_GUARD;
 }
@@ -566,7 +566,7 @@ export function animatePlayerWalk(
       setHandGrip(get(player, 'handR'), 0.38);
       setHandGrip(get(player, 'handL'), 0.9);
     } else {
-      if (tool === 'frost_spear') {
+      if (tool === 'frost_spear' || tool === 'gale_spear') {
         rot(get(player, 'armR'), 0.04 + bounce * 0.16, 0.2, 0.3);
         rot(get(player, 'forearmR'), -1.18 - bounce * 0.16, -0.08, 0.06);
         rot(get(player, 'handR'), 0.24, -1.02, -0.12);
@@ -586,8 +586,8 @@ export function animatePlayerWalk(
         rot(get(player, 'forearmL'), ...(s.forearmL as Rot3));
         rot(get(player, 'handL'), ...(s.handL as Rot3));
         setHandGrip(get(player, 'handL'), s.gripL ?? 0.35);
-      } else if (tool === 'frost_spear' || tool === 'frost_hammer') {
-        const g = tool === 'frost_spear' ? SPEAR_GUARD : HAMMER_GUARD;
+      } else if (tool === 'frost_spear' || tool === 'gale_spear' || tool === 'frost_hammer') {
+        const g = tool === 'frost_hammer' ? HAMMER_GUARD : SPEAR_GUARD;
         rot(get(player, 'armL'), g.armL![0] + bounce * 0.08, g.armL![1], g.armL![2]);
         rot(get(player, 'forearmL'), ...(g.forearmL as Rot3));
         rot(get(player, 'handL'), ...(g.handL as Rot3));

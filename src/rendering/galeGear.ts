@@ -91,42 +91,62 @@ export function createGaleSpear(): THREE.Group {
   return g;
 }
 
-/** A slate cloak clasped in brass, with a white feather at the shoulder. */
+/** Slate wrap over the ribs, a shoulder yoke, and a short cape. Replaces the camp tunic. */
 export function createGaleCloak(): THREE.Group {
   const g = new THREE.Group();
-  const cloth = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.34, 0.07), pal.cloth());
-  cloth.position.y = 0.02;
-  add(g, cloth);
-  const lining = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.2, 0.02), pal.feather());
-  lining.position.set(0, 0.02, 0.045);
-  add(g, lining);
-  const clasp = new THREE.Mesh(new THREE.SphereGeometry(0.028, 6, 5), pal.brass());
-  clasp.position.set(0, 0.16, 0.06);
+  const vest = new THREE.Mesh(new THREE.SphereGeometry(0.27, 12, 10), pal.cloth());
+  vest.scale.set(0.92, 1.08, 0.7);
+  vest.position.set(0, 0.0, 0.02);
+  add(g, vest);
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), pal.slate());
+  belly.scale.set(1.05, 0.72, 0.46);
+  belly.position.set(0, -0.16, 0.08);
+  add(g, belly);
+  const yoke = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), pal.slate());
+  yoke.scale.set(1.6, 0.32, 0.95);
+  yoke.position.set(0, 0.2, 0.0);
+  add(g, yoke);
+
+  const cape = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.46, 7, 1, true), pal.cloth());
+  cape.position.set(0, -0.02, -0.16);
+  cape.rotation.x = 0.42;
+  add(g, cape);
+  const lining = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.38, 7, 1, true), pal.slate());
+  lining.position.set(0, 0.0, -0.12);
+  lining.rotation.set(0.42, Math.PI, 0);
+  g.add(lining);
+
+  const collar = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.024, 6, 10), pal.feather());
+  collar.rotation.x = Math.PI / 2;
+  collar.position.y = 0.24;
+  add(g, collar);
+  const clasp = new THREE.Mesh(new THREE.SphereGeometry(0.026, 6, 5), pal.brass());
+  clasp.position.set(0, 0.12, 0.2);
   add(g, clasp);
-  const feather = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.12, 0.012), pal.feather());
-  feather.position.set(0.12, 0.12, 0.05);
-  feather.rotation.z = -0.4;
+  const feather = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.16, 0.008), pal.feather());
+  feather.position.set(0.16, 0.22, 0.06);
+  feather.rotation.z = -0.65;
   add(g, feather);
   return g;
 }
 
-/** Light slate boot with a brass spur. */
+/** A slate boot that covers the foot, with a pale cuff and a brass spur. */
 export function createGaleBoot(): THREE.Group {
   const g = new THREE.Group();
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.068, 0.08, 0.12, 7), pal.slate());
-  shaft.position.y = 0.04;
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.084, 0.15, 8), pal.slate());
+  shaft.position.y = 0.05;
   add(g, shaft);
-  const cuff = new THREE.Mesh(new THREE.TorusGeometry(0.074, 0.01, 4, 8), pal.feather());
+  const cuff = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.016, 5, 8), pal.feather());
   cuff.rotation.x = Math.PI / 2;
-  cuff.position.y = 0.1;
+  cuff.position.y = 0.12;
   g.add(cuff);
-  const toe = new THREE.Mesh(new THREE.SphereGeometry(0.055, 6, 5), pal.cloth());
-  toe.scale.set(1.05, 0.48, 1.25);
-  toe.position.set(0, 0, 0.09);
+  const toe = new THREE.Mesh(new THREE.SphereGeometry(0.078, 8, 6), pal.cloth());
+  toe.scale.set(1.15, 0.52, 1.6);
+  toe.position.set(0, -0.02, 0.09);
   add(g, toe);
   const spur = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.05, 4), pal.brass());
   spur.rotation.z = Math.PI / 2;
-  spur.position.set(0.06, 0.04, -0.02);
+  spur.position.set(0.08, 0.03, -0.02);
   add(g, spur);
   return g;
 }
@@ -137,7 +157,7 @@ export function attachGaleWear(player: THREE.Group): void {
     const cloak = createGaleCloak();
     cloak.name = 'wear_gale_chest';
     cloak.visible = false;
-    cloak.position.set(0, 0.02, 0.03);
+    cloak.position.set(0, 0.0, 0.02);
     cloak.scale.setScalar(1.02);
     torso.add(cloak);
   }
