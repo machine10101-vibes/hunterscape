@@ -68,6 +68,13 @@ import {
   createBonesItem,
   createSkullChipItem,
 } from './boneGear';
+import {
+  createGaleBoot,
+  createGaleCloak,
+  createGaleFeatherItem,
+  createGaleSpear,
+  createHawkTalonItem,
+} from './galeGear';
 
 function std(color: number, opts: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
@@ -149,6 +156,11 @@ export function createItemMesh(id: string): THREE.Group {
   if (id === 'bone_sword') return createBoneSword();
   if (id === 'bone_ribs') return createBoneRibs();
   if (id === 'bone_boots') return createBoneBoot();
+  if (id === 'gale_feather') return createGaleFeatherItem();
+  if (id === 'hawk_talon') return createHawkTalonItem();
+  if (id === 'gale_spear') return createGaleSpear();
+  if (id === 'gale_cloak') return createGaleCloak();
+  if (id === 'gale_boots') return createGaleBoot();
   return makeUnknown();
 }
 

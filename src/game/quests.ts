@@ -1,6 +1,6 @@
 import { countItem, type SaveData } from './types';
 
-export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve' | 'calder' | 'holt' | 'odell' | 'wren' | 'marr';
+export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve' | 'calder' | 'holt' | 'odell' | 'wren' | 'marr' | 'quill';
 export type QuestStage = 'none' | 'active' | 'done';
 
 export interface QuestState {
@@ -14,6 +14,7 @@ export interface QuestState {
   claim_beetles: QuestStage;
   mire_toads: QuestStage;
   barrow_bones: QuestStage;
+  gale_roost: QuestStage;
   wolfKills: number;
   boarKills: number;
   briarUnlocked: boolean;
@@ -23,6 +24,7 @@ export interface QuestState {
   delverUnlocked: boolean;
   mireUnlocked: boolean;
   boneUnlocked: boolean;
+  galeUnlocked: boolean;
 }
 
 export function defaultQuests(): QuestState {
@@ -37,6 +39,7 @@ export function defaultQuests(): QuestState {
     claim_beetles: 'none',
     mire_toads: 'none',
     barrow_bones: 'none',
+    gale_roost: 'none',
     wolfKills: 0,
     boarKills: 0,
     briarUnlocked: false,
@@ -46,6 +49,7 @@ export function defaultQuests(): QuestState {
     delverUnlocked: false,
     mireUnlocked: false,
     boneUnlocked: false,
+    galeUnlocked: false,
   };
 }
 
@@ -57,6 +61,7 @@ export const FEATHER_NEEDED = 2;
 export const SHELL_NEEDED = 2;
 export const HIDE_NEEDED = 2;
 export const BONE_NEEDED = 2;
+export const GALE_NEEDED = 2;
 
 export interface DialogueOption {
   id: string;
@@ -334,7 +339,40 @@ export function dialogueFor(save: SaveData, npc: NpcId): DialogueScript {
     }
     return {
       speaker: 'Sexton Marr',
-      body: 'Bone patterns are on the anvil. Sword: 1 bone, 1 skull chip, 1 copper, 1 log. Ribs: 3 bones, 1 skull chip. Boots: 2 bones, 1 log. The ribs soak crush and the boots soak stab. The bones are still north of the mound if you need more.',
+      body: 'Bone patterns are on the anvil. Sword: 1 bone, 1 skull chip, 1 copper, 1 log. Ribs: 3 bones, 1 skull chip. Boots: 2 bones, 1 log. The ribs soak crush and the boots soak stab. The bones are still north of the mound if you need more. Falconer Quill at the west roost wants gale feathers if the barrow is quiet.',
+      options: [CLOSE],
+    };
+  }
+
+  if (npc === 'quill') {
+    const feathers = countItem(save.inventory, 'gale_feather');
+    if (q.gale_roost === 'none') {
+      return {
+        speaker: 'Falconer Quill',
+        body: 'The west windbreak is not empty. Gale hawks wheel over the roost and strike with stab. Slash cuts the wings. Bring me 2 gale feathers and I will set a gale spear in your hand and open those patterns on the anvil. A long weapon reaches farther. Heavy kit drains your stamina until you are winded.',
+        options: [
+          { id: 'quill_accept', label: 'I will bring the feathers.' },
+          { id: 'close', label: 'The roost can wait.' },
+        ],
+      };
+    }
+    if (q.gale_roost === 'active' && feathers < GALE_NEEDED) {
+      return {
+        speaker: 'Falconer Quill',
+        body: `The hawks are still up. I need ${GALE_NEEDED} gale feathers (you have ${feathers}). They wheel just west of this roost, and a slash weapon cuts them.`,
+        options: [CLOSE],
+      };
+    }
+    if (q.gale_roost === 'active') {
+      return {
+        speaker: 'Falconer Quill',
+        body: 'Two feathers. That will haft a Gale Spear, and the anvil will take feathers, talons, copper, and logs for the cloak and boots. Its special is Crosswind, and it spends Focus. The spear reaches long, and the cloth is light.',
+        options: [{ id: 'quill_turnin', label: 'Take the feathers.' }],
+      };
+    }
+    return {
+      speaker: 'Falconer Quill',
+      body: 'Gale patterns are on the anvil. Spear: 1 feather, 1 talon, 1 copper, 1 log. Cloak: 3 feathers, 1 talon. Boots: 2 feathers, 1 log. The cloak soaks slash and the boots soak crush. They are light, so the walk does not wind you. The hawks are still west of the roost if you need more.',
       options: [CLOSE],
     };
   }
@@ -464,6 +502,14 @@ export function trackerLines(save: SaveData): string[] {
     const bones = countItem(save.inventory, 'bones');
     lines.push(bones >= BONE_NEEDED ? 'Barrow: return to Sexton Marr.' : `Barrow: bones ${bones}/${BONE_NEEDED}`);
   }
+  if (q.barrow_bones === 'done' && q.gale_roost === 'none') {
+    lines.push('Falconer Quill needs 2 gale feathers at the west roost.');
+  } else if (q.gale_roost === 'active') {
+    const feathers = countItem(save.inventory, 'gale_feather');
+    lines.push(
+      feathers >= GALE_NEEDED ? 'Roost: return to Falconer Quill.' : `Roost: gale feathers ${feathers}/${GALE_NEEDED}`,
+    );
+  }
   if (q.east_road === 'done' && q.harl_commission === 'none') lines.push('Smith Harl has a commission.');
   else if (q.harl_commission === 'active') lines.push('Harl: 3 pelts, 2 logs, 1 copper.');
   if (q.lanterns === 'none' && q.east_road !== 'none') lines.push('Nessa needs 2 tin ore for the lanterns.');
@@ -476,6 +522,7 @@ export function trackerLines(save: SaveData): string[] {
     if (q.delverUnlocked) open.push('delver');
     if (q.mireUnlocked) open.push('mire');
     if (q.boneUnlocked) open.push('bone');
+    if (q.galeUnlocked) open.push('gale');
     if (open.length === 1) lines.push('Briar patterns are open.');
     else lines.push(`Anvil: ${open.join(', ')}.`);
   }

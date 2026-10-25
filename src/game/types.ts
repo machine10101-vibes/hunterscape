@@ -257,6 +257,11 @@ export const ITEM_META: Record<
   bone_sword: { name: 'Bone Sword', icon: '🗡', stackable: false, slot: 'weapon' },
   bone_ribs: { name: 'Bone Ribs', icon: '🦺', stackable: false, slot: 'chest' },
   bone_boots: { name: 'Bone Boots', icon: '👢', stackable: false, slot: 'boots' },
+  gale_feather: { name: 'Gale Feather', icon: '🪶', stackable: true },
+  hawk_talon: { name: 'Hawk Talon', icon: '🦅', stackable: true },
+  gale_spear: { name: 'Gale Spear', icon: '🔱', stackable: false, slot: 'weapon' },
+  gale_cloak: { name: 'Gale Cloak', icon: '🧥', stackable: false, slot: 'chest' },
+  gale_boots: { name: 'Gale Boots', icon: '👢', stackable: false, slot: 'boots' },
 };
 
 export const EQUIP_SLOTS: { id: EquipSlot; label: string }[] = [
@@ -624,6 +629,38 @@ export const BONE_RECIPES: Recipe[] = [
   },
 ];
 
+export const GALE_RECIPES: Recipe[] = [
+  {
+    id: 'gale_spear',
+    name: 'Gale Spear',
+    blurb: 'An ash spear with a brass leaf. Stab. Long reach. Special: Crosswind.',
+    cost: [
+      { id: 'gale_feather', qty: 1 },
+      { id: 'hawk_talon', qty: 1 },
+      { id: 'copper_ore', qty: 1 },
+      { id: 'whisper_logs', qty: 1 },
+    ],
+  },
+  {
+    id: 'gale_cloak',
+    name: 'Gale Cloak',
+    blurb: 'A light slate cloak. Soaks slash.',
+    cost: [
+      { id: 'gale_feather', qty: 3 },
+      { id: 'hawk_talon', qty: 1 },
+    ],
+  },
+  {
+    id: 'gale_boots',
+    name: 'Gale Boots',
+    blurb: 'Light boots with a brass spur. Soaks crush.',
+    cost: [
+      { id: 'gale_feather', qty: 2 },
+      { id: 'whisper_logs', qty: 1 },
+    ],
+  },
+];
+
 export function countItem(inv: ItemStack[], id: string): number {
   return inv.filter((s) => s.id === id).reduce((n, s) => n + s.qty, 0);
 }
@@ -649,6 +686,7 @@ const ARMOR_BONUS: Record<string, number> = {
   delver_vest: 2,
   mire_cloak: 2,
   bone_ribs: 2,
+  gale_cloak: 2,
   frost_greaves: 2,
   road_greaves: 1,
   frost_legs: 2,
@@ -660,6 +698,7 @@ const ARMOR_BONUS: Record<string, number> = {
   delver_boots: 1,
   mire_boots: 1,
   bone_boots: 1,
+  gale_boots: 1,
 };
 
 /** Two or more worn pieces from one family add a point of armour. */
@@ -672,6 +711,7 @@ const ARMOR_FAMILIES: Record<string, string[]> = {
   delver: ['delver_vest', 'delver_boots'],
   mire: ['mire_cloak', 'mire_boots'],
   bone: ['bone_ribs', 'bone_boots'],
+  gale: ['gale_cloak', 'gale_boots'],
 };
 
 export function setBonus(save: SaveData): number {
@@ -710,6 +750,8 @@ const ARMOR_DEFENCE: Record<string, AttackStyle> = {
   mire_boots: 'slash',
   bone_ribs: 'crush',
   bone_boots: 'stab',
+  gale_cloak: 'slash',
+  gale_boots: 'crush',
 };
 
 export function itemDefenceStyle(id: string | null): AttackStyle | null {
@@ -743,6 +785,7 @@ const WEAPON_DAMAGE: Record<string, number> = {
   delver_maul: 3,
   mire_dagger: 2,
   bone_sword: 2,
+  gale_spear: 2,
 };
 
 const WEAPON_STYLE: Record<string, AttackStyle> = {
@@ -757,6 +800,7 @@ const WEAPON_STYLE: Record<string, AttackStyle> = {
   delver_maul: 'crush',
   mire_dagger: 'stab',
   bone_sword: 'slash',
+  gale_spear: 'stab',
   frost_bow: 'ranged',
 };
 
@@ -769,6 +813,7 @@ const WEAPON_RECOVERY: Record<string, number> = {
   cinder_knife: 0.42,
   mire_dagger: 0.44,
   bone_sword: 0.62,
+  gale_spear: 0.68,
   frost_spear: 0.7,
   frost_bow: 0.9,
   road_mace: 1.0,
@@ -814,6 +859,7 @@ export const WEAPON_SPECS: Record<string, WeaponSpec> = {
   delver_maul: { name: 'Shellbreak', cost: 40, blurb: 'Built to crack plate.', mult: 1.65, heal: 0, bleed: 0, stun: 0.6 },
   mire_dagger: { name: 'Venom', cost: 35, blurb: 'The cut keeps working.', mult: 1.1, heal: 0, bleed: 3, stun: 0 },
   bone_sword: { name: 'Rattle', cost: 32, blurb: 'The blow rings the bones.', mult: 1.25, heal: 0, bleed: 0, stun: 1.2 },
+  gale_spear: { name: 'Crosswind', cost: 34, blurb: 'The thrust checks the next strike.', mult: 1.3, heal: 0, bleed: 0, stun: 1.1 },
 };
 
 export function weaponSpec(id: string | null): WeaponSpec | null {
@@ -844,6 +890,7 @@ export const MONSTER_PROFILE: Record<string, MonsterProfile> = {
   beetle: { level: 20, weak: 'crush' },
   toad: { level: 17, weak: 'slash' },
   skeleton: { level: 19, weak: 'crush' },
+  hawk: { level: 21, weak: 'slash' },
   boar: { level: 22, weak: 'stab' },
   orc: { level: 33, weak: 'stab' },
   yeti: { level: 42, weak: 'crush' },
@@ -863,6 +910,7 @@ const MONSTER_ATTACK: Record<string, AttackStyle> = {
   beetle: 'crush',
   toad: 'crush',
   skeleton: 'slash',
+  hawk: 'stab',
   boar: 'stab',
   orc: 'stab',
   yeti: 'crush',
@@ -870,6 +918,116 @@ const MONSTER_ATTACK: Record<string, AttackStyle> = {
 
 export function monsterAttack(kind: string): AttackStyle {
   return MONSTER_ATTACK[kind] ?? 'slash';
+}
+
+/** Flat armour a connecting blow must punch through. Wolves have none. */
+const MONSTER_GUARD: Record<string, number> = {
+  dummy: 0,
+  wolf: 0,
+  crow: 0,
+  spider: 1,
+  fox: 1,
+  beetle: 2,
+  toad: 1,
+  skeleton: 1,
+  hawk: 1,
+  boar: 1,
+  orc: 2,
+  yeti: 3,
+};
+
+export function monsterGuard(kind: string): number {
+  return MONSTER_GUARD[kind] ?? 0;
+}
+
+/**
+ * Seconds between bites. Fast birds, measured beasts, heavy bosses.
+ * Yeti and orc use the same table as their own attack loops.
+ */
+const MONSTER_TEMPO: Record<string, number> = {
+  dummy: 1.6,
+  wolf: 1.32,
+  crow: 1.12,
+  spider: 1.35,
+  fox: 1.22,
+  beetle: 1.78,
+  toad: 1.48,
+  skeleton: 1.55,
+  hawk: 1.1,
+  boar: 1.72,
+  orc: 1.85,
+  yeti: 2.7,
+};
+
+export function monsterTempo(kind: string): number {
+  return MONSTER_TEMPO[kind] ?? 1.55;
+}
+
+export function monsterTempoLabel(kind: string): string {
+  const t = monsterTempo(kind);
+  if (t <= 1.25) return 'Fast';
+  if (t <= 1.7) return 'Measured';
+  return 'Heavy';
+}
+
+/** Kilograms worn. Heavier than the camp kit drains stamina while you walk. */
+const ITEM_WEIGHT: Record<string, number> = {
+  bronze_sword: 1.4,
+  bronze_hatchet: 1.1,
+  bronze_pickaxe: 1.2,
+  frost_sword: 1.8,
+  briar_sword: 1.5,
+  bone_sword: 1.6,
+  dusk_dagger: 0.6,
+  cinder_knife: 0.7,
+  mire_dagger: 0.7,
+  frost_spear: 2.2,
+  gale_spear: 1.6,
+  frost_bow: 1.3,
+  road_mace: 2.8,
+  frost_hammer: 3.6,
+  delver_maul: 4.2,
+  frost_shield: 3.4,
+  briar_shield: 1.8,
+  road_shield: 2.4,
+  cinder_shield: 1.2,
+  frost_chest: 3.6,
+  briar_vest: 1.6,
+  dusk_cloak: 0.9,
+  delver_vest: 2.2,
+  mire_cloak: 0.8,
+  bone_ribs: 2.6,
+  gale_cloak: 0.7,
+  frost_greaves: 2.4,
+  road_greaves: 1.8,
+  frost_legs: 2.2,
+  road_legs: 1.6,
+  cinder_legs: 1.1,
+  frost_boots: 1.5,
+  briar_boots: 0.9,
+  dusk_boots: 0.6,
+  delver_boots: 1.4,
+  mire_boots: 0.6,
+  bone_boots: 1.3,
+  gale_boots: 0.5,
+};
+
+const CAMP_KIT_WEIGHT =
+  ITEM_WEIGHT.bronze_sword + ITEM_WEIGHT.bronze_hatchet + ITEM_WEIGHT.bronze_pickaxe;
+
+export function itemWeight(id: string | null): number {
+  return id ? (ITEM_WEIGHT[id] ?? 0) : 0;
+}
+
+export function wornWeight(save: SaveData): number {
+  let n = 0;
+  for (const id of Object.values(save.equipped)) n += itemWeight(id);
+  return Math.round(n * 10) / 10;
+}
+
+/** Weight above the bronze sword, hatchet, and pick the camp starts you with. */
+export function carryBurden(save: SaveData): number {
+  return Math.max(0, Math.round((wornWeight(save) - CAMP_KIT_WEIGHT) * 10) / 10);
 }
 
 /** OSRS-style combat level from the four combat skills. No prayer term yet. */
@@ -893,18 +1051,44 @@ export function gearLine(id: string): string {
     const spec = weaponSpec(id);
     if (spec) bits.push(`${spec.name} (${spec.cost} focus)`);
     bits.push(weaponSpeedLabel(id));
+    bits.push(`reach ${weaponReachLabel(id)}`);
   }
   const arm = itemArmor(id);
   if (arm) bits.push(`+${arm} armour`);
   const soak = itemDefenceStyle(id);
   if (soak) bits.push(`soaks ${soak}`);
+  const kilos = itemWeight(id);
+  if (kilos) bits.push(`${kilos.toFixed(1)} kg`);
   return bits.join(' · ');
 }
 
+/** Added to the swing's reach. Daggers step in. Spears and the bow stand off. */
+const WEAPON_REACH: Record<string, number> = {
+  dusk_dagger: -0.28,
+  cinder_knife: -0.26,
+  mire_dagger: -0.24,
+  bronze_sword: 0,
+  frost_sword: 0.05,
+  briar_sword: 0.02,
+  bone_sword: 0.04,
+  road_mace: -0.08,
+  frost_hammer: -0.12,
+  delver_maul: -0.16,
+  frost_spear: 0.4,
+  gale_spear: 0.58,
+  frost_bow: 2.2,
+};
+
 export function weaponReachBonus(id: string | null): number {
-  if (id === 'frost_bow') return 2.2;
-  if (id === 'frost_spear') return 0.4;
-  return 0;
+  return id ? (WEAPON_REACH[id] ?? 0) : 0;
+}
+
+export function weaponReachLabel(id: string | null): string {
+  const r = weaponReachBonus(id);
+  if (r < -0.05) return 'Short';
+  if (r < 0.2) return 'Even';
+  if (r < 1.2) return 'Long';
+  return 'Far';
 }
 
 /** Classic-style XP curve approximation */
@@ -971,6 +1155,8 @@ export function defaultSave(): SaveData {
       mireUnlocked: false,
       barrow_bones: 'none',
       boneUnlocked: false,
+      gale_roost: 'none',
+      galeUnlocked: false,
     },
   };
 }

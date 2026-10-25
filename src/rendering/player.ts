@@ -16,6 +16,7 @@ import { attachCinderKnife, attachCinderWear } from './cinderGear';
 import { attachDelverMaul, attachDelverWear } from './delverGear';
 import { attachMireDagger, attachMireWear } from './mireGear';
 import { attachBoneSword, attachBoneWear } from './boneGear';
+import { attachGaleSpear, attachGaleWear } from './galeGear';
 import type { SaveData } from '../game/types';
 
 type PhysOpts = Partial<THREE.MeshPhysicalMaterialParameters>;
@@ -1065,6 +1066,7 @@ export function createPlayerMesh(): THREE.Group {
   attachDelverMaul(toolRoot);
   attachMireDagger(toolRoot);
   attachBoneSword(toolRoot);
+  attachGaleSpear(toolRoot);
   attachBowOffhand(g);
   attachYetiWear(g);
   attachBriarWear(g);
@@ -1074,6 +1076,7 @@ export function createPlayerMesh(): THREE.Group {
   attachDelverWear(g);
   attachMireWear(g);
   attachBoneWear(g);
+  attachGaleWear(g);
 
   return g;
 }
@@ -1325,9 +1328,10 @@ export type HeldTool =
   | 'delver_maul'
   | 'mire_dagger'
   | 'bone_sword'
+  | 'gale_spear'
   | null;
 
-const COMBAT_TOOLS: HeldTool[] = ['sword', 'frost_sword', 'frost_hammer', 'frost_spear', 'frost_bow', 'briar_sword', 'road_mace', 'dusk_dagger', 'cinder_knife', 'delver_maul', 'mire_dagger', 'bone_sword'];
+const COMBAT_TOOLS: HeldTool[] = ['sword', 'frost_sword', 'frost_hammer', 'frost_spear', 'frost_bow', 'briar_sword', 'road_mace', 'dusk_dagger', 'cinder_knife', 'delver_maul', 'mire_dagger', 'bone_sword', 'gale_spear'];
 const ALL_TOOLS: HeldTool[] = ['hatchet', 'pickaxe', ...COMBAT_TOOLS];
 
 export function weaponHeldFromId(id: string | null): HeldTool {
@@ -1343,6 +1347,7 @@ export function weaponHeldFromId(id: string | null): HeldTool {
   if (id === 'delver_maul') return 'delver_maul';
   if (id === 'mire_dagger') return 'mire_dagger';
   if (id === 'bone_sword') return 'bone_sword';
+  if (id === 'gale_spear') return 'gale_spear';
   return null;
 }
 
@@ -1398,7 +1403,7 @@ function poseToolRoot(root: THREE.Object3D, tool: HeldTool): void {
     root.rotation.set(0.16, -0.12, -Math.PI / 2);
   } else if (tool === 'pickaxe') {
     root.rotation.set(0.08, -0.1, -Math.PI / 2);
-  } else if (tool === 'frost_spear') {
+  } else if (tool === 'frost_spear' || tool === 'gale_spear') {
     // Pole grip: the shaft runs through the fist, point out the thumb.
     root.position.x += 0.02;
     root.rotation.set(0.22, -0.06, -Math.PI / 2);
@@ -1478,7 +1483,7 @@ export function poseEquippedTool(player: THREE.Group): void {
 export function setPlayerTool(player: THREE.Group, tool: HeldTool): void {
   const root = player.getObjectByName('toolRoot');
   const bow = player.getObjectByName('bowRoot');
-  const rightTools: HeldTool[] = ['hatchet', 'pickaxe', 'sword', 'frost_sword', 'frost_hammer', 'frost_spear', 'briar_sword', 'road_mace', 'dusk_dagger', 'cinder_knife', 'delver_maul', 'mire_dagger', 'bone_sword'];
+  const rightTools: HeldTool[] = ['hatchet', 'pickaxe', 'sword', 'frost_sword', 'frost_hammer', 'frost_spear', 'briar_sword', 'road_mace', 'dusk_dagger', 'cinder_knife', 'delver_maul', 'mire_dagger', 'bone_sword', 'gale_spear'];
   if (root) {
     for (const kind of rightTools) {
       const t = root.getObjectByName(`tool_${kind}`);

@@ -549,6 +549,30 @@ function reedPool(): THREE.Group {
   return g;
 }
 
+function galeRoost(): THREE.Group {
+  const g = new THREE.Group();
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 1.7, 6), mat(0x6a5038));
+  post.position.y = 0.85;
+  add(g, post);
+  const perch = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.9, 5), mat(0xcbb892));
+  perch.rotation.z = Math.PI / 2;
+  perch.position.set(0, 1.55, 0);
+  add(g, perch);
+  const banner = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.55, 0.02), mat(0x314050));
+  banner.position.set(0.15, 1.05, 0.02);
+  add(g, banner);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.012, 5, 8), mat(0xc6a15a, { metalness: 0.6, roughness: 0.35 }));
+  ring.position.set(0.15, 1.22, 0.04);
+  g.add(ring);
+  const stone = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.7, 0.12, 7), mat(0x6a6860, { roughness: 0.92 }));
+  stone.position.y = 0.04;
+  add(g, stone);
+  const sign = paintedBoard('ROOST', 0.9, 0.36, '700 40px Georgia, serif');
+  sign.position.set(-0.55, 0.85, 0.45);
+  g.add(sign);
+  return g;
+}
+
 function bench(): THREE.Group {
   const g = new THREE.Group();
   const seat = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.06, 0.32), mat(0x6a4428));
@@ -725,6 +749,23 @@ export function createTownNpc(id: NpcId): THREE.Group {
     g.add(nameplate('Marr'));
     return g;
   }
+  if (id === 'quill') {
+    const g = npcBody(0x314050, 0x6a5038, true);
+    const glove = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.08), mat(0xc4a060));
+    glove.position.set(0.28, 0.78, 0.08);
+    add(g, glove);
+    const whistle = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.016, 0.06, 5), mat(0xc6a15a, { metalness: 0.55, roughness: 0.35 }));
+    whistle.rotation.z = Math.PI / 2;
+    whistle.position.set(-0.16, 1.02, 0.12);
+    add(g, whistle);
+    const feather = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.12, 0.01), mat(0xf4f1ea));
+    feather.position.set(0.08, 1.38, 0.04);
+    feather.rotation.z = -0.3;
+    add(g, feather);
+    g.name = 'npc_quill';
+    g.add(nameplate('Quill'));
+    return g;
+  }
   if (id === 'maeve') {
     const g = npcBody(0x4a3068, 0x2a1810, false);
     const shawl = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.16, 0.08), mat(0xc4a0d0));
@@ -815,6 +856,7 @@ export function briarfordProps(): TownPlacement[] {
   rootBits.push({ mesh: oreClaim(), x: -13.0, z: 8.4 });
   rootBits.push({ mesh: reedPool(), x: -4.4, z: 10.2 });
   rootBits.push({ mesh: barrowMound(), x: 1.2, z: -11.2 });
+  rootBits.push({ mesh: galeRoost(), x: -12.0, z: 1.8 });
   rootBits.push({ mesh: hearth(), x: 13.6, z: -2.9 });
   rootBits.push({ mesh: well(), x: 16.35, z: 0.2 });
   rootBits.push({ mesh: stall(), x: 15.15, z: -1.85, rotY: 0.15 });
