@@ -345,21 +345,23 @@ function makeFinger(
   rad: number,
 ): FingerChain {
   const root = new THREE.Group();
-  const prox = new THREE.Mesh(new THREE.CapsuleGeometry(rad, len * 0.34, 3, 8), leather);
-  prox.position.y = -len * 0.25;
+  // Capsules overlap the next joint. The joint groups themselves stay put so
+  // the closed grip still encloses the same handle.
+  const prox = new THREE.Mesh(new THREE.CapsuleGeometry(rad, len * 0.46, 3, 8), leather);
+  prox.position.y = -len * 0.22;
   addPart(prox, root);
 
   const mid = new THREE.Group();
   mid.position.y = -len * 0.48;
-  const midMesh = new THREE.Mesh(new THREE.CapsuleGeometry(rad * 0.88, len * 0.24, 3, 8), skin);
-  midMesh.position.y = -len * 0.16;
+  const midMesh = new THREE.Mesh(new THREE.CapsuleGeometry(rad * 0.9, len * 0.36, 3, 8), skin);
+  midMesh.position.y = -len * 0.14;
   addPart(midMesh, mid);
   root.add(mid);
 
   const tip = new THREE.Group();
   tip.position.y = -len * 0.32;
-  const tipMesh = new THREE.Mesh(new THREE.CapsuleGeometry(rad * 0.74, len * 0.16, 3, 8), skin);
-  tipMesh.position.y = -len * 0.12;
+  const tipMesh = new THREE.Mesh(new THREE.CapsuleGeometry(rad * 0.78, len * 0.26, 3, 8), skin);
+  tipMesh.position.y = -len * 0.1;
   addPart(tipMesh, tip);
   const nail = new THREE.Mesh(new THREE.SphereGeometry(rad * 0.6, 6, 5), skin);
   nail.scale.set(0.9, 0.5, 0.45);
@@ -405,8 +407,10 @@ function makeHand(
   back.position.set(0, -0.016, 0.01);
   addPart(back, hand);
 
-  const wrist = new THREE.Mesh(new THREE.CapsuleGeometry(0.037, 0.022, 4, 10), leatherDark);
-  wrist.position.set(0, 0.018, 0.006);
+  // Thick enough to sleeve into the gauntlet above and the palm below.
+  const wrist = new THREE.Mesh(new THREE.CapsuleGeometry(0.056, 0.07, 4, 10), leather);
+  wrist.scale.set(1.02, 1, 0.9);
+  wrist.position.set(0, 0.02, 0.006);
   addPart(wrist, hand);
 
   const gripGroup = new THREE.Group();
@@ -520,20 +524,27 @@ export function createPlayerMesh(): THREE.Group {
     hip.name = side < 0 ? 'legL' : 'legR';
     hip.position.set(side * 0.16, 0.94, 0);
 
-    const hipBall = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 12), cloth);
-    hipBall.scale.set(1.04, 1, 1.02);
+    // Hip mass nests back into the pelvis. The pivot stays at the joint.
+    const hipBall = new THREE.Mesh(new THREE.SphereGeometry(0.118, 16, 12), cloth);
+    hipBall.scale.set(1.12, 0.92, 1.16);
+    hipBall.position.set(side * -0.016, 0.012, -0.01);
     tagLayer(addPart(hipBall, hip), 'legs');
+    const glute = new THREE.Mesh(new THREE.SphereGeometry(0.082, 12, 9), clothDark);
+    glute.scale.set(1.08, 1.15, 0.95);
+    glute.position.set(side * -0.008, -0.015, -0.055);
+    tagLayer(addPart(glute, hip), 'legs');
 
-    // Thigh tapers from the hip to the knee; the quad sits forward and the
-    // hamstring behind so the leg has a front and a back.
+    // Thigh flares into the hip ball and reaches the knee pivot, without
+    // crossing it (a stump past the pivot sticks out when the knee bends).
     const thigh = new THREE.Mesh(
       latheBody(
         [
-          [0.096, -0.04],
-          [0.1, -0.14],
-          [0.092, -0.26],
-          [0.08, -0.36],
-          [0.07, -0.42],
+          [0.108, 0.0],
+          [0.102, -0.08],
+          [0.096, -0.18],
+          [0.086, -0.3],
+          [0.084, -0.4],
+          [0.084, -0.44],
         ],
         14,
       ),
@@ -553,27 +564,29 @@ export function createPlayerMesh(): THREE.Group {
     shin.name = side < 0 ? 'shinL' : 'shinR';
     shin.position.set(0, -0.44, 0);
 
-    const knee = new THREE.Mesh(new THREE.SphereGeometry(0.076, 14, 12), cloth);
-    knee.scale.set(1, 0.95, 1);
+    const knee = new THREE.Mesh(new THREE.SphereGeometry(0.078, 14, 12), cloth);
+    knee.scale.set(1.04, 1.08, 1.08);
+    knee.position.set(0, 0.008, 0.002);
     addPart(knee, shin);
-    const kneecap = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 8), cloth);
-    kneecap.scale.set(1.1, 1.1, 0.7);
-    kneecap.position.set(0, -0.01, 0.062);
+    const kneecap = new THREE.Mesh(new THREE.SphereGeometry(0.042, 10, 8), cloth);
+    kneecap.scale.set(1.15, 1.05, 0.72);
+    kneecap.position.set(0, 0.0, 0.07);
     addPart(kneecap, shin);
 
-    // Trousers stop above the boot cuff. The shin narrows toward the ankle and
-    // the calf swells behind it.
+    // One trouser colour from hip to boot. The calf runs down into the shaft
+    // so a worn boot still meets the leg when the camp greaves are hidden.
     const calf = new THREE.Mesh(
       latheBody(
         [
-          [0.07, -0.02],
-          [0.072, -0.08],
-          [0.064, -0.14],
-          [0.058, -0.17],
+          [0.084, 0.02],
+          [0.08, -0.08],
+          [0.066, -0.18],
+          [0.06, -0.28],
+          [0.056, -0.36],
         ],
         14,
       ),
-      clothDark,
+      cloth,
     );
     calf.position.set(0, 0, -0.012);
     addPart(calf, shin);
@@ -582,35 +595,37 @@ export function createPlayerMesh(): THREE.Group {
     calfMuscle.position.set(0, -0.09, -0.04);
     addPart(calfMuscle, shin);
 
-    // Short boot shaft — two fur rings live on this, not on the ankle.
-    const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.098, 0.1, 14), leather);
-    boot.position.set(0, -0.2, -0.016);
+    // Boot shaft tapers into the ankle instead of stopping on a peg.
+    const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.086, 0.07, 0.28, 14), leather);
+    boot.position.set(0, -0.24, -0.01);
     tagLayer(addPart(boot, shin), 'greaves');
-    addCrissCross(shin, -0.15, -0.25, 0.094, leatherDark, 0.02, 'greaves');
+    addCrissCross(shin, -0.16, -0.28, 0.086, leatherDark, 0.02, 'greaves');
 
     const bootFurTop = new THREE.Mesh(new THREE.TorusGeometry(0.092, 0.022, 6, 10), fur);
     bootFurTop.rotation.x = Math.PI / 2;
-    bootFurTop.position.set(0, -0.14, 0.02);
+    bootFurTop.position.set(0, -0.11, 0.016);
     tagLayer(bootFurTop, 'greaves');
     shin.add(bootFurTop);
-    const bootFurLow = new THREE.Mesh(new THREE.TorusGeometry(0.082, 0.018, 6, 10), furDark);
+    const bootFurLow = new THREE.Mesh(new THREE.TorusGeometry(0.074, 0.016, 6, 10), furDark);
     bootFurLow.rotation.x = Math.PI / 2;
-    bootFurLow.position.set(0, -0.24, 0);
+    bootFurLow.position.set(0, -0.35, 0);
     tagLayer(bootFurLow, 'greaves');
     shin.add(bootFurLow);
 
-    // Long, skinny ankle so the joint reads between shaft and foot.
-    const ankleCol = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.058, 0.14, 12), leatherDark);
-    ankleCol.position.set(0, -0.36, -0.006);
+    // Continues the shaft down to the foot pivot. The foot joint is not moved.
+    const ankleCol = new THREE.Mesh(new THREE.CylinderGeometry(0.066, 0.07, 0.2, 12), leather);
+    ankleCol.position.set(0, -0.38, -0.004);
     tagLayer(addPart(ankleCol, shin), 'boots');
-    const ankleWrap = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.055, 0.045, 12), leather);
-    ankleWrap.position.set(0, -0.34, -0.006);
+    const ankleWrap = new THREE.Mesh(new THREE.CylinderGeometry(0.074, 0.076, 0.046, 12), leatherDark);
+    ankleWrap.position.set(0, -0.32, -0.004);
     tagLayer(addPart(ankleWrap, shin), 'boots');
 
     const foot = new THREE.Group();
     foot.name = side < 0 ? 'footL' : 'footR';
     foot.position.set(0, -0.48, 0.04);
-    const ankle = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 10), leatherDark);
+    const ankle = new THREE.Mesh(new THREE.SphereGeometry(0.068, 12, 10), leather);
+    ankle.scale.set(1.05, 0.92, 1.08);
+    ankle.position.set(0, 0.012, -0.004);
     tagLayer(addPart(ankle, foot), 'boots');
     const heel = new THREE.Mesh(new THREE.SphereGeometry(0.046, 10, 8), leatherDark);
     heel.position.set(0, -0.016, -0.05);
@@ -742,36 +757,21 @@ export function createPlayerMesh(): THREE.Group {
 
   // Shoulder root: clavicle pivot at ±0.2, humerus head another 0.11 out, so
   // the arm hangs clear of the ribcage (vest half-width is 0.265 at its widest).
+  // Those pivots stay put. The visual mass overlaps them instead.
   const SHOULDER_X = 0.31;
+  // Neck root: one skin mass the two trapezius slopes grow out of.
+  const neckRoot = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 10), skin);
+  neckRoot.scale.set(1.45, 0.55, 0.95);
+  neckRoot.position.set(0, 0.25, -0.006);
+  addPart(neckRoot, torso);
   for (const sx of [-1, 1]) {
-    // Trapezius slope from the neck down onto the shoulder.
-    const trap = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 9), skin);
-    trap.scale.set(1.35, 0.5, 0.7);
-    trap.rotation.z = sx * 0.42;
-    trap.position.set(sx * 0.17, 0.24, -0.01);
+    // Trapezius stays on the neck. A wider blob here reads as a shoulder
+    // floating beside the tunic once a cloak hides the camp vest.
+    const trap = new THREE.Mesh(new THREE.SphereGeometry(0.09, 14, 10), skin);
+    trap.scale.set(1.25, 0.55, 0.72);
+    trap.rotation.z = sx * 0.28;
+    trap.position.set(sx * 0.09, 0.22, -0.02);
     addPart(trap, torso);
-    // Leather pauldron sits over the joint but stays with the torso.
-    const pad = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), leatherMid);
-    pad.scale.set(1.2, 0.5, 1.05);
-    pad.position.set(sx * (SHOULDER_X - 0.03), 0.18, 0.005);
-    pad.rotation.z = sx * -0.34;
-    tagLayer(addPart(pad, torso), 'chest');
-    // Studded leather cap: breaks up the bare shoulder ball in silhouette.
-    const cap = new THREE.Mesh(
-      new THREE.SphereGeometry(0.108, 12, 9, 0, Math.PI * 2, 0, Math.PI * 0.5),
-      leatherMid,
-    );
-    cap.scale.set(1.06, 0.9, 1.02);
-    cap.rotation.z = sx * -0.38;
-    cap.position.set(sx * (SHOULDER_X - 0.01), 0.13, -0.004);
-    tagLayer(addPart(cap, torso), 'chest');
-    for (let i = 0; i < 3; i++) {
-      const stud = new THREE.Mesh(new THREE.SphereGeometry(0.011, 6, 5), metalBright);
-      const a = -0.5 + i * 0.5;
-      stud.position.set(sx * (SHOULDER_X + Math.cos(a) * 0.02), 0.19, Math.sin(a) * 0.08);
-      tagLayer(stud, 'chest');
-      torso.add(stud);
-    }
   }
 
   const collarBase = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.055, 8, 12), furMid);
@@ -781,14 +781,25 @@ export function createPlayerMesh(): THREE.Group {
   tagLayer(addPart(collarBase, torso), 'chest');
   addFurCuff(torso, 0, 0.29, 0.01, 0.18, 8, 0.042, fur, furDark, 'chest');
 
-  const neck = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.1, 6, 14), skin);
-  neck.position.set(0, 0.35, 0.012);
+  // Thick enough that the head sits on it from the side, and long enough
+  // to tuck under the jaw. The head pivot is unchanged.
+  const neck = new THREE.Mesh(new THREE.CapsuleGeometry(0.086, 0.16, 6, 14), skin);
+  neck.position.set(0, 0.38, 0.016);
   addPart(neck, torso);
+  // Fills the profile gap under the jaw and the back of the skull.
+  const throat = new THREE.Mesh(new THREE.SphereGeometry(0.09, 14, 10), skin);
+  throat.scale.set(1.05, 0.9, 0.95);
+  throat.position.set(0, 0.4, 0.07);
+  addPart(throat, torso);
+  const nape = new THREE.Mesh(new THREE.SphereGeometry(0.078, 12, 9), skin);
+  nape.scale.set(1.25, 0.7, 0.8);
+  nape.position.set(0, 0.42, -0.045);
+  addPart(nape, torso);
   // Sternocleidomastoid ridges: the neck reads as muscle, not a peg.
   for (const sx of [-1, 1]) {
-    const cord = new THREE.Mesh(new THREE.CapsuleGeometry(0.02, 0.09, 4, 8), skinDark);
-    cord.position.set(sx * 0.045, 0.34, 0.058);
-    cord.rotation.set(-0.18, 0, sx * 0.3);
+    const cord = new THREE.Mesh(new THREE.CapsuleGeometry(0.02, 0.11, 4, 8), skinDark);
+    cord.position.set(sx * 0.05, 0.38, 0.07);
+    cord.rotation.set(-0.2, 0, sx * 0.22);
     addPart(cord, torso);
   }
 
@@ -801,51 +812,51 @@ export function createPlayerMesh(): THREE.Group {
     arm.name = side < 0 ? 'armL' : 'armR';
     arm.position.set(side * (SHOULDER_X - 0.2), 0, 0);
 
-    // Deltoid lives on the arm so the shoulder mass swings with the humerus
-    // instead of the arm sliding under a fixed ball.
-    const deltoid = new THREE.Mesh(new THREE.SphereGeometry(0.086, 14, 11), skin);
-    deltoid.scale.set(1.04, 1.02, 1.0);
-    deltoid.position.set(side * 0.004, -0.01, -0.004);
-    addPart(deltoid, arm);
+    // Skin clavicle from the neck side of this pivot out to the humerus head.
+    // The capsule is symmetric, so the same Z spin lays it along local X.
+    const clavicle = new THREE.Mesh(new THREE.CapsuleGeometry(0.042, 0.16, 4, 10), skin);
+    clavicle.rotation.z = -Math.PI / 2;
+    clavicle.scale.set(0.85, 1, 0.75);
+    clavicle.position.set(side * 0.01, 0.02, -0.004);
+    addPart(clavicle, clav);
 
-    // Tapered humerus: thick at the deltoid, narrowing above the elbow.
+    // One lathe from the deltoid down to the elbow pivot. A separate shoulder
+    // ball read as a pad floating off the arm. The pivot is not moved.
     const upper = new THREE.Mesh(
       latheBody(
         [
-          [0.07, -0.02],
-          [0.076, -0.1],
-          [0.07, -0.19],
-          [0.058, -0.29],
-          [0.05, -0.33],
+          [0.09, 0.05],
+          [0.122, -0.01],
+          [0.1, -0.1],
+          [0.086, -0.2],
+          [0.076, -0.3],
+          [0.074, -0.34],
         ],
-        12,
+        14,
       ),
       skin,
     );
     addPart(upper, arm);
-    // One soft bicep swell on the front; separate muscle balls read as lumps.
-    const bicep = new THREE.Mesh(new THREE.SphereGeometry(0.058, 12, 9), skin);
-    bicep.scale.set(1.0, 1.6, 0.8);
-    bicep.position.set(side * -0.004, -0.15, 0.024);
-    addPart(bicep, arm);
 
     const forearm = new THREE.Group();
     forearm.name = side < 0 ? 'forearmL' : 'forearmR';
     forearm.position.set(0, -0.34, 0);
 
-    const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 9), skin);
-    elbow.scale.set(1, 0.95, 1.05);
+    const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.08, 14, 11), skin);
+    elbow.scale.set(1.08, 1.06, 1.12);
+    elbow.position.set(0, 0.01, -0.006);
     addPart(elbow, forearm);
 
-    // Gauntlet: wide at the elbow cuff, drawn in at the wrist.
+    // Gauntlet sleeves over the elbow and continues past the wrist pivot
+    // into the hand, so the sleeve and the palm are one shape.
     const gauntlet = new THREE.Mesh(
       latheBody(
         [
-          [0.062, -0.03],
-          [0.072, -0.08],
-          [0.068, -0.15],
-          [0.058, -0.22],
-          [0.05, -0.27],
+          [0.074, 0.0],
+          [0.076, -0.08],
+          [0.068, -0.16],
+          [0.062, -0.24],
+          [0.058, -0.33],
         ],
         12,
       ),
