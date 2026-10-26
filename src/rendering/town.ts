@@ -573,6 +573,28 @@ function galeRoost(): THREE.Group {
   return g;
 }
 
+function ashBrake(): THREE.Group {
+  const g = new THREE.Group();
+  const stump = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.34, 0.22, 7), mat(0x6a4428));
+  stump.position.y = 0.1;
+  add(g, stump);
+  const rack = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.02, 0.55, 5), mat(0xe6d2a8, { roughness: 0.45 }));
+  rack.position.set(0, 0.42, 0);
+  rack.rotation.z = 0.5;
+  add(g, rack);
+  const tine = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.16, 4), mat(0xf2e6c8, { roughness: 0.4 }));
+  tine.position.set(0.12, 0.58, 0);
+  tine.rotation.z = -0.7;
+  add(g, tine);
+  const hide = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.22, 0.04), mat(0x8a4a28));
+  hide.position.set(-0.1, 0.28, 0.16);
+  add(g, hide);
+  const sign = paintedBoard('ASH', 0.7, 0.32, '700 48px Georgia, serif');
+  sign.position.set(0.55, 0.55, 0.35);
+  g.add(sign);
+  return g;
+}
+
 function bench(): THREE.Group {
   const g = new THREE.Group();
   const seat = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.06, 0.32), mat(0x6a4428));
@@ -749,6 +771,20 @@ export function createTownNpc(id: NpcId): THREE.Group {
     g.add(nameplate('Marr'));
     return g;
   }
+  if (id === 'pell') {
+    const g = npcBody(0x6a3418, 0x3a2414, true);
+    const rack = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.016, 0.28, 5), mat(0xe6d2a8, { roughness: 0.45 }));
+    rack.position.set(0.16, 1.28, 0.02);
+    rack.rotation.z = -0.4;
+    add(g, rack);
+    const knife = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.16, 0.012), mat(0xc4a06a, { metalness: 0.35, roughness: 0.4 }));
+    knife.position.set(-0.22, 0.72, 0.1);
+    knife.rotation.z = 0.4;
+    add(g, knife);
+    g.name = 'npc_pell';
+    g.add(nameplate('Pell'));
+    return g;
+  }
   if (id === 'quill') {
     const g = npcBody(0x314050, 0x6a5038, true);
     const glove = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.08), mat(0xc4a060));
@@ -857,6 +893,7 @@ export function briarfordProps(): TownPlacement[] {
   rootBits.push({ mesh: reedPool(), x: -4.4, z: 10.2 });
   rootBits.push({ mesh: barrowMound(), x: 1.2, z: -11.2 });
   rootBits.push({ mesh: galeRoost(), x: -12.0, z: 1.8 });
+  rootBits.push({ mesh: ashBrake(), x: 13.4, z: -6.2 });
   rootBits.push({ mesh: hearth(), x: 13.6, z: -2.9 });
   rootBits.push({ mesh: well(), x: 16.35, z: 0.2 });
   rootBits.push({ mesh: stall(), x: 15.15, z: -1.85, rotY: 0.15 });

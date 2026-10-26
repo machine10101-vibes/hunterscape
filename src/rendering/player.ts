@@ -17,6 +17,7 @@ import { attachDelverMaul, attachDelverWear } from './delverGear';
 import { attachMireDagger, attachMireWear } from './mireGear';
 import { attachBoneSword, attachBoneWear } from './boneGear';
 import { attachGaleSpear, attachGaleWear } from './galeGear';
+import { attachAntlerBlade, attachStagWear } from './stagGear';
 import type { SaveData } from '../game/types';
 
 type PhysOpts = Partial<THREE.MeshPhysicalMaterialParameters>;
@@ -1067,6 +1068,7 @@ export function createPlayerMesh(): THREE.Group {
   attachMireDagger(toolRoot);
   attachBoneSword(toolRoot);
   attachGaleSpear(toolRoot);
+  attachAntlerBlade(toolRoot);
   attachBowOffhand(g);
   attachYetiWear(g);
   attachBriarWear(g);
@@ -1077,6 +1079,7 @@ export function createPlayerMesh(): THREE.Group {
   attachMireWear(g);
   attachBoneWear(g);
   attachGaleWear(g);
+  attachStagWear(g);
 
   return g;
 }
@@ -1329,9 +1332,10 @@ export type HeldTool =
   | 'mire_dagger'
   | 'bone_sword'
   | 'gale_spear'
+  | 'antler_blade'
   | null;
 
-const COMBAT_TOOLS: HeldTool[] = ['sword', 'frost_sword', 'frost_hammer', 'frost_spear', 'frost_bow', 'briar_sword', 'road_mace', 'dusk_dagger', 'cinder_knife', 'delver_maul', 'mire_dagger', 'bone_sword', 'gale_spear'];
+const COMBAT_TOOLS: HeldTool[] = ['sword', 'frost_sword', 'frost_hammer', 'frost_spear', 'frost_bow', 'briar_sword', 'road_mace', 'dusk_dagger', 'cinder_knife', 'delver_maul', 'mire_dagger', 'bone_sword', 'gale_spear', 'antler_blade'];
 const ALL_TOOLS: HeldTool[] = ['hatchet', 'pickaxe', ...COMBAT_TOOLS];
 
 export function weaponHeldFromId(id: string | null): HeldTool {
@@ -1348,6 +1352,7 @@ export function weaponHeldFromId(id: string | null): HeldTool {
   if (id === 'mire_dagger') return 'mire_dagger';
   if (id === 'bone_sword') return 'bone_sword';
   if (id === 'gale_spear') return 'gale_spear';
+  if (id === 'antler_blade') return 'antler_blade';
   return null;
 }
 
@@ -1483,7 +1488,7 @@ export function poseEquippedTool(player: THREE.Group): void {
 export function setPlayerTool(player: THREE.Group, tool: HeldTool): void {
   const root = player.getObjectByName('toolRoot');
   const bow = player.getObjectByName('bowRoot');
-  const rightTools: HeldTool[] = ['hatchet', 'pickaxe', 'sword', 'frost_sword', 'frost_hammer', 'frost_spear', 'briar_sword', 'road_mace', 'dusk_dagger', 'cinder_knife', 'delver_maul', 'mire_dagger', 'bone_sword', 'gale_spear'];
+  const rightTools: HeldTool[] = ['hatchet', 'pickaxe', 'sword', 'frost_sword', 'frost_hammer', 'frost_spear', 'briar_sword', 'road_mace', 'dusk_dagger', 'cinder_knife', 'delver_maul', 'mire_dagger', 'bone_sword', 'gale_spear', 'antler_blade'];
   if (root) {
     for (const kind of rightTools) {
       const t = root.getObjectByName(`tool_${kind}`);

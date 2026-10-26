@@ -37,6 +37,7 @@ import { BEETLE_HOMES, createOreBeetle, poseOreBeetle } from '../rendering/oreBe
 import { TOAD_HOMES, createMireToad, poseMireToad } from '../rendering/mireToad';
 import { SKELETON_HOMES, createBarrowSkeleton, poseBarrowSkeleton } from '../rendering/barrowSkeleton';
 import { HAWK_HOMES, createGaleHawk, poseGaleHawk } from '../rendering/galeHawk';
+import { STAG_HOMES, createAshStag, poseAshStag } from '../rendering/ashStag';
 import { addWeaknessMark } from '../rendering/weaknessMark';
 import {
   BOAR_HOMES,
@@ -86,6 +87,7 @@ import {
   COMBAT_SKILLS,
   BONE_RECIPES,
   BRIAR_RECIPES,
+  ASH_RECIPES,
   GALE_RECIPES,
   CINDER_RECIPES,
   DELVER_RECIPES,
@@ -102,6 +104,7 @@ import {
   countItem,
   gearLine,
   levelFromXp,
+  monsterAccuracy,
   monsterAttack,
   monsterGuard,
   monsterProfile,
@@ -109,6 +112,7 @@ import {
   monsterTempoLabel,
   setBonus,
   styleMitigation,
+  weaponAccuracy,
   weaponDamageBonus,
   weaponReachBonus,
   weaponReachLabel,
@@ -116,6 +120,7 @@ import {
   weaponSpec,
   weaponSpeedLabel,
   weaponStyle,
+  wornWard,
   wornWeight,
   type AttackStyle,
   type CombatSkillId,
@@ -130,6 +135,7 @@ import {
   BOAR_KILLS,
   BONE_NEEDED,
   EAST_ROAD_KILLS,
+  ASH_NEEDED,
   GALE_NEEDED,
   FEATHER_NEEDED,
   FUR_NEEDED,
@@ -139,7 +145,7 @@ import {
   type NpcId,
 } from './quests';
 
-type InteractKind = 'tree' | 'rock' | 'dummy' | 'yeti' | 'orc' | 'wolf' | 'boar' | 'spider' | 'fox' | 'crow' | 'beetle' | 'toad' | 'skeleton' | 'hawk' | 'forge' | 'npc';
+type InteractKind = 'tree' | 'rock' | 'dummy' | 'yeti' | 'orc' | 'wolf' | 'boar' | 'spider' | 'fox' | 'crow' | 'beetle' | 'toad' | 'skeleton' | 'hawk' | 'stag' | 'forge' | 'npc';
 type ForgeBench = 'camp' | 'briar';
 
 interface WorldObject {
@@ -429,6 +435,8 @@ export class Game {
     this.hud.chat('Weapons reach short, even, long, or far. Heavier kit drains stamina and slows you when you are winded.', 'system');
     this.hud.chat('Beasts have armour that turns a blow, and each bites on its own tempo.', 'system');
     this.hud.chat('Falconer Quill keeps the west roost. Gale hawks wheel above the windbreak.', 'combat');
+    this.hud.chat('Weapons carry an accuracy bonus. Ward on your armour turns bites aside.', 'system');
+    this.hud.chat('Huntsman Pell keeps the ash brake north of the east road. Ash stags clash there.', 'combat');
     this.hud.chat('Scroll, pinch, or use + / − to zoom the camera.', 'system');
 
     window.addEventListener('resize', () => this.onResize());
@@ -773,6 +781,7 @@ export class Game {
       { id: 'wren', x: -4.2, z: 9.4, rot: 0 },
       { id: 'marr', x: 1.6, z: -9.6, rot: 0 },
       { id: 'quill', x: -9.2, z: 2.4, rot: Math.PI / 2 },
+      { id: 'pell', x: 12.4, z: -5.6, rot: 0.9 },
     ];
     for (const n of npcs) {
       const mesh = createTownNpc(n.id);
@@ -1000,10 +1009,31 @@ export class Game {
         pose: poseGaleHawk,
       });
     });
+
+    STAG_HOMES.forEach((home, i) => {
+      this.spawnFoe('stag', createAshStag(), home, `stag_${i}`, 32, {
+        aggroR: 1.25,
+        range: 1.5,
+        leash: 1.5,
+        chase: 2.2,
+        dmgMin: 2,
+        dmgMax: 5,
+        knock: 1.15,
+        respawn: 18,
+        label: 'Ash Stag',
+        snarl: 'An ash stag bellows and charges!',
+        engage: 'An ash stag engages you!',
+        biteLine: 'The ash stag gores you for',
+        loseLine: 'The ash stag trots back to the brake.',
+        returnLine: 'An ash stag settles back into the ash brake.',
+        corpse: 'The ash stag is dead. Another will clash back into the brake.',
+        pose: poseAshStag,
+      });
+    });
   }
 
   private spawnFoe(
-    kind: 'wolf' | 'boar' | 'spider' | 'fox' | 'crow' | 'beetle' | 'toad' | 'skeleton' | 'hawk',
+    kind: 'wolf' | 'boar' | 'spider' | 'fox' | 'crow' | 'beetle' | 'toad' | 'skeleton' | 'hawk' | 'stag',
     mesh: THREE.Group,
     home: { x: number; z: number },
     id: string,
@@ -1025,7 +1055,7 @@ export class Game {
     };
     this.objects.push(obj);
     this.foes.push({ obj, aggro: false, cd: 1.15, biteT: 0, hitDone: false, ...stats });
-    const markY = kind === 'hawk' ? 1.35 : kind === 'crow' ? 0.95 : kind === 'skeleton' ? 1.05 : kind === 'spider' ? 0.34 : kind === 'beetle' ? 0.48 : kind === 'toad' ? 0.58 : kind === 'fox' ? 0.62 : 0.72;
+    const markY = kind === 'hawk' ? 1.35 : kind === 'stag' ? 1.25 : kind === 'crow' ? 0.95 : kind === 'skeleton' ? 1.05 : kind === 'spider' ? 0.34 : kind === 'beetle' ? 0.48 : kind === 'toad' ? 0.58 : kind === 'fox' ? 0.62 : 0.72;
     addWeaknessMark(mesh, monsterProfile(kind).weak, markY);
   }
 
@@ -1034,7 +1064,7 @@ export class Game {
   }
 
   private isBeast(kind: InteractKind): boolean {
-    return kind === 'wolf' || kind === 'boar' || kind === 'spider' || kind === 'fox' || kind === 'crow' || kind === 'beetle' || kind === 'toad' || kind === 'skeleton' || kind === 'hawk';
+    return kind === 'wolf' || kind === 'boar' || kind === 'spider' || kind === 'fox' || kind === 'crow' || kind === 'beetle' || kind === 'toad' || kind === 'skeleton' || kind === 'hawk' || kind === 'stag';
   }
 
   private bindInput(canvas: HTMLCanvasElement): void {
@@ -1337,6 +1367,7 @@ export class Game {
       if (obj.meta?.npc === 'wren') return 'Reed Wren';
       if (obj.meta?.npc === 'marr') return 'Sexton Marr';
       if (obj.meta?.npc === 'quill') return 'Falconer Quill';
+      if (obj.meta?.npc === 'pell') return 'Huntsman Pell';
       return 'Shopkeep Nessa';
     }
     return obj.kind;
@@ -1346,11 +1377,11 @@ export class Game {
     const profile = monsterProfile(obj.kind);
     const bite = monsterAttack(obj.kind);
     const biteName = bite[0].toUpperCase() + bite.slice(1);
-    return `Lv ${profile.level} · ${biteName} · Armour ${monsterGuard(obj.kind)} · Weak to ${profile.weak}`;
+    return `Lv ${profile.level} · ${biteName} · Armour ${monsterGuard(obj.kind)} · Acc ${monsterAccuracy(obj.kind)} · Weak to ${profile.weak}`;
   }
 
   private foeCard(kind: string): string {
-    return `Strikes with ${monsterAttack(kind)}. Armour ${monsterGuard(kind)}. Bites ${monsterTempoLabel(kind).toLowerCase()}. Weak to ${monsterProfile(kind).weak}.`;
+    return `Strikes with ${monsterAttack(kind)}. Armour ${monsterGuard(kind)}. Accuracy ${monsterAccuracy(kind)}. Bites ${monsterTempoLabel(kind).toLowerCase()}. Weak to ${monsterProfile(kind).weak}.`;
   }
 
   private loadoutLine(): string {
@@ -1361,7 +1392,8 @@ export class Game {
     const bonus = setBonus(this.save);
     const name = weapon ? (ITEM_META[weapon]?.name ?? weapon) : 'Empty hands';
     const setBit = bonus > 0 ? ` · set +${bonus}` : '';
-    return `${name} · ${style} · ${weaponSpeedLabel(weapon)} · ${weaponReachLabel(weapon)} · +${dmg} damage · ${arm} armour${setBit} · ${wornWeight(this.save).toFixed(1)} kg · ${STANCES.find((s) => s.id === this.save.stance)?.name ?? 'Controlled'}`;
+    const acc = weaponAccuracy(weapon);
+    return `${name} · ${style} · acc ${acc >= 0 ? '+' : ''}${acc} · ${weaponSpeedLabel(weapon)} · ${weaponReachLabel(weapon)} · +${dmg} damage · ${arm} armour · ward ${wornWard(this.save)}${setBit} · ${wornWeight(this.save).toFixed(1)} kg · ${STANCES.find((s) => s.id === this.save.stance)?.name ?? 'Controlled'}`;
   }
 
   private isMonster(obj: WorldObject): boolean {
@@ -1697,6 +1729,8 @@ export class Game {
       this.hud.chat(`A barrow skeleton. Bones and a skull chip are what Sexton Marr works into the bone patterns. ${this.foeCard('skeleton')}`, 'combat');
     else if (all.kind === 'hawk')
       this.hud.chat(`A gale hawk. Feathers and a talon are what Falconer Quill works into the gale patterns. ${this.foeCard('hawk')}`, 'combat');
+    else if (all.kind === 'stag')
+      this.hud.chat(`An ash stag. Antlers and hide are what Huntsman Pell works into the ash patterns. ${this.foeCard('stag')}`, 'combat');
     else if (all.kind === 'npc') this.talkTo(all);
     else if (all.kind === 'forge' && all.meta?.forge === 'briar')
       this.hud.chat('The Briarford anvil. Harl opens it once his commission is paid.', 'system');
@@ -2125,6 +2159,30 @@ export class Game {
       this.save.quests.galeUnlocked = true;
       this.grantXp('strength', 40);
       this.hud.chat('Quill sets a Gale Spear in your pack and opens the gale patterns.', 'loot');
+    } else if (id === 'pell_accept') {
+      this.save.quests.ash_brake = 'active';
+      this.hud.chat('Quest started: bring Huntsman Pell 2 ash antlers from the ash brake.', 'system');
+    } else if (
+      id === 'pell_turnin' &&
+      this.save.quests.ash_brake === 'active' &&
+      countItem(this.save.inventory, 'ash_antler') >= ASH_NEEDED
+    ) {
+      if (!this.consumeId('ash_antler', ASH_NEEDED)) {
+        this.dialogue.hide();
+        this.refreshUI();
+        return;
+      }
+      if (!this.addItem('antler_blade', 1)) {
+        this.addItem('ash_antler', ASH_NEEDED);
+        this.hud.chat('Your pack is full — Pell will not take the antlers until the blade will fit.', 'system');
+        this.dialogue.hide();
+        this.refreshUI();
+        return;
+      }
+      this.save.quests.ash_brake = 'done';
+      this.save.quests.ashUnlocked = true;
+      this.grantXp('attack', 40);
+      this.hud.chat('Pell sets an Antler Blade in your pack and opens the ash patterns.', 'loot');
     }
     this.dialogue.hide();
     this.refreshUI();
@@ -2174,6 +2232,7 @@ export class Game {
     const mire = this.save.quests.mireUnlocked;
     const bone = this.save.quests.boneUnlocked;
     const gale = this.save.quests.galeUnlocked;
+    const ash = this.save.quests.ashUnlocked;
     const openNames = ['briar'];
     const held: string[] = [];
     if (road) openNames.push('roadwarden');
@@ -2190,21 +2249,23 @@ export class Game {
     else held.push('Marr holds bone');
     if (gale) openNames.push('gale');
     else held.push('Quill holds gale');
+    if (ash) openNames.push('ash');
+    else held.push('Pell holds ash');
     const anvilBlurb = !unlocked
       ? 'Harl keeps the anvil cold until his commission is paid in pelts, logs, and copper.'
       : held.length
         ? `${openNames.join(', ')} patterns are open. ${held.join(', ')}.`
-        : 'Briar, roadwarden, dusk, cinder, delver, mire, bone, and gale patterns share this anvil.';
+        : 'Briar, roadwarden, dusk, cinder, delver, mire, bone, gale, and ash patterns share this anvil.';
     const anvilChat = !unlocked
       ? 'The anvil is shut. Finish Harl’s commission to forge here.'
       : held.length
         ? `The anvil is hot. ${openNames.join(', ')} patterns are open. ${held.join(', ')}.`
-        : 'The anvil is hot. Briar, roadwarden, dusk, cinder, delver, mire, bone, and gale patterns are open.';
+        : 'The anvil is hot. Briar, roadwarden, dusk, cinder, delver, mire, bone, gale, and ash patterns are open.';
     this.hud.setForgeOpen(true, this.save, briar
       ? {
           title: 'Briarford Anvil',
           blurb: anvilBlurb,
-          recipes: [...BRIAR_RECIPES, ...ROAD_RECIPES, ...DUSK_RECIPES, ...CINDER_RECIPES, ...DELVER_RECIPES, ...MIRE_RECIPES, ...BONE_RECIPES, ...GALE_RECIPES],
+          recipes: [...BRIAR_RECIPES, ...ROAD_RECIPES, ...DUSK_RECIPES, ...CINDER_RECIPES, ...DELVER_RECIPES, ...MIRE_RECIPES, ...BONE_RECIPES, ...GALE_RECIPES, ...ASH_RECIPES],
           forgeable: unlocked,
           lockedIds: [
             ...(road ? [] : ROAD_RECIPES.map((r) => r.id)),
@@ -2214,6 +2275,7 @@ export class Game {
             ...(mire ? [] : MIRE_RECIPES.map((r) => r.id)),
             ...(bone ? [] : BONE_RECIPES.map((r) => r.id)),
             ...(gale ? [] : GALE_RECIPES.map((r) => r.id)),
+            ...(ash ? [] : ASH_RECIPES.map((r) => r.id)),
           ],
         }
       : {
@@ -2227,7 +2289,7 @@ export class Game {
   }
 
   private craftAtForge(recipeId: string): void {
-    const list = this.forgeBench === 'briar' ? [...BRIAR_RECIPES, ...ROAD_RECIPES, ...DUSK_RECIPES, ...CINDER_RECIPES, ...DELVER_RECIPES, ...MIRE_RECIPES, ...BONE_RECIPES, ...GALE_RECIPES] : YETI_RECIPES;
+    const list = this.forgeBench === 'briar' ? [...BRIAR_RECIPES, ...ROAD_RECIPES, ...DUSK_RECIPES, ...CINDER_RECIPES, ...DELVER_RECIPES, ...MIRE_RECIPES, ...BONE_RECIPES, ...GALE_RECIPES, ...ASH_RECIPES] : YETI_RECIPES;
     const recipe = list.find((r) => r.id === recipeId);
     if (!recipe) return;
     if (this.forgeBench === 'briar' && !this.save.quests.briarUnlocked) {
@@ -2260,6 +2322,10 @@ export class Game {
     }
     if (recipe.id.startsWith('gale_') && !this.save.quests.galeUnlocked) {
       this.hud.chat('Quill has not opened the gale patterns.', 'system');
+      return;
+    }
+    if ((recipe.id.startsWith('antler_') || recipe.id.startsWith('stag_')) && !this.save.quests.ashUnlocked) {
+      this.hud.chat('Pell has not opened the ash patterns.', 'system');
       return;
     }
     if (!canCraft(this.save, recipe)) {
@@ -2298,6 +2364,7 @@ export class Game {
       toad: [12, 10, 5],
       skeleton: [13, 11, 6],
       hawk: [14, 12, 6],
+      stag: [14, 12, 6],
       spider: [11, 9, 4],
       crow: [11, 9, 4],
     };
@@ -2905,6 +2972,7 @@ export class Game {
     else if (style !== 'ranged') hitChance -= 0.04;
     const guard = monsterGuard(target.kind);
     if (guard) hitChance = Math.max(0.08, hitChance - guard * 0.012);
+    hitChance += weaponAccuracy(this.save.equipped.weapon) * 0.006;
     const label = this.combatName(target);
     if (Math.random() > hitChance) {
       this.hud.chat(`You miss the ${label} with ${art.name}.`, 'combat');
@@ -3139,6 +3207,19 @@ export class Game {
           'system',
         );
       }
+    } else if (target.kind === 'stag') {
+      this.hud.chat('The ash stag drops. An antler and a hide come free.', 'combat');
+      if (this.addItem('ash_antler', 1)) this.hud.chat('You lift an Ash Antler.', 'loot');
+      if (Math.random() < 0.4 && this.addItem('stag_hide', 1)) this.hud.chat('You skin a Stag Hide.', 'loot');
+      if (this.save.quests.ash_brake === 'active') {
+        const n = countItem(this.save.inventory, 'ash_antler');
+        this.hud.chat(
+          n >= ASH_NEEDED
+            ? 'Pell has enough antlers. Return to the ash brake.'
+            : `Ash antlers gathered: ${n}/${ASH_NEEDED}.`,
+          'system',
+        );
+      }
     } else if (target.kind === 'hawk') {
       this.hud.chat('The gale hawk drops. A feather and a talon come free.', 'combat');
       if (this.addItem('gale_feather', 1)) this.hud.chat('You pluck a Gale Feather.', 'loot');
@@ -3299,6 +3380,14 @@ export class Game {
     const foe = this.foeOf(beast);
     const min = foe?.dmgMin ?? 2;
     const max = foe?.dmgMax ?? 4;
+    if (!this.biteConnects(beast.kind)) {
+      this.hud.chat(`The ${foe?.label ?? 'beast'} misses.`, 'combat');
+      if (this.activity.type !== 'combat' && beast.hp > 0 && !beast.depleted) {
+        this.beginCombat(beast, `You raise your guard against the ${foe?.label ?? 'beast'}!`);
+      }
+      this.refreshUI();
+      return;
+    }
     const raw = this.enragedRaw(beast, min + Math.floor(Math.random() * (max - min + 1)));
     const mitigated = this.mitigateIncoming(raw, monsterAttack(beast.kind));
     this.save.hp = Math.max(0, this.save.hp - mitigated);
@@ -3465,6 +3554,11 @@ export class Game {
   private yetiMeleeHit(yeti: WorldObject): void {
     const dist = this.distTo(yeti);
     if (dist > YETI_ATTACK_RANGE + 0.65) return;
+    if (!this.biteConnects('yeti')) {
+      this.hud.chat('The Frost Yeti misses.', 'combat');
+      this.refreshUI();
+      return;
+    }
     const raw = this.enragedRaw(yeti, YETI_DMG_MIN + Math.floor(Math.random() * (YETI_DMG_MAX - YETI_DMG_MIN + 1)));
     const mitigated = this.mitigateIncoming(raw, 'crush');
     this.save.hp = Math.max(0, this.save.hp - mitigated);
@@ -3608,6 +3702,11 @@ export class Game {
   private orcMeleeHit(orc: WorldObject): void {
     const dist = this.distTo(orc);
     if (dist > ORC_ATTACK_RANGE + 0.65) return;
+    if (!this.biteConnects('orc')) {
+      this.hud.chat('The Orc Scout misses.', 'combat');
+      this.refreshUI();
+      return;
+    }
     const raw = this.enragedRaw(orc, ORC_DMG_MIN + Math.floor(Math.random() * (ORC_DMG_MAX - ORC_DMG_MIN + 1)));
     const mitigated = this.mitigateIncoming(raw, 'stab');
     this.save.hp = Math.max(0, this.save.hp - mitigated);
@@ -3788,6 +3887,7 @@ export class Game {
       else if (o.kind === 'toad') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#3e7a3a' });
       else if (o.kind === 'skeleton') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#e4dcc8' });
       else if (o.kind === 'hawk') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#d8d4cc' });
+      else if (o.kind === 'stag') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#c4a06a' });
       else if (o.kind === 'npc') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#f0d070' });
       else if (o.kind === 'forge' && o.meta?.forge === 'briar')
         markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#e09040' });
@@ -3796,6 +3896,17 @@ export class Game {
     markers.push({ x: -1.2, z: -0.5, color: '#ff8844' });
     markers.push({ x: 2.2, z: 0.35, color: '#8ec8ff' });
     this.hud.drawMinimap(this.player.position.x, this.player.position.z, this.player.rotation.y, markers);
+  }
+
+  /**
+   * Even accuracy (12) and no ward connects every time, so a naked hunter
+   * still takes the wolf's bite. Ward and a low-accuracy beast can miss.
+   */
+  private biteConnects(kind: string): boolean {
+    let chance = 1 + (monsterAccuracy(kind) - 12) * 0.012 - wornWard(this.save) * 0.012;
+    if (this.save.stance === 'defensive') chance -= 0.04;
+    chance = Math.max(0.32, Math.min(1, chance));
+    return Math.random() <= chance;
   }
 
   private mitigateIncoming(raw: number, style: AttackStyle = 'slash'): number {

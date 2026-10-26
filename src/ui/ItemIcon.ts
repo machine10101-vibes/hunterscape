@@ -49,15 +49,15 @@ export function getItemIcon(id: string): HTMLCanvasElement {
   if (hit) return hit;
   ensureStudio();
   const mesh = createItemMesh(id);
-  if (id === 'bronze_sword' || id === 'frost_sword' || id === 'briar_sword' || id === 'dusk_dagger' || id === 'cinder_knife' || id === 'mire_dagger' || id === 'bone_sword') mesh.rotation.set(0.15, 0.85, -0.85);
+  if (id === 'bronze_sword' || id === 'frost_sword' || id === 'briar_sword' || id === 'dusk_dagger' || id === 'cinder_knife' || id === 'mire_dagger' || id === 'bone_sword' || id === 'antler_blade') mesh.rotation.set(0.15, 0.85, -0.85);
   if (id === 'frost_spear' || id === 'gale_spear') mesh.rotation.set(0.2, 0.7, -1.05);
   if (id === 'bronze_hatchet' || id === 'frost_hammer' || id === 'road_mace' || id === 'delver_maul') mesh.rotation.set(0.25, 0.95, -0.35);
   if (id === 'bronze_pickaxe') mesh.rotation.set(0.15, 0.7, -0.25);
   if (id === 'frost_bow') mesh.rotation.set(0.05, 0.9, 0.2);
   if (id === 'frost_shield' || id === 'briar_shield' || id === 'road_shield' || id === 'cinder_shield') mesh.rotation.set(0.22, 0.38, 0.06);
-  if (id === 'frost_chest' || id === 'briar_vest' || id === 'dusk_cloak' || id === 'delver_vest' || id === 'mire_cloak' || id === 'bone_ribs' || id === 'gale_cloak') mesh.rotation.set(0.2, 0.7, 0);
+  if (id === 'frost_chest' || id === 'briar_vest' || id === 'dusk_cloak' || id === 'delver_vest' || id === 'mire_cloak' || id === 'bone_ribs' || id === 'gale_cloak' || id === 'stag_cloak') mesh.rotation.set(0.2, 0.7, 0);
   if (id === 'frost_greaves' || id === 'frost_legs' || id === 'road_legs' || id === 'road_greaves' || id === 'cinder_legs') mesh.rotation.set(0.15, 0.6, 0.15);
-  if (id === 'frost_boots' || id === 'briar_boots' || id === 'dusk_boots' || id === 'delver_boots' || id === 'mire_boots' || id === 'bone_boots' || id === 'gale_boots') mesh.rotation.set(0.6, 0.4, 0);
+  if (id === 'frost_boots' || id === 'briar_boots' || id === 'dusk_boots' || id === 'delver_boots' || id === 'mire_boots' || id === 'bone_boots' || id === 'gale_boots' || id === 'stag_boots') mesh.rotation.set(0.6, 0.4, 0);
   if (id === 'wolf_pelt') mesh.rotation.set(0.4, 0.6, 0.1);
   if (id === 'wolf_fang' || id === 'boar_tusk' || id === 'dusk_fang') mesh.rotation.set(0.2, 0.5, 0.6);
   if (id === 'fox_fur') mesh.rotation.set(0.35, 0.7, 0.1);
@@ -70,6 +70,8 @@ export function getItemIcon(id: string): HTMLCanvasElement {
   if (id === 'bones') mesh.rotation.set(0.3, 0.6, 0.2);
   if (id === 'skull_chip') mesh.rotation.set(0.4, 0.5, 0.1);
   if (id === 'gale_feather') mesh.rotation.set(0.2, 0.55, 0.45);
+  if (id === 'ash_antler') mesh.rotation.set(0.3, 0.6, 0.4);
+  if (id === 'stag_hide') mesh.rotation.set(0.35, 0.55, 0.12);
   if (id === 'hawk_talon') mesh.rotation.set(0.4, 0.5, 0.3);
   if (id === 'spider_silk') mesh.rotation.set(0.2, 0.8, 0.15);
   if (id === 'boar_roast') mesh.rotation.set(0.45, 0.4, 0.1);

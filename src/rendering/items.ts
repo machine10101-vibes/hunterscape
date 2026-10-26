@@ -75,6 +75,13 @@ import {
   createGaleSpear,
   createHawkTalonItem,
 } from './galeGear';
+import {
+  createAntlerBlade,
+  createAshAntlerItem,
+  createStagBoot,
+  createStagCloak,
+  createStagHideItem,
+} from './stagGear';
 
 function std(color: number, opts: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
@@ -161,6 +168,11 @@ export function createItemMesh(id: string): THREE.Group {
   if (id === 'gale_spear') return createGaleSpear();
   if (id === 'gale_cloak') return createGaleCloak();
   if (id === 'gale_boots') return createGaleBoot();
+  if (id === 'ash_antler') return createAshAntlerItem();
+  if (id === 'stag_hide') return createStagHideItem();
+  if (id === 'antler_blade') return createAntlerBlade();
+  if (id === 'stag_cloak') return createStagCloak();
+  if (id === 'stag_boots') return createStagBoot();
   return makeUnknown();
 }
 

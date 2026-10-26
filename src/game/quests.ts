@@ -1,6 +1,6 @@
 import { countItem, type SaveData } from './types';
 
-export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve' | 'calder' | 'holt' | 'odell' | 'wren' | 'marr' | 'quill';
+export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve' | 'calder' | 'holt' | 'odell' | 'wren' | 'marr' | 'quill' | 'pell';
 export type QuestStage = 'none' | 'active' | 'done';
 
 export interface QuestState {
@@ -15,6 +15,7 @@ export interface QuestState {
   mire_toads: QuestStage;
   barrow_bones: QuestStage;
   gale_roost: QuestStage;
+  ash_brake: QuestStage;
   wolfKills: number;
   boarKills: number;
   briarUnlocked: boolean;
@@ -25,6 +26,7 @@ export interface QuestState {
   mireUnlocked: boolean;
   boneUnlocked: boolean;
   galeUnlocked: boolean;
+  ashUnlocked: boolean;
 }
 
 export function defaultQuests(): QuestState {
@@ -40,6 +42,7 @@ export function defaultQuests(): QuestState {
     mire_toads: 'none',
     barrow_bones: 'none',
     gale_roost: 'none',
+    ash_brake: 'none',
     wolfKills: 0,
     boarKills: 0,
     briarUnlocked: false,
@@ -50,6 +53,7 @@ export function defaultQuests(): QuestState {
     mireUnlocked: false,
     boneUnlocked: false,
     galeUnlocked: false,
+    ashUnlocked: false,
   };
 }
 
@@ -62,6 +66,7 @@ export const SHELL_NEEDED = 2;
 export const HIDE_NEEDED = 2;
 export const BONE_NEEDED = 2;
 export const GALE_NEEDED = 2;
+export const ASH_NEEDED = 2;
 
 export interface DialogueOption {
   id: string;
@@ -372,7 +377,40 @@ export function dialogueFor(save: SaveData, npc: NpcId): DialogueScript {
     }
     return {
       speaker: 'Falconer Quill',
-      body: 'Gale patterns are on the anvil. Spear: 1 feather, 1 talon, 1 copper, 1 log. Cloak: 3 feathers, 1 talon. Boots: 2 feathers, 1 log. The cloak soaks slash and the boots soak crush. They are light, so the walk does not wind you. The hawks are still west of the roost if you need more.',
+      body: 'Gale patterns are on the anvil. Spear: 1 feather, 1 talon, 1 copper, 1 log. Cloak: 3 feathers, 1 talon. Boots: 2 feathers, 1 log. The cloak soaks slash and the boots soak crush. They are light, so the walk does not wind you. The hawks are still west of the roost if you need more. Huntsman Pell at the ash brake, north of the east road, wants shed antlers.',
+      options: [CLOSE],
+    };
+  }
+
+  if (npc === 'pell') {
+    const antlers = countItem(save.inventory, 'ash_antler');
+    if (q.ash_brake === 'none') {
+      return {
+        speaker: 'Huntsman Pell',
+        body: 'Ash stags clash north of the east road. They strike with slash, and a stab weapon finds the gap under the rack. Bring me 2 ash antlers and I will set an antler blade in your hand and open those patterns on the anvil. Keen weapons land more often. Ward on your armour turns a bite aside.',
+        options: [
+          { id: 'pell_accept', label: 'I will bring the antlers.' },
+          { id: 'close', label: 'The brake can wait.' },
+        ],
+      };
+    }
+    if (q.ash_brake === 'active' && antlers < ASH_NEEDED) {
+      return {
+        speaker: 'Huntsman Pell',
+        body: `The stags are still clashing. I need ${ASH_NEEDED} ash antlers (you have ${antlers}). They stand just south of this brake, and a stab weapon splits the rack.`,
+        options: [CLOSE],
+      };
+    }
+    if (q.ash_brake === 'active') {
+      return {
+        speaker: 'Huntsman Pell',
+        body: 'Two antlers. That will haft an Antler Blade, and the anvil will take antlers, hide, copper, and logs for the cloak and boots. Its special is Gore, and it spends Focus. The blade is keen, and the hide adds ward.',
+        options: [{ id: 'pell_turnin', label: 'Take the antlers.' }],
+      };
+    }
+    return {
+      speaker: 'Huntsman Pell',
+      body: 'Ash patterns are on the anvil. Blade: 1 antler, 1 hide, 1 copper, 1 log. Cloak: 3 antlers, 1 hide. Boots: 2 antlers, 1 log. The cloak soaks slash and the boots soak crush. Both add ward, so bites miss more often. The stags are still south of the brake if you need more.',
       options: [CLOSE],
     };
   }
@@ -510,6 +548,14 @@ export function trackerLines(save: SaveData): string[] {
       feathers >= GALE_NEEDED ? 'Roost: return to Falconer Quill.' : `Roost: gale feathers ${feathers}/${GALE_NEEDED}`,
     );
   }
+  if (q.gale_roost === 'done' && q.ash_brake === 'none') {
+    lines.push('Huntsman Pell needs 2 ash antlers at the ash brake.');
+  } else if (q.ash_brake === 'active') {
+    const antlers = countItem(save.inventory, 'ash_antler');
+    lines.push(
+      antlers >= ASH_NEEDED ? 'Brake: return to Huntsman Pell.' : `Brake: ash antlers ${antlers}/${ASH_NEEDED}`,
+    );
+  }
   if (q.east_road === 'done' && q.harl_commission === 'none') lines.push('Smith Harl has a commission.');
   else if (q.harl_commission === 'active') lines.push('Harl: 3 pelts, 2 logs, 1 copper.');
   if (q.lanterns === 'none' && q.east_road !== 'none') lines.push('Nessa needs 2 tin ore for the lanterns.');
@@ -523,6 +569,7 @@ export function trackerLines(save: SaveData): string[] {
     if (q.mireUnlocked) open.push('mire');
     if (q.boneUnlocked) open.push('bone');
     if (q.galeUnlocked) open.push('gale');
+    if (q.ashUnlocked) open.push('ash');
     if (open.length === 1) lines.push('Briar patterns are open.');
     else lines.push(`Anvil: ${open.join(', ')}.`);
   }

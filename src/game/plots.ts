@@ -56,6 +56,8 @@ export const PLOT_LANDMARKS: PlotLandmark[] = [
   { name: 'Barrow skeletons', x: 0.8, z: -13.4 },
   { name: 'West roost', x: -12.0, z: 1.8 },
   { name: 'Gale hawks', x: -14.7, z: 2.6 },
+  { name: 'Ash brake', x: 13.4, z: -6.2 },
+  { name: 'Ash stags', x: 13.8, z: -6.4 },
   { name: 'Frost cairn', x: 7.5, z: 42 },
   { name: 'Hunter stumps', x: -5.2, z: -41 },
   { name: 'Stream ford', x: 38, z: -8.4 },

@@ -262,6 +262,11 @@ export const ITEM_META: Record<
   gale_spear: { name: 'Gale Spear', icon: '🔱', stackable: false, slot: 'weapon' },
   gale_cloak: { name: 'Gale Cloak', icon: '🧥', stackable: false, slot: 'chest' },
   gale_boots: { name: 'Gale Boots', icon: '👢', stackable: false, slot: 'boots' },
+  ash_antler: { name: 'Ash Antler', icon: '🦌', stackable: true },
+  stag_hide: { name: 'Stag Hide', icon: '🥩', stackable: true },
+  antler_blade: { name: 'Antler Blade', icon: '🗡', stackable: false, slot: 'weapon' },
+  stag_cloak: { name: 'Stag Cloak', icon: '🧥', stackable: false, slot: 'chest' },
+  stag_boots: { name: 'Stag Boots', icon: '👢', stackable: false, slot: 'boots' },
 };
 
 export const EQUIP_SLOTS: { id: EquipSlot; label: string }[] = [
@@ -661,6 +666,38 @@ export const GALE_RECIPES: Recipe[] = [
   },
 ];
 
+export const ASH_RECIPES: Recipe[] = [
+  {
+    id: 'antler_blade',
+    name: 'Antler Blade',
+    blurb: 'A pale hunting blade. Slash. Keen accuracy. Special: Gore.',
+    cost: [
+      { id: 'ash_antler', qty: 1 },
+      { id: 'stag_hide', qty: 1 },
+      { id: 'copper_ore', qty: 1 },
+      { id: 'whisper_logs', qty: 1 },
+    ],
+  },
+  {
+    id: 'stag_cloak',
+    name: 'Stag Cloak',
+    blurb: 'A russet wrap. Soaks slash. Adds ward.',
+    cost: [
+      { id: 'ash_antler', qty: 3 },
+      { id: 'stag_hide', qty: 1 },
+    ],
+  },
+  {
+    id: 'stag_boots',
+    name: 'Stag Boots',
+    blurb: 'Hide boots with a pale cuff. Soaks crush. Adds ward.',
+    cost: [
+      { id: 'ash_antler', qty: 2 },
+      { id: 'whisper_logs', qty: 1 },
+    ],
+  },
+];
+
 export function countItem(inv: ItemStack[], id: string): number {
   return inv.filter((s) => s.id === id).reduce((n, s) => n + s.qty, 0);
 }
@@ -687,6 +724,7 @@ const ARMOR_BONUS: Record<string, number> = {
   mire_cloak: 2,
   bone_ribs: 2,
   gale_cloak: 2,
+  stag_cloak: 2,
   frost_greaves: 2,
   road_greaves: 1,
   frost_legs: 2,
@@ -699,6 +737,7 @@ const ARMOR_BONUS: Record<string, number> = {
   mire_boots: 1,
   bone_boots: 1,
   gale_boots: 1,
+  stag_boots: 1,
 };
 
 /** Two or more worn pieces from one family add a point of armour. */
@@ -712,6 +751,7 @@ const ARMOR_FAMILIES: Record<string, string[]> = {
   mire: ['mire_cloak', 'mire_boots'],
   bone: ['bone_ribs', 'bone_boots'],
   gale: ['gale_cloak', 'gale_boots'],
+  stag: ['stag_cloak', 'stag_boots'],
 };
 
 export function setBonus(save: SaveData): number {
@@ -752,6 +792,8 @@ const ARMOR_DEFENCE: Record<string, AttackStyle> = {
   bone_boots: 'stab',
   gale_cloak: 'slash',
   gale_boots: 'crush',
+  stag_cloak: 'slash',
+  stag_boots: 'crush',
 };
 
 export function itemDefenceStyle(id: string | null): AttackStyle | null {
@@ -786,6 +828,7 @@ const WEAPON_DAMAGE: Record<string, number> = {
   mire_dagger: 2,
   bone_sword: 2,
   gale_spear: 2,
+  antler_blade: 2,
 };
 
 const WEAPON_STYLE: Record<string, AttackStyle> = {
@@ -801,6 +844,7 @@ const WEAPON_STYLE: Record<string, AttackStyle> = {
   mire_dagger: 'stab',
   bone_sword: 'slash',
   gale_spear: 'stab',
+  antler_blade: 'slash',
   frost_bow: 'ranged',
 };
 
@@ -814,6 +858,7 @@ const WEAPON_RECOVERY: Record<string, number> = {
   mire_dagger: 0.44,
   bone_sword: 0.62,
   gale_spear: 0.68,
+  antler_blade: 0.64,
   frost_spear: 0.7,
   frost_bow: 0.9,
   road_mace: 1.0,
@@ -860,6 +905,7 @@ export const WEAPON_SPECS: Record<string, WeaponSpec> = {
   mire_dagger: { name: 'Venom', cost: 35, blurb: 'The cut keeps working.', mult: 1.1, heal: 0, bleed: 3, stun: 0 },
   bone_sword: { name: 'Rattle', cost: 32, blurb: 'The blow rings the bones.', mult: 1.25, heal: 0, bleed: 0, stun: 1.2 },
   gale_spear: { name: 'Crosswind', cost: 34, blurb: 'The thrust checks the next strike.', mult: 1.3, heal: 0, bleed: 0, stun: 1.1 },
+  antler_blade: { name: 'Gore', cost: 32, blurb: 'The tine stays in the cut.', mult: 1.2, heal: 0, bleed: 2, stun: 0 },
 };
 
 export function weaponSpec(id: string | null): WeaponSpec | null {
@@ -891,6 +937,7 @@ export const MONSTER_PROFILE: Record<string, MonsterProfile> = {
   toad: { level: 17, weak: 'slash' },
   skeleton: { level: 19, weak: 'crush' },
   hawk: { level: 21, weak: 'slash' },
+  stag: { level: 23, weak: 'stab' },
   boar: { level: 22, weak: 'stab' },
   orc: { level: 33, weak: 'stab' },
   yeti: { level: 42, weak: 'crush' },
@@ -911,6 +958,7 @@ const MONSTER_ATTACK: Record<string, AttackStyle> = {
   toad: 'crush',
   skeleton: 'slash',
   hawk: 'stab',
+  stag: 'slash',
   boar: 'stab',
   orc: 'stab',
   yeti: 'crush',
@@ -931,6 +979,7 @@ const MONSTER_GUARD: Record<string, number> = {
   toad: 1,
   skeleton: 1,
   hawk: 1,
+  stag: 2,
   boar: 1,
   orc: 2,
   yeti: 3,
@@ -954,6 +1003,7 @@ const MONSTER_TEMPO: Record<string, number> = {
   toad: 1.48,
   skeleton: 1.55,
   hawk: 1.1,
+  stag: 1.42,
   boar: 1.72,
   orc: 1.85,
   yeti: 2.7,
@@ -1010,6 +1060,9 @@ const ITEM_WEIGHT: Record<string, number> = {
   mire_boots: 0.6,
   bone_boots: 1.3,
   gale_boots: 0.5,
+  antler_blade: 1.5,
+  stag_cloak: 1.0,
+  stag_boots: 0.7,
 };
 
 const CAMP_KIT_WEIGHT =
@@ -1052,9 +1105,13 @@ export function gearLine(id: string): string {
     if (spec) bits.push(`${spec.name} (${spec.cost} focus)`);
     bits.push(weaponSpeedLabel(id));
     bits.push(`reach ${weaponReachLabel(id)}`);
+    const acc = weaponAccuracy(id);
+    bits.push(`acc ${acc >= 0 ? '+' : ''}${acc}`);
   }
   const arm = itemArmor(id);
   if (arm) bits.push(`+${arm} armour`);
+  const ward = itemWard(id);
+  if (ward) bits.push(`ward +${ward}`);
   const soak = itemDefenceStyle(id);
   if (soak) bits.push(`soaks ${soak}`);
   const kilos = itemWeight(id);
@@ -1076,6 +1133,7 @@ const WEAPON_REACH: Record<string, number> = {
   delver_maul: -0.16,
   frost_spear: 0.4,
   gale_spear: 0.58,
+  antler_blade: 0.03,
   frost_bow: 2.2,
 };
 
@@ -1089,6 +1147,94 @@ export function weaponReachLabel(id: string | null): string {
   if (r < 0.2) return 'Even';
   if (r < 1.2) return 'Long';
   return 'Far';
+}
+
+/**
+ * Accuracy points on a swing. Bronze is 0, so the camp sword's hit rate stays.
+ * Daggers and the bow are keen. Mauls give accuracy up for weight.
+ */
+const WEAPON_ACCURACY: Record<string, number> = {
+  bronze_sword: 0,
+  frost_sword: 4,
+  briar_sword: 2,
+  bone_sword: 3,
+  antler_blade: 6,
+  dusk_dagger: 8,
+  cinder_knife: 7,
+  mire_dagger: 7,
+  frost_spear: 5,
+  gale_spear: 6,
+  frost_bow: 9,
+  road_mace: -3,
+  frost_hammer: -5,
+  delver_maul: -6,
+};
+
+export function weaponAccuracy(id: string | null): number {
+  return id ? (WEAPON_ACCURACY[id] ?? 0) : 0;
+}
+
+/** Ward turns a bite aside. Separate from the armour that soaks damage. */
+const ITEM_WARD: Record<string, number> = {
+  frost_shield: 4,
+  briar_shield: 1,
+  road_shield: 2,
+  cinder_shield: 1,
+  frost_chest: 4,
+  briar_vest: 2,
+  dusk_cloak: 2,
+  delver_vest: 2,
+  mire_cloak: 1,
+  bone_ribs: 3,
+  gale_cloak: 1,
+  stag_cloak: 2,
+  frost_greaves: 3,
+  road_greaves: 2,
+  frost_legs: 2,
+  road_legs: 2,
+  cinder_legs: 1,
+  frost_boots: 2,
+  briar_boots: 1,
+  dusk_boots: 1,
+  delver_boots: 2,
+  mire_boots: 1,
+  bone_boots: 2,
+  gale_boots: 1,
+  stag_boots: 1,
+};
+
+export function itemWard(id: string | null): number {
+  return id ? (ITEM_WARD[id] ?? 0) : 0;
+}
+
+export function wornWard(save: SaveData): number {
+  let n = 0;
+  for (const id of Object.values(save.equipped)) n += itemWard(id);
+  return n;
+}
+
+/**
+ * Bite accuracy. 12 is even: an unarmoured hunter is struck every time.
+ * Keen beasts sit above it. Heavy ones sit below and can miss.
+ */
+const MONSTER_ACCURACY: Record<string, number> = {
+  dummy: 12,
+  wolf: 12,
+  crow: 16,
+  spider: 14,
+  fox: 15,
+  beetle: 7,
+  toad: 11,
+  skeleton: 10,
+  hawk: 18,
+  stag: 15,
+  boar: 9,
+  orc: 13,
+  yeti: 8,
+};
+
+export function monsterAccuracy(kind: string): number {
+  return MONSTER_ACCURACY[kind] ?? 12;
 }
 
 /** Classic-style XP curve approximation */
@@ -1157,6 +1303,8 @@ export function defaultSave(): SaveData {
       boneUnlocked: false,
       gale_roost: 'none',
       galeUnlocked: false,
+      ash_brake: 'none',
+      ashUnlocked: false,
     },
   };
 }
