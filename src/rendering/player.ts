@@ -388,7 +388,9 @@ export function setHandGrip(hand: THREE.Object3D | undefined, amount: number): v
     f.tip.rotation.x = -c * 0.82 * lag;
   }
   if (thumb) {
-    thumb.root.rotation.x = -0.55 - c * 0.35;
+    // Open, the thumb hangs beside the fingers. Closed, it lies across the haft.
+    thumb.root.rotation.z = -0.42 - c * 0.76;
+    thumb.root.rotation.x = -0.22 - c * 0.68;
     thumb.mid.rotation.x = -c * 0.55;
     thumb.tip.rotation.x = -c * 0.45;
   }
@@ -402,16 +404,17 @@ function makeHand(
 ): THREE.Group {
   const hand = new THREE.Group();
 
-  // A flat palm the fingers grow out of, rather than a ball with sticks on it.
-  const back = new THREE.Mesh(new THREE.SphereGeometry(0.052, 12, 10), leather);
-  back.scale.set(1.2, 0.82, 0.58);
-  back.position.set(0, -0.022, 0.012);
+  // A short, flat metacarpal pad. A round palm swallowed the fingers and
+  // read as a mitten.
+  const back = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 10), leather);
+  back.scale.set(1.5, 0.32, 0.28);
+  back.position.set(0, -0.022, 0.01);
   addPart(back, hand);
 
-  // Thick enough to sleeve into the gauntlet above and the palm below.
-  const wrist = new THREE.Mesh(new THREE.CapsuleGeometry(0.056, 0.07, 4, 10), leather);
-  wrist.scale.set(1.02, 1, 0.9);
-  wrist.position.set(0, 0.02, 0.006);
+  // A flat cuff where the gauntlet ends. A tall capsule here was the mitten.
+  const wrist = new THREE.Mesh(new THREE.SphereGeometry(0.034, 10, 8), leather);
+  wrist.scale.set(1.35, 0.38, 0.5);
+  wrist.position.set(0, 0.012, 0.004);
   addPart(wrist, hand);
 
   const gripGroup = new THREE.Group();
@@ -422,22 +425,23 @@ function makeHand(
   gripGroup.rotation.z = grip === 'pole' ? 1.79 : grip === 'fist' ? 0.22 : 0;
   hand.add(gripGroup);
 
-  const knuckleRidge = new THREE.Mesh(new THREE.CapsuleGeometry(0.014, 0.058, 4, 8), leather);
+  const knuckleRidge = new THREE.Mesh(new THREE.CapsuleGeometry(0.008, 0.052, 3, 6), leather);
   knuckleRidge.rotation.z = Math.PI / 2;
-  knuckleRidge.position.set(0, 0.004, 0.014);
+  knuckleRidge.scale.set(1, 1, 0.55);
+  knuckleRidge.position.set(0, -0.01, 0.018);
   addPart(knuckleRidge, gripGroup);
 
   const fingers: FingerChain[] = [];
   for (let i = 0; i < 4; i++) {
     const len = 0.074 - Math.abs(i - 1.1) * 0.007;
-    const f = makeFinger(skin, leather, len, 0.0118 - i * 0.0009);
+    const f = makeFinger(skin, leather, len, 0.0134 - i * 0.0007);
     f.root.position.set(-0.031 + i * 0.0207, 0, 0.012 - Math.abs(i - 1.5) * 0.005);
     gripGroup.add(f.root);
     fingers.push(f);
   }
 
   // Thumb sits on +X and lies back along the handle, pinning it against the fingers.
-  const thumb = makeFinger(skin, leather, 0.064, 0.0136);
+  const thumb = makeFinger(skin, leather, 0.064, 0.015);
   thumb.root.position.set(0.04, 0.014, 0.03);
   thumb.root.rotation.z = -1.18;
   gripGroup.add(thumb.root);
@@ -559,9 +563,11 @@ export function createPlayerMesh(): THREE.Group {
     shin.position.set(0, -0.44, 0);
 
     // The thigh and calf already meet. Only a flat kneecap marks the hinge.
-    const kneecap = new THREE.Mesh(new THREE.SphereGeometry(0.034, 10, 8), cloth);
-    kneecap.scale.set(1.3, 0.9, 0.48);
-    kneecap.position.set(0, 0.008, 0.072);
+    // A low ridge on the front of the hinge. A round cap read as a ball
+    // bolted to the trouser.
+    const kneecap = new THREE.Mesh(new THREE.SphereGeometry(0.028, 10, 8), cloth);
+    kneecap.scale.set(1.45, 0.36, 0.26);
+    kneecap.position.set(0, 0.0, 0.082);
     addPart(kneecap, shin);
 
     // One trouser colour from hip to boot. The calf runs down into the shaft
@@ -800,25 +806,24 @@ export function createPlayerMesh(): THREE.Group {
     arm.name = side < 0 ? 'armL' : 'armR';
     arm.position.set(side * (SHOULDER_X - 0.2), 0, 0);
 
-    // Skin clavicle from the neck side of this pivot out to the humerus head.
+    // Short ridge under the vest. A longer one left a round cap on the chest.
     // The capsule is symmetric, so the same Z spin lays it along local X.
-    const clavicle = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.15, 4, 10), skin);
+    const clavicle = new THREE.Mesh(new THREE.CapsuleGeometry(0.044, 0.07, 4, 8), skin);
     clavicle.rotation.z = -Math.PI / 2;
-    clavicle.scale.set(0.8, 1, 0.7);
-    clavicle.position.set(side * 0.012, 0.022, -0.002);
+    clavicle.scale.set(1.05, 1, 0.72);
+    clavicle.position.set(side * -0.02, 0.012, 0.0);
     addPart(clavicle, clav);
 
-    // One lathe from the deltoid down to the elbow pivot. A separate shoulder
-    // ball read as a pad floating off the arm. The pivot is not moved.
+    // Arm shaft. The widest point is the bicep, and the top meets the
+    // clavicle. The pivot is not moved.
     const upper = new THREE.Mesh(
       latheBody(
         [
-          [0.05, 0.08],
-          [0.09, 0.035],
-          [0.11, -0.02],
-          [0.096, -0.12],
-          [0.084, -0.22],
-          [0.076, -0.34],
+          [0.086, 0.04],
+          [0.09, -0.03],
+          [0.08, -0.14],
+          [0.07, -0.24],
+          [0.06, -0.34],
         ],
         14,
       ),
@@ -830,30 +835,27 @@ export function createPlayerMesh(): THREE.Group {
     forearm.name = side < 0 ? 'forearmL' : 'forearmR';
     forearm.position.set(0, -0.34, 0);
 
-    // Skin continues through the elbow. The bracer starts below it, the way a
-    // sleeve sits on a forearm rather than replacing the joint with a ball.
-    const elbow = new THREE.Mesh(new THREE.CapsuleGeometry(0.068, 0.03, 4, 12), skin);
-    elbow.scale.set(1.02, 1, 1.06);
-    elbow.position.set(0, 0.008, -0.002);
-    addPart(elbow, forearm);
-    const olecranon = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 6), skin);
-    olecranon.scale.set(1.05, 0.75, 0.65);
-    olecranon.position.set(0, 0.01, -0.048);
-    addPart(olecranon, forearm);
-    // Reaches past the pivot so a bent arm hides the cut end of the upper arm.
+    // A short lip over the humerus end. Wide enough to hide the cut face
+    // when the elbow bends, narrow enough that a straight arm is not a ball.
     const forearmSkin = new THREE.Mesh(
       latheBody(
         [
-          [0.078, 0.05],
-          [0.074, 0.0],
-          [0.066, -0.08],
-          [0.058, -0.15],
+          [0.084, 0.034],
+          [0.072, 0.0],
+          [0.06, -0.07],
+          [0.052, -0.14],
         ],
         12,
       ),
       skin,
     );
     addPart(forearmSkin, forearm);
+    // Olecranon: a small point on the back of the hinge, not a sphere in it.
+    const olecranon = new THREE.Mesh(new THREE.CapsuleGeometry(0.016, 0.036, 3, 6), skin);
+    olecranon.rotation.x = Math.PI / 2;
+    olecranon.scale.set(1.15, 0.62, 1);
+    olecranon.position.set(0, 0.006, -0.048);
+    addPart(olecranon, forearm);
 
     // Bracer begins below the elbow and runs into the hand.
     const gauntlet = new THREE.Mesh(
@@ -951,21 +953,23 @@ export function createPlayerMesh(): THREE.Group {
 
   // Nose: bridge, rounded tip and alar wings in one skin tone. A tilted lathe
   // read as a blade from the front.
-  const bridge = new THREE.Mesh(new THREE.CapsuleGeometry(0.013, 0.034, 4, 10), skin);
-  bridge.rotation.x = -0.3;
-  bridge.position.set(0, 0.008, 0.15);
+  const bridge = new THREE.Mesh(new THREE.CapsuleGeometry(0.011, 0.026, 4, 10), skin);
+  bridge.rotation.x = -0.48;
+  bridge.scale.set(1, 0.9, 0.72);
+  bridge.position.set(0, 0.014, 0.14);
   addPart(bridge, head);
-  const noseTip = new THREE.Mesh(new THREE.SphereGeometry(0.023, 12, 10), skin);
-  noseTip.scale.set(1.0, 0.9, 0.95);
-  noseTip.position.set(0, -0.03, 0.165);
+  const noseTip = new THREE.Mesh(new THREE.SphereGeometry(0.018, 12, 10), skin);
+  noseTip.scale.set(1.1, 0.68, 0.78);
+  noseTip.position.set(0, -0.02, 0.154);
   addPart(noseTip, head);
   for (const sx of [-1, 1]) {
-    const wing = new THREE.Mesh(new THREE.SphereGeometry(0.015, 10, 8), skin);
-    wing.scale.set(1, 0.85, 0.9);
-    wing.position.set(sx * 0.022, -0.038, 0.152);
+    const wing = new THREE.Mesh(new THREE.SphereGeometry(0.012, 10, 8), skin);
+    wing.scale.set(1.15, 0.7, 0.75);
+    wing.position.set(sx * 0.018, -0.03, 0.146);
     head.add(wing);
     const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.0055, 8, 6), skinDark);
-    nostril.position.set(sx * 0.012, -0.047, 0.166);
+    nostril.scale.set(0.7, 0.55, 0.6);
+    nostril.position.set(sx * 0.008, -0.028, 0.16);
     head.add(nostril);
   }
 
@@ -1002,8 +1006,8 @@ export function createPlayerMesh(): THREE.Group {
     head.add(lowerLid);
 
     const ear = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), skin);
-    ear.scale.set(0.36, 1.05, 0.62);
-    ear.position.set(sx * 0.15, 0.006, -0.012);
+    ear.scale.set(0.48, 1.15, 0.7);
+    ear.position.set(sx * 0.148, 0.004, -0.01);
     head.add(ear);
     const lobe = new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 6), skin);
     lobe.scale.set(0.4, 0.8, 0.65);
