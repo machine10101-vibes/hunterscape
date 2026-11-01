@@ -1,6 +1,6 @@
 import { countItem, type SaveData } from './types';
 
-export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve' | 'calder' | 'holt' | 'odell' | 'wren' | 'marr' | 'quill' | 'pell';
+export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve' | 'calder' | 'holt' | 'odell' | 'wren' | 'marr' | 'quill' | 'pell' | 'voss';
 export type QuestStage = 'none' | 'active' | 'done';
 
 export interface QuestState {
@@ -16,6 +16,7 @@ export interface QuestState {
   barrow_bones: QuestStage;
   gale_roost: QuestStage;
   ash_brake: QuestStage;
+  weir_eels: QuestStage;
   wolfKills: number;
   boarKills: number;
   briarUnlocked: boolean;
@@ -27,6 +28,7 @@ export interface QuestState {
   boneUnlocked: boolean;
   galeUnlocked: boolean;
   ashUnlocked: boolean;
+  weirUnlocked: boolean;
 }
 
 export function defaultQuests(): QuestState {
@@ -43,6 +45,7 @@ export function defaultQuests(): QuestState {
     barrow_bones: 'none',
     gale_roost: 'none',
     ash_brake: 'none',
+    weir_eels: 'none',
     wolfKills: 0,
     boarKills: 0,
     briarUnlocked: false,
@@ -54,6 +57,7 @@ export function defaultQuests(): QuestState {
     boneUnlocked: false,
     galeUnlocked: false,
     ashUnlocked: false,
+    weirUnlocked: false,
   };
 }
 
@@ -67,6 +71,7 @@ export const HIDE_NEEDED = 2;
 export const BONE_NEEDED = 2;
 export const GALE_NEEDED = 2;
 export const ASH_NEEDED = 2;
+export const WEIR_NEEDED = 2;
 
 export interface DialogueOption {
   id: string;
@@ -410,7 +415,40 @@ export function dialogueFor(save: SaveData, npc: NpcId): DialogueScript {
     }
     return {
       speaker: 'Huntsman Pell',
-      body: 'Ash patterns are on the anvil. Blade: 1 antler, 1 hide, 1 copper, 1 log. Cloak: 3 antlers, 1 hide. Boots: 2 antlers, 1 log. The cloak soaks slash and the boots soak crush. Both add ward, so bites miss more often. The stags are still south of the brake if you need more.',
+      body: 'Ash patterns are on the anvil. Blade: 1 antler, 1 hide, 1 copper, 1 log. Cloak: 3 antlers, 1 hide. Boots: 2 antlers, 1 log. The cloak soaks slash and the boots soak crush. Both add ward, so bites miss more often. The stags are still south of the brake if you need more. Angler Voss at the south weir wants eel teeth.',
+      options: [CLOSE],
+    };
+  }
+
+  if (npc === 'voss') {
+    const teeth = countItem(save.inventory, 'eel_tooth');
+    if (q.weir_eels === 'none') {
+      return {
+        speaker: 'Angler Voss',
+        body: 'Weir eels coil in the stakes south of here. They strike with stab, and a crush weapon breaks the coil. Bring me 2 eel teeth and I will set an eel fang in your hand and open those patterns on the anvil. A keen blade can land a critical hit. Crit ward on your armour turns a beast’s critical bite aside.',
+        options: [
+          { id: 'voss_accept', label: 'I will bring the teeth.' },
+          { id: 'close', label: 'The weir can wait.' },
+        ],
+      };
+    }
+    if (q.weir_eels === 'active' && teeth < WEIR_NEEDED) {
+      return {
+        speaker: 'Angler Voss',
+        body: `The eels are still in the stakes. I need ${WEIR_NEEDED} eel teeth (you have ${teeth}). They coil just south of this weir, and a crush weapon breaks them.`,
+        options: [CLOSE],
+      };
+    }
+    if (q.weir_eels === 'active') {
+      return {
+        speaker: 'Angler Voss',
+        body: 'Two teeth. That will haft an Eel Fang, and the anvil will take teeth, scales, copper, and logs for the cloak and boots. Its special is Hook, and it spends Focus. The fang crits often, and the oilskin adds crit ward.',
+        options: [{ id: 'voss_turnin', label: 'Take the teeth.' }],
+      };
+    }
+    return {
+      speaker: 'Angler Voss',
+      body: 'Weir patterns are on the anvil. Fang: 1 tooth, 1 scale, 1 copper, 1 log. Cloak: 3 teeth, 1 scale. Boots: 2 teeth, 1 log. The cloak soaks stab and the boots soak slash. Both add crit ward, so a critical bite lands less often. The eels are still south of the weir if you need more.',
       options: [CLOSE],
     };
   }
@@ -556,6 +594,12 @@ export function trackerLines(save: SaveData): string[] {
       antlers >= ASH_NEEDED ? 'Brake: return to Huntsman Pell.' : `Brake: ash antlers ${antlers}/${ASH_NEEDED}`,
     );
   }
+  if (q.ash_brake === 'done' && q.weir_eels === 'none') {
+    lines.push('Angler Voss needs 2 eel teeth at the south weir.');
+  } else if (q.weir_eels === 'active') {
+    const teeth = countItem(save.inventory, 'eel_tooth');
+    lines.push(teeth >= WEIR_NEEDED ? 'Weir: return to Angler Voss.' : `Weir: eel teeth ${teeth}/${WEIR_NEEDED}`);
+  }
   if (q.east_road === 'done' && q.harl_commission === 'none') lines.push('Smith Harl has a commission.');
   else if (q.harl_commission === 'active') lines.push('Harl: 3 pelts, 2 logs, 1 copper.');
   if (q.lanterns === 'none' && q.east_road !== 'none') lines.push('Nessa needs 2 tin ore for the lanterns.');
@@ -570,6 +614,7 @@ export function trackerLines(save: SaveData): string[] {
     if (q.boneUnlocked) open.push('bone');
     if (q.galeUnlocked) open.push('gale');
     if (q.ashUnlocked) open.push('ash');
+    if (q.weirUnlocked) open.push('weir');
     if (open.length === 1) lines.push('Briar patterns are open.');
     else lines.push(`Anvil: ${open.join(', ')}.`);
   }

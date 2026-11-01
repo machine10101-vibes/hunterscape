@@ -267,6 +267,11 @@ export const ITEM_META: Record<
   antler_blade: { name: 'Antler Blade', icon: '🗡', stackable: false, slot: 'weapon' },
   stag_cloak: { name: 'Stag Cloak', icon: '🧥', stackable: false, slot: 'chest' },
   stag_boots: { name: 'Stag Boots', icon: '👢', stackable: false, slot: 'boots' },
+  eel_tooth: { name: 'Eel Tooth', icon: '🦷', stackable: true },
+  eel_scale: { name: 'Eel Scale', icon: '🟢', stackable: true },
+  eel_fang: { name: 'Eel Fang', icon: '🗡', stackable: false, slot: 'weapon' },
+  weir_cloak: { name: 'Weir Cloak', icon: '🧥', stackable: false, slot: 'chest' },
+  weir_boots: { name: 'Weir Boots', icon: '👢', stackable: false, slot: 'boots' },
 };
 
 export const EQUIP_SLOTS: { id: EquipSlot; label: string }[] = [
@@ -698,6 +703,38 @@ export const ASH_RECIPES: Recipe[] = [
   },
 ];
 
+export const WEIR_RECIPES: Recipe[] = [
+  {
+    id: 'eel_fang',
+    name: 'Eel Fang',
+    blurb: 'A short ivory fang. Stab. High crit. Special: Hook.',
+    cost: [
+      { id: 'eel_tooth', qty: 1 },
+      { id: 'eel_scale', qty: 1 },
+      { id: 'copper_ore', qty: 1 },
+      { id: 'whisper_logs', qty: 1 },
+    ],
+  },
+  {
+    id: 'weir_cloak',
+    name: 'Weir Cloak',
+    blurb: 'An oilskin wrap. Soaks stab. Adds crit ward.',
+    cost: [
+      { id: 'eel_tooth', qty: 3 },
+      { id: 'eel_scale', qty: 1 },
+    ],
+  },
+  {
+    id: 'weir_boots',
+    name: 'Weir Boots',
+    blurb: 'Oilskin boots with a pale cuff. Soaks slash. Adds crit ward.',
+    cost: [
+      { id: 'eel_tooth', qty: 2 },
+      { id: 'whisper_logs', qty: 1 },
+    ],
+  },
+];
+
 export function countItem(inv: ItemStack[], id: string): number {
   return inv.filter((s) => s.id === id).reduce((n, s) => n + s.qty, 0);
 }
@@ -725,6 +762,7 @@ const ARMOR_BONUS: Record<string, number> = {
   bone_ribs: 2,
   gale_cloak: 2,
   stag_cloak: 2,
+  weir_cloak: 2,
   frost_greaves: 2,
   road_greaves: 1,
   frost_legs: 2,
@@ -738,6 +776,7 @@ const ARMOR_BONUS: Record<string, number> = {
   bone_boots: 1,
   gale_boots: 1,
   stag_boots: 1,
+  weir_boots: 1,
 };
 
 /** Two or more worn pieces from one family add a point of armour. */
@@ -752,6 +791,7 @@ const ARMOR_FAMILIES: Record<string, string[]> = {
   bone: ['bone_ribs', 'bone_boots'],
   gale: ['gale_cloak', 'gale_boots'],
   stag: ['stag_cloak', 'stag_boots'],
+  weir: ['weir_cloak', 'weir_boots'],
 };
 
 export function setBonus(save: SaveData): number {
@@ -794,6 +834,8 @@ const ARMOR_DEFENCE: Record<string, AttackStyle> = {
   gale_boots: 'crush',
   stag_cloak: 'slash',
   stag_boots: 'crush',
+  weir_cloak: 'stab',
+  weir_boots: 'slash',
 };
 
 export function itemDefenceStyle(id: string | null): AttackStyle | null {
@@ -829,6 +871,7 @@ const WEAPON_DAMAGE: Record<string, number> = {
   bone_sword: 2,
   gale_spear: 2,
   antler_blade: 2,
+  eel_fang: 2,
 };
 
 const WEAPON_STYLE: Record<string, AttackStyle> = {
@@ -845,6 +888,7 @@ const WEAPON_STYLE: Record<string, AttackStyle> = {
   bone_sword: 'slash',
   gale_spear: 'stab',
   antler_blade: 'slash',
+  eel_fang: 'stab',
   frost_bow: 'ranged',
 };
 
@@ -859,6 +903,7 @@ const WEAPON_RECOVERY: Record<string, number> = {
   bone_sword: 0.62,
   gale_spear: 0.68,
   antler_blade: 0.64,
+  eel_fang: 0.4,
   frost_spear: 0.7,
   frost_bow: 0.9,
   road_mace: 1.0,
@@ -906,6 +951,7 @@ export const WEAPON_SPECS: Record<string, WeaponSpec> = {
   bone_sword: { name: 'Rattle', cost: 32, blurb: 'The blow rings the bones.', mult: 1.25, heal: 0, bleed: 0, stun: 1.2 },
   gale_spear: { name: 'Crosswind', cost: 34, blurb: 'The thrust checks the next strike.', mult: 1.3, heal: 0, bleed: 0, stun: 1.1 },
   antler_blade: { name: 'Gore', cost: 32, blurb: 'The tine stays in the cut.', mult: 1.2, heal: 0, bleed: 2, stun: 0 },
+  eel_fang: { name: 'Hook', cost: 28, blurb: 'The fang stays in the cut.', mult: 1.15, heal: 0, bleed: 2, stun: 0 },
 };
 
 export function weaponSpec(id: string | null): WeaponSpec | null {
@@ -938,6 +984,7 @@ export const MONSTER_PROFILE: Record<string, MonsterProfile> = {
   skeleton: { level: 19, weak: 'crush' },
   hawk: { level: 21, weak: 'slash' },
   stag: { level: 23, weak: 'stab' },
+  eel: { level: 24, weak: 'crush' },
   boar: { level: 22, weak: 'stab' },
   orc: { level: 33, weak: 'stab' },
   yeti: { level: 42, weak: 'crush' },
@@ -959,6 +1006,7 @@ const MONSTER_ATTACK: Record<string, AttackStyle> = {
   skeleton: 'slash',
   hawk: 'stab',
   stag: 'slash',
+  eel: 'stab',
   boar: 'stab',
   orc: 'stab',
   yeti: 'crush',
@@ -980,6 +1028,7 @@ const MONSTER_GUARD: Record<string, number> = {
   skeleton: 1,
   hawk: 1,
   stag: 2,
+  eel: 1,
   boar: 1,
   orc: 2,
   yeti: 3,
@@ -1004,6 +1053,7 @@ const MONSTER_TEMPO: Record<string, number> = {
   skeleton: 1.55,
   hawk: 1.1,
   stag: 1.42,
+  eel: 1.16,
   boar: 1.72,
   orc: 1.85,
   yeti: 2.7,
@@ -1063,6 +1113,9 @@ const ITEM_WEIGHT: Record<string, number> = {
   antler_blade: 1.5,
   stag_cloak: 1.0,
   stag_boots: 0.7,
+  eel_fang: 0.8,
+  weir_cloak: 0.9,
+  weir_boots: 0.6,
 };
 
 const CAMP_KIT_WEIGHT =
@@ -1107,11 +1160,14 @@ export function gearLine(id: string): string {
     bits.push(`reach ${weaponReachLabel(id)}`);
     const acc = weaponAccuracy(id);
     bits.push(`acc ${acc >= 0 ? '+' : ''}${acc}`);
+    bits.push(`crit ${weaponCrit(id)}%`);
   }
   const arm = itemArmor(id);
   if (arm) bits.push(`+${arm} armour`);
   const ward = itemWard(id);
   if (ward) bits.push(`ward +${ward}`);
+  const cward = itemCritWard(id);
+  if (cward) bits.push(`crit ward ${cward}`);
   const soak = itemDefenceStyle(id);
   if (soak) bits.push(`soaks ${soak}`);
   const kilos = itemWeight(id);
@@ -1134,6 +1190,7 @@ const WEAPON_REACH: Record<string, number> = {
   frost_spear: 0.4,
   gale_spear: 0.58,
   antler_blade: 0.03,
+  eel_fang: -0.22,
   frost_bow: 2.2,
 };
 
@@ -1168,6 +1225,7 @@ const WEAPON_ACCURACY: Record<string, number> = {
   road_mace: -3,
   frost_hammer: -5,
   delver_maul: -6,
+  eel_fang: 8,
 };
 
 export function weaponAccuracy(id: string | null): number {
@@ -1201,6 +1259,8 @@ const ITEM_WARD: Record<string, number> = {
   bone_boots: 2,
   gale_boots: 1,
   stag_boots: 1,
+  weir_cloak: 1,
+  weir_boots: 1,
 };
 
 export function itemWard(id: string | null): number {
@@ -1211,6 +1271,82 @@ export function wornWard(save: SaveData): number {
   let n = 0;
   for (const id of Object.values(save.equipped)) n += itemWard(id);
   return n;
+}
+
+/**
+ * Chance, in percent, that a connecting swing critically hits.
+ * Bronze is 0, so the camp sword does not suddenly crit.
+ * Fast blades crit often. Heavy heads rarely do.
+ */
+const WEAPON_CRIT: Record<string, number> = {
+  bronze_sword: 0,
+  frost_sword: 4,
+  briar_sword: 3,
+  bone_sword: 5,
+  antler_blade: 6,
+  dusk_dagger: 11,
+  cinder_knife: 10,
+  mire_dagger: 9,
+  frost_spear: 4,
+  gale_spear: 5,
+  frost_bow: 8,
+  road_mace: 2,
+  frost_hammer: 3,
+  delver_maul: 3,
+  eel_fang: 12,
+};
+
+export function weaponCrit(id: string | null): number {
+  return id ? (WEAPON_CRIT[id] ?? 0) : 0;
+}
+
+/** Points of a beast's crit chance this piece turns aside. */
+const ITEM_CRIT_WARD: Record<string, number> = {
+  frost_shield: 3,
+  briar_shield: 1,
+  road_shield: 2,
+  cinder_shield: 1,
+  frost_chest: 3,
+  briar_vest: 1,
+  dusk_cloak: 2,
+  delver_vest: 2,
+  mire_cloak: 1,
+  bone_ribs: 2,
+  gale_cloak: 1,
+  stag_cloak: 2,
+  weir_cloak: 3,
+  frost_greaves: 2,
+  road_greaves: 1,
+  frost_legs: 2,
+  road_legs: 1,
+  cinder_legs: 1,
+  frost_boots: 1,
+  briar_boots: 1,
+  dusk_boots: 1,
+  delver_boots: 1,
+  mire_boots: 1,
+  bone_boots: 1,
+  gale_boots: 1,
+  stag_boots: 1,
+  weir_boots: 1,
+};
+
+export function itemCritWard(id: string | null): number {
+  return id ? (ITEM_CRIT_WARD[id] ?? 0) : 0;
+}
+
+export function wornCritWard(save: SaveData): number {
+  let n = 0;
+  for (const id of Object.values(save.equipped)) n += itemCritWard(id);
+  return n;
+}
+
+/** A connecting hit crits for half again, and at least one extra point. */
+export function critDamage(raw: number, chancePercent: number): { damage: number; crit: boolean } {
+  if (raw <= 0 || chancePercent <= 0 || Math.random() * 100 >= chancePercent) {
+    return { damage: raw, crit: false };
+  }
+  return { damage: Math.max(raw + 1, Math.round(raw * 1.5)), crit: true };
 }
 
 /**
@@ -1228,6 +1364,7 @@ const MONSTER_ACCURACY: Record<string, number> = {
   skeleton: 10,
   hawk: 18,
   stag: 15,
+  eel: 16,
   boar: 9,
   orc: 13,
   yeti: 8,
@@ -1235,6 +1372,31 @@ const MONSTER_ACCURACY: Record<string, number> = {
 
 export function monsterAccuracy(kind: string): number {
   return MONSTER_ACCURACY[kind] ?? 12;
+}
+
+/**
+ * Chance, in percent, that a connecting bite is critical.
+ * Wolves and the dummy are 0, so camp combat does not suddenly crit.
+ */
+const MONSTER_CRIT: Record<string, number> = {
+  dummy: 0,
+  wolf: 0,
+  crow: 6,
+  spider: 5,
+  fox: 7,
+  beetle: 2,
+  toad: 3,
+  skeleton: 4,
+  hawk: 11,
+  stag: 5,
+  eel: 10,
+  boar: 3,
+  orc: 6,
+  yeti: 4,
+};
+
+export function monsterCrit(kind: string): number {
+  return MONSTER_CRIT[kind] ?? 0;
 }
 
 /** Classic-style XP curve approximation */
@@ -1305,6 +1467,8 @@ export function defaultSave(): SaveData {
       galeUnlocked: false,
       ash_brake: 'none',
       ashUnlocked: false,
+      weir_eels: 'none',
+      weirUnlocked: false,
     },
   };
 }

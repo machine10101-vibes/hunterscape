@@ -82,6 +82,13 @@ import {
   createStagCloak,
   createStagHideItem,
 } from './stagGear';
+import {
+  createEelFang,
+  createEelScaleItem,
+  createEelToothItem,
+  createWeirBoot,
+  createWeirCloak,
+} from './weirGear';
 
 function std(color: number, opts: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
@@ -173,6 +180,11 @@ export function createItemMesh(id: string): THREE.Group {
   if (id === 'antler_blade') return createAntlerBlade();
   if (id === 'stag_cloak') return createStagCloak();
   if (id === 'stag_boots') return createStagBoot();
+  if (id === 'eel_tooth') return createEelToothItem();
+  if (id === 'eel_scale') return createEelScaleItem();
+  if (id === 'eel_fang') return createEelFang();
+  if (id === 'weir_cloak') return createWeirCloak();
+  if (id === 'weir_boots') return createWeirBoot();
   return makeUnknown();
 }
 
