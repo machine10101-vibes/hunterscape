@@ -15,6 +15,94 @@ import {
   createYetiBoneItem,
   createYetiHideItem,
 } from './yetiGear';
+import {
+  createBriarBoot,
+  createBriarShield,
+  createBriarSword,
+  createBriarVest,
+  createWolfFangItem,
+  createWolfPeltItem,
+} from './briarGear';
+import {
+  createBoarHideItem,
+  createBoarRoastItem,
+  createBoarTuskItem,
+  createRoadGreaves,
+  createRoadLegs,
+  createRoadMace,
+  createRoadShield,
+  createSpiderSilkItem,
+} from './roadGear';
+import {
+  createDuskBoot,
+  createDuskCloak,
+  createDuskDagger,
+  createDuskFangItem,
+  createFoxFurItem,
+} from './duskGear';
+import {
+  createCharcoalItem,
+  createCinderKnife,
+  createCinderLegs,
+  createCinderShield,
+  createSootFeatherItem,
+} from './cinderGear';
+import {
+  createBeetleShellItem,
+  createCopperGritItem,
+  createDelverBoot,
+  createDelverMaul,
+  createDelverVest,
+} from './delverGear';
+import {
+  createMireBoot,
+  createMireCloak,
+  createMireDagger,
+  createToadHideItem,
+  createVenomSacItem,
+} from './mireGear';
+import {
+  createBoneBoot,
+  createBoneRibs,
+  createBoneSword,
+  createBonesItem,
+  createSkullChipItem,
+} from './boneGear';
+import {
+  createGaleBoot,
+  createGaleCloak,
+  createGaleFeatherItem,
+  createGaleSpear,
+  createHawkTalonItem,
+} from './galeGear';
+import {
+  createAntlerBlade,
+  createAshAntlerItem,
+  createStagBoot,
+  createStagCloak,
+  createStagHideItem,
+} from './stagGear';
+import {
+  createEelFang,
+  createEelScaleItem,
+  createEelToothItem,
+  createWeirBoot,
+  createWeirCloak,
+} from './weirGear';
+import {
+  createGoatHideItem,
+  createGoatHornItem,
+  createHornKnife,
+  createRidgeBoot,
+  createRidgeCloak,
+} from './ridgeGear';
+import {
+  createAdderFangItem,
+  createAdderSkinItem,
+  createHollowBoot,
+  createHollowCloak,
+  createVenomDirk,
+} from './hollowGear';
 
 function std(color: number, opts: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
@@ -57,6 +145,70 @@ export function createItemMesh(id: string): THREE.Group {
   if (id === 'frost_boots') return createFrostBoot();
   if (id === 'orc_tooth') return makeTooth();
   if (id === 'scout_leather') return makeLeather();
+  if (id === 'wolf_pelt') return createWolfPeltItem();
+  if (id === 'wolf_fang') return createWolfFangItem();
+  if (id === 'briar_sword') return createBriarSword();
+  if (id === 'briar_shield') return createBriarShield();
+  if (id === 'briar_vest') return createBriarVest();
+  if (id === 'briar_boots') return createBriarBoot();
+  if (id === 'boar_hide') return createBoarHideItem();
+  if (id === 'boar_tusk') return createBoarTuskItem();
+  if (id === 'spider_silk') return createSpiderSilkItem();
+  if (id === 'boar_roast') return createBoarRoastItem();
+  if (id === 'road_mace') return createRoadMace();
+  if (id === 'road_shield') return createRoadShield();
+  if (id === 'road_legs') return createRoadLegs();
+  if (id === 'road_greaves') return createRoadGreaves();
+  if (id === 'fox_fur') return createFoxFurItem();
+  if (id === 'dusk_fang') return createDuskFangItem();
+  if (id === 'dusk_dagger') return createDuskDagger();
+  if (id === 'dusk_cloak') return createDuskCloak();
+  if (id === 'dusk_boots') return createDuskBoot();
+  if (id === 'soot_feather') return createSootFeatherItem();
+  if (id === 'charcoal') return createCharcoalItem();
+  if (id === 'cinder_knife') return createCinderKnife();
+  if (id === 'cinder_legs') return createCinderLegs();
+  if (id === 'cinder_shield') return createCinderShield();
+  if (id === 'beetle_shell') return createBeetleShellItem();
+  if (id === 'copper_grit') return createCopperGritItem();
+  if (id === 'delver_maul') return createDelverMaul();
+  if (id === 'delver_vest') return createDelverVest();
+  if (id === 'delver_boots') return createDelverBoot();
+  if (id === 'toad_hide') return createToadHideItem();
+  if (id === 'venom_sac') return createVenomSacItem();
+  if (id === 'mire_dagger') return createMireDagger();
+  if (id === 'mire_cloak') return createMireCloak();
+  if (id === 'mire_boots') return createMireBoot();
+  if (id === 'bones') return createBonesItem();
+  if (id === 'skull_chip') return createSkullChipItem();
+  if (id === 'bone_sword') return createBoneSword();
+  if (id === 'bone_ribs') return createBoneRibs();
+  if (id === 'bone_boots') return createBoneBoot();
+  if (id === 'gale_feather') return createGaleFeatherItem();
+  if (id === 'hawk_talon') return createHawkTalonItem();
+  if (id === 'gale_spear') return createGaleSpear();
+  if (id === 'gale_cloak') return createGaleCloak();
+  if (id === 'gale_boots') return createGaleBoot();
+  if (id === 'ash_antler') return createAshAntlerItem();
+  if (id === 'stag_hide') return createStagHideItem();
+  if (id === 'antler_blade') return createAntlerBlade();
+  if (id === 'stag_cloak') return createStagCloak();
+  if (id === 'stag_boots') return createStagBoot();
+  if (id === 'eel_tooth') return createEelToothItem();
+  if (id === 'eel_scale') return createEelScaleItem();
+  if (id === 'eel_fang') return createEelFang();
+  if (id === 'weir_cloak') return createWeirCloak();
+  if (id === 'weir_boots') return createWeirBoot();
+  if (id === 'goat_horn') return createGoatHornItem();
+  if (id === 'goat_hide') return createGoatHideItem();
+  if (id === 'horn_knife') return createHornKnife();
+  if (id === 'ridge_cloak') return createRidgeCloak();
+  if (id === 'ridge_boots') return createRidgeBoot();
+  if (id === 'adder_fang') return createAdderFangItem();
+  if (id === 'adder_skin') return createAdderSkinItem();
+  if (id === 'venom_dirk') return createVenomDirk();
+  if (id === 'hollow_cloak') return createHollowCloak();
+  if (id === 'hollow_boots') return createHollowBoot();
   return makeUnknown();
 }
 

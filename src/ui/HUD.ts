@@ -4,15 +4,20 @@ import {
   EQUIP_SLOTS,
   ITEM_META,
   SKILL_META,
+  STANCES,
   YETI_RECIPES,
   canCraft,
+  combatLevel,
   combatSkillUnlocked,
   countItem,
+  gearLine,
   ownsItem,
   xpForLevel,
   type CombatSkillId,
+  type CombatStance,
   type EquipSlot,
   type ItemStack,
+  type Recipe,
   type SaveData,
   type SkillId,
 } from '../game/types';
@@ -50,6 +55,10 @@ export class HUD {
   private heroPane: HeroPane;
   private forgePanel!: HTMLElement;
   private forgeList!: HTMLElement;
+  private forgeRecipes: Recipe[] = YETI_RECIPES;
+  private forgeReady = true;
+  private forgeLocked = new Set<string>();
+  private questTracker!: HTMLElement;
   private narrowMq!: MediaQueryList;
   private desktopInvInited = false;
   private circum = 2 * Math.PI * 28;
@@ -58,6 +67,8 @@ export class HUD {
   onInventoryClick: ((index: number) => void) | null = null;
   onGearSlotClick: ((slot: EquipSlot) => void) | null = null;
   onForgeCraft: ((recipeId: string) => void) | null = null;
+  onStance: ((stance: CombatStance) => void) | null = null;
+  onSpec: (() => void) | null = null;
 
   constructor() {
     this.chatLog = el('chat-log');
@@ -89,6 +100,7 @@ export class HUD {
     this.heroPane = new HeroPane(el('gear-hero') as HTMLCanvasElement);
     this.forgePanel = el('forge-panel');
     this.forgeList = el('forge-list');
+    this.questTracker = el('quest-tracker');
     el('forge-close').addEventListener('click', () => this.setForgeOpen(false));
     this.narrowMq = window.matchMedia('(max-width: 480px)');
 
@@ -119,6 +131,7 @@ export class HUD {
     }
     this.syncInventoryForViewport();
     this.buildSkillBar();
+    el('btn-spec').addEventListener('click', () => this.onSpec?.());
 
     setTimeout(() => this.touchHint.classList.add('fade'), 8000);
   }
@@ -175,6 +188,21 @@ export class HUD {
     }
   }
 
+  /** Focus special beside the five arts. Armed spends Focus on the next hit. */
+  setSpec(name: string, armed: boolean, focus: number, cost: number): void {
+    const btn = el('btn-spec') as HTMLButtonElement;
+    const label = btn.querySelector('.ab-spec-name');
+    const costEl = btn.querySelector('.ab-spec-cost');
+    if (label) label.textContent = armed ? 'Armed' : 'Spec';
+    if (costEl) costEl.textContent = cost > 0 ? String(cost) : '';
+    btn.classList.toggle('armed', armed);
+    btn.setAttribute('aria-pressed', armed ? 'true' : 'false');
+    const ready = cost > 0 && focus >= cost;
+    btn.title = cost > 0
+      ? `${name} (${cost} Focus)${armed ? ' — armed' : ''}${ready ? '' : ' — not enough Focus'}`
+      : 'Equip a weapon to arm its special (6)';
+  }
+
   /** Narrow (≤480px): inventory closed by default. Desktop: open once, user may close. */
   private syncInventoryForViewport(): void {
     if (this.narrowMq.matches) {
@@ -212,11 +240,32 @@ export class HUD {
     return !this.skillsPanel.hidden;
   }
 
-  setForgeOpen(open: boolean, save?: SaveData): void {
+  setForgeOpen(
+    open: boolean,
+    save?: SaveData,
+    view?: { title: string; blurb: string; recipes: Recipe[]; forgeable: boolean; lockedIds?: string[] },
+  ): void {
+    if (view) {
+      el('forge-title').textContent = view.title;
+      el('forge-blurb').textContent = view.blurb;
+      this.forgeRecipes = view.recipes;
+      this.forgeReady = view.forgeable;
+      this.forgeLocked = new Set(view.lockedIds ?? []);
+    }
     this.forgePanel.hidden = !open;
     if (open) {
       this.closeSidePanels('forge');
       if (save) this.setForgeRecipes(save);
+    }
+  }
+
+  setQuests(lines: string[]): void {
+    this.questTracker.innerHTML = '';
+    for (const line of lines) {
+      const row = document.createElement('div');
+      row.className = 'quest-line';
+      row.textContent = line;
+      this.questTracker.appendChild(row);
     }
   }
 
@@ -239,11 +288,12 @@ export class HUD {
 
   setForgeRecipes(save: SaveData): void {
     this.forgeList.innerHTML = '';
-    for (const recipe of YETI_RECIPES) {
+    for (const recipe of this.forgeRecipes) {
       const owned = ownsItem(save, recipe.id);
-      const ready = canCraft(save, recipe);
+      const locked = !this.forgeReady || this.forgeLocked.has(recipe.id);
+      const ready = !locked && canCraft(save, recipe);
       const row = document.createElement('div');
-      row.className = `forge-row${owned ? ' owned' : ''}`;
+      row.className = `forge-row${owned ? ' owned' : ''}${locked ? ' locked' : ''}`;
       const icon = document.createElement('canvas');
       icon.className = 'item-icon';
       icon.width = 128;
@@ -263,7 +313,7 @@ export class HUD {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'forge-craft';
-      btn.textContent = owned ? 'Owned' : 'Forge';
+      btn.textContent = locked ? 'Locked' : owned ? 'Owned' : 'Forge';
       btn.disabled = !ready;
       const id = recipe.id;
       btn.addEventListener('click', () => this.onForgeCraft?.(id));
@@ -357,7 +407,7 @@ export class HUD {
         icon.height = 128;
         paintItemIcon(icon, item.id);
         slot.appendChild(icon);
-        slot.title = `${meta?.name ?? item.id}${item.qty > 1 ? ` ×${item.qty}` : ''}${
+        slot.title = `${gearLine(item.id)}${item.qty > 1 ? ` ×${item.qty}` : ''}${
           meta?.slot ? ' — click to equip' : item.id === 'camp_rations' ? ' — click to eat' : ''
         }`;
         if (item.qty > 1) {
@@ -376,6 +426,22 @@ export class HUD {
 
   setSkills(save: SaveData): void {
     this.skillsList.innerHTML = '';
+    const levelHead = document.createElement('div');
+    levelHead.className = 'skills-kicker';
+    levelHead.textContent = `Combat level ${combatLevel(save)}`;
+    this.skillsList.appendChild(levelHead);
+    const stanceRow = document.createElement('div');
+    stanceRow.className = 'stance-row';
+    for (const stance of STANCES) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `stance-btn${save.stance === stance.id ? ' on' : ''}`;
+      btn.textContent = stance.name;
+      btn.title = stance.blurb;
+      btn.addEventListener('click', () => this.onStance?.(stance.id));
+      stanceRow.appendChild(btn);
+    }
+    this.skillsList.appendChild(stanceRow);
     const trainHead = document.createElement('div');
     trainHead.className = 'skills-kicker';
     trainHead.textContent = 'Training';
@@ -444,9 +510,11 @@ export class HUD {
     this.progressFill.style.width = '0%';
   }
 
-  showTarget(name: string, hpRatio: number): void {
+  showTarget(name: string, hpRatio: number, detail = ''): void {
     this.targetInfo.hidden = false;
     this.targetName.textContent = name;
+    const extra = document.getElementById('target-detail');
+    if (extra) extra.textContent = detail;
     this.targetHp.style.width = `${Math.max(0, Math.min(100, hpRatio * 100))}%`;
   }
 
