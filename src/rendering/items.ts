@@ -89,6 +89,13 @@ import {
   createWeirBoot,
   createWeirCloak,
 } from './weirGear';
+import {
+  createGoatHideItem,
+  createGoatHornItem,
+  createHornKnife,
+  createRidgeBoot,
+  createRidgeCloak,
+} from './ridgeGear';
 
 function std(color: number, opts: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
@@ -185,6 +192,11 @@ export function createItemMesh(id: string): THREE.Group {
   if (id === 'eel_fang') return createEelFang();
   if (id === 'weir_cloak') return createWeirCloak();
   if (id === 'weir_boots') return createWeirBoot();
+  if (id === 'goat_horn') return createGoatHornItem();
+  if (id === 'goat_hide') return createGoatHideItem();
+  if (id === 'horn_knife') return createHornKnife();
+  if (id === 'ridge_cloak') return createRidgeCloak();
+  if (id === 'ridge_boots') return createRidgeBoot();
   return makeUnknown();
 }
 

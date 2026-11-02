@@ -614,6 +614,27 @@ function eelWeir(): THREE.Group {
   return g;
 }
 
+function chalkCairn(): THREE.Group {
+  const g = new THREE.Group();
+  const base = new THREE.Mesh(new THREE.DodecahedronGeometry(0.28, 0), mat(0xd8d0c4, { roughness: 0.9 }));
+  base.position.y = 0.16;
+  add(g, base);
+  const cap = new THREE.Mesh(new THREE.DodecahedronGeometry(0.16, 0), mat(0xe4dcc8, { roughness: 0.88 }));
+  cap.position.y = 0.4;
+  add(g, cap);
+  const stake = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.55, 5), mat(0x6a4428));
+  stake.position.set(0.4, 0.28, 0.1);
+  add(g, stake);
+  const horn = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.16, 5), mat(0xe6d2a8, { roughness: 0.42 }));
+  horn.position.set(0.4, 0.6, 0.1);
+  horn.rotation.z = 0.4;
+  add(g, horn);
+  const sign = paintedBoard('RIDGE', 0.86, 0.32, '700 40px Georgia, serif');
+  sign.position.set(-0.15, 0.95, 0.35);
+  g.add(sign);
+  return g;
+}
+
 function bench(): THREE.Group {
   const g = new THREE.Group();
   const seat = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.06, 0.32), mat(0x6a4428));
@@ -818,6 +839,20 @@ export function createTownNpc(id: NpcId): THREE.Group {
     g.add(nameplate('Voss'));
     return g;
   }
+  if (id === 'ivo') {
+    const g = npcBody(0x6a5a48, 0x4a3828, true);
+    const crook = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.014, 0.7, 5), mat(0x6a4428));
+    crook.position.set(0.22, 0.9, 0.04);
+    crook.rotation.z = -0.2;
+    add(g, crook);
+    const hook = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.01, 4, 8, Math.PI * 1.2), mat(0xe6d2a8, { roughness: 0.45 }));
+    hook.position.set(0.28, 1.22, 0.04);
+    hook.rotation.z = 0.6;
+    add(g, hook);
+    g.name = 'npc_ivo';
+    g.add(nameplate('Ivo'));
+    return g;
+  }
   if (id === 'quill') {
     const g = npcBody(0x314050, 0x6a5038, true);
     const glove = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.08), mat(0xc4a060));
@@ -928,6 +963,7 @@ export function briarfordProps(): TownPlacement[] {
   rootBits.push({ mesh: galeRoost(), x: -12.0, z: 1.8 });
   rootBits.push({ mesh: ashBrake(), x: 13.4, z: -6.2 });
   rootBits.push({ mesh: eelWeir(), x: 19.4, z: 11.2 });
+  rootBits.push({ mesh: chalkCairn(), x: 19.6, z: -13.5 });
   rootBits.push({ mesh: hearth(), x: 13.6, z: -2.9 });
   rootBits.push({ mesh: well(), x: 16.35, z: 0.2 });
   rootBits.push({ mesh: stall(), x: 15.15, z: -1.85, rotY: 0.15 });

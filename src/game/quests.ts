@@ -1,6 +1,6 @@
 import { countItem, type SaveData } from './types';
 
-export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve' | 'calder' | 'holt' | 'odell' | 'wren' | 'marr' | 'quill' | 'pell' | 'voss';
+export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve' | 'calder' | 'holt' | 'odell' | 'wren' | 'marr' | 'quill' | 'pell' | 'voss' | 'ivo';
 export type QuestStage = 'none' | 'active' | 'done';
 
 export interface QuestState {
@@ -17,6 +17,7 @@ export interface QuestState {
   gale_roost: QuestStage;
   ash_brake: QuestStage;
   weir_eels: QuestStage;
+  ridge_goats: QuestStage;
   wolfKills: number;
   boarKills: number;
   briarUnlocked: boolean;
@@ -29,6 +30,7 @@ export interface QuestState {
   galeUnlocked: boolean;
   ashUnlocked: boolean;
   weirUnlocked: boolean;
+  ridgeUnlocked: boolean;
 }
 
 export function defaultQuests(): QuestState {
@@ -46,6 +48,7 @@ export function defaultQuests(): QuestState {
     gale_roost: 'none',
     ash_brake: 'none',
     weir_eels: 'none',
+    ridge_goats: 'none',
     wolfKills: 0,
     boarKills: 0,
     briarUnlocked: false,
@@ -58,6 +61,7 @@ export function defaultQuests(): QuestState {
     galeUnlocked: false,
     ashUnlocked: false,
     weirUnlocked: false,
+    ridgeUnlocked: false,
   };
 }
 
@@ -72,6 +76,7 @@ export const BONE_NEEDED = 2;
 export const GALE_NEEDED = 2;
 export const ASH_NEEDED = 2;
 export const WEIR_NEEDED = 2;
+export const RIDGE_NEEDED = 2;
 
 export interface DialogueOption {
   id: string;
@@ -448,7 +453,40 @@ export function dialogueFor(save: SaveData, npc: NpcId): DialogueScript {
     }
     return {
       speaker: 'Angler Voss',
-      body: 'Weir patterns are on the anvil. Fang: 1 tooth, 1 scale, 1 copper, 1 log. Cloak: 3 teeth, 1 scale. Boots: 2 teeth, 1 log. The cloak soaks stab and the boots soak slash. Both add crit ward, so a critical bite lands less often. The eels are still south of the weir if you need more.',
+      body: 'Weir patterns are on the anvil. Fang: 1 tooth, 1 scale, 1 copper, 1 log. Cloak: 3 teeth, 1 scale. Boots: 2 teeth, 1 log. The cloak soaks stab and the boots soak slash. Both add crit ward, so a critical bite lands less often. The eels are still south of the weir if you need more. Goatherd Ivo on the north-east ridge wants goat horns.',
+      options: [CLOSE],
+    };
+  }
+
+  if (npc === 'ivo') {
+    const horns = countItem(save.inventory, 'goat_horn');
+    if (q.ridge_goats === 'none') {
+      return {
+        speaker: 'Goatherd Ivo',
+        body: 'Chalk goats butt along the ridge north of here. They strike with crush, and a stab weapon finds the gap between the horns. Bring me 2 goat horns and I will set a horn knife in your hand and open those patterns on the anvil. A keen point pierces a beast\'s plate. Plating on your armour turns a little of every bite.',
+        options: [
+          { id: 'ivo_accept', label: 'I will bring the horns.' },
+          { id: 'close', label: 'The ridge can wait.' },
+        ],
+      };
+    }
+    if (q.ridge_goats === 'active' && horns < RIDGE_NEEDED) {
+      return {
+        speaker: 'Goatherd Ivo',
+        body: `The goats are still on the chalk. I need ${RIDGE_NEEDED} goat horns (you have ${horns}). They butt just north of this cairn, and a stab weapon splits the horn.`,
+        options: [CLOSE],
+      };
+    }
+    if (q.ridge_goats === 'active') {
+      return {
+        speaker: 'Goatherd Ivo',
+        body: 'Two horns. That will haft a Horn Knife, and the anvil will take horns, hide, copper, and logs for the cloak and boots. Its special is Skewer, and it spends Focus. The knife pierces plate, and the chalk hide adds plating.',
+        options: [{ id: 'ivo_turnin', label: 'Take the horns.' }],
+      };
+    }
+    return {
+      speaker: 'Goatherd Ivo',
+      body: 'Ridge patterns are on the anvil. Knife: 1 horn, 1 hide, 1 copper, 1 log. Cloak: 3 horns, 1 hide. Boots: 2 horns, 1 log. The cloak soaks crush and the boots soak slash. Both add plating, so bites land a little lighter. The goats are still north of the cairn if you need more.',
       options: [CLOSE],
     };
   }
@@ -594,6 +632,12 @@ export function trackerLines(save: SaveData): string[] {
       antlers >= ASH_NEEDED ? 'Brake: return to Huntsman Pell.' : `Brake: ash antlers ${antlers}/${ASH_NEEDED}`,
     );
   }
+  if (q.weir_eels === 'done' && q.ridge_goats === 'none') {
+    lines.push('Goatherd Ivo needs 2 goat horns on the north-east ridge.');
+  } else if (q.ridge_goats === 'active') {
+    const horns = countItem(save.inventory, 'goat_horn');
+    lines.push(horns >= RIDGE_NEEDED ? 'Ridge: return to Goatherd Ivo.' : `Ridge: goat horns ${horns}/${RIDGE_NEEDED}`);
+  }
   if (q.ash_brake === 'done' && q.weir_eels === 'none') {
     lines.push('Angler Voss needs 2 eel teeth at the south weir.');
   } else if (q.weir_eels === 'active') {
@@ -615,6 +659,7 @@ export function trackerLines(save: SaveData): string[] {
     if (q.galeUnlocked) open.push('gale');
     if (q.ashUnlocked) open.push('ash');
     if (q.weirUnlocked) open.push('weir');
+    if (q.ridgeUnlocked) open.push('ridge');
     if (open.length === 1) lines.push('Briar patterns are open.');
     else lines.push(`Anvil: ${open.join(', ')}.`);
   }
