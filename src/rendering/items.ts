@@ -96,6 +96,13 @@ import {
   createRidgeBoot,
   createRidgeCloak,
 } from './ridgeGear';
+import {
+  createAdderFangItem,
+  createAdderSkinItem,
+  createHollowBoot,
+  createHollowCloak,
+  createVenomDirk,
+} from './hollowGear';
 
 function std(color: number, opts: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
@@ -197,6 +204,11 @@ export function createItemMesh(id: string): THREE.Group {
   if (id === 'horn_knife') return createHornKnife();
   if (id === 'ridge_cloak') return createRidgeCloak();
   if (id === 'ridge_boots') return createRidgeBoot();
+  if (id === 'adder_fang') return createAdderFangItem();
+  if (id === 'adder_skin') return createAdderSkinItem();
+  if (id === 'venom_dirk') return createVenomDirk();
+  if (id === 'hollow_cloak') return createHollowCloak();
+  if (id === 'hollow_boots') return createHollowBoot();
   return makeUnknown();
 }
 

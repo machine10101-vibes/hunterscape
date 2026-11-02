@@ -277,6 +277,11 @@ export const ITEM_META: Record<
   horn_knife: { name: 'Horn Knife', icon: '🗡', stackable: false, slot: 'weapon' },
   ridge_cloak: { name: 'Ridge Cloak', icon: '🧥', stackable: false, slot: 'chest' },
   ridge_boots: { name: 'Ridge Boots', icon: '👢', stackable: false, slot: 'boots' },
+  adder_fang: { name: 'Adder Fang', icon: '🦷', stackable: true },
+  adder_skin: { name: 'Adder Skin', icon: '🐍', stackable: true },
+  venom_dirk: { name: 'Venom Dirk', icon: '🗡', stackable: false, slot: 'weapon' },
+  hollow_cloak: { name: 'Hollow Cloak', icon: '🧥', stackable: false, slot: 'chest' },
+  hollow_boots: { name: 'Hollow Boots', icon: '👢', stackable: false, slot: 'boots' },
 };
 
 export const EQUIP_SLOTS: { id: EquipSlot; label: string }[] = [
@@ -772,6 +777,38 @@ export const RIDGE_RECIPES: Recipe[] = [
   },
 ];
 
+export const HOLLOW_RECIPES: Recipe[] = [
+  {
+    id: 'venom_dirk',
+    name: 'Venom Dirk',
+    blurb: 'A short adder fang. Stab. Heavy poison. Special: Seep.',
+    cost: [
+      { id: 'adder_fang', qty: 1 },
+      { id: 'adder_skin', qty: 1 },
+      { id: 'copper_ore', qty: 1 },
+      { id: 'whisper_logs', qty: 1 },
+    ],
+  },
+  {
+    id: 'hollow_cloak',
+    name: 'Hollow Cloak',
+    blurb: 'A dark wrap. Soaks stab. Adds poison ward.',
+    cost: [
+      { id: 'adder_fang', qty: 3 },
+      { id: 'adder_skin', qty: 1 },
+    ],
+  },
+  {
+    id: 'hollow_boots',
+    name: 'Hollow Boots',
+    blurb: 'Scale boots with a pale cuff. Soaks crush. Adds poison ward.',
+    cost: [
+      { id: 'adder_fang', qty: 2 },
+      { id: 'whisper_logs', qty: 1 },
+    ],
+  },
+];
+
 export function countItem(inv: ItemStack[], id: string): number {
   return inv.filter((s) => s.id === id).reduce((n, s) => n + s.qty, 0);
 }
@@ -801,6 +838,7 @@ const ARMOR_BONUS: Record<string, number> = {
   stag_cloak: 2,
   weir_cloak: 2,
   ridge_cloak: 2,
+  hollow_cloak: 2,
   frost_greaves: 2,
   road_greaves: 1,
   frost_legs: 2,
@@ -816,6 +854,7 @@ const ARMOR_BONUS: Record<string, number> = {
   stag_boots: 1,
   weir_boots: 1,
   ridge_boots: 1,
+  hollow_boots: 1,
 };
 
 /** Two or more worn pieces from one family add a point of armour. */
@@ -832,6 +871,7 @@ const ARMOR_FAMILIES: Record<string, string[]> = {
   stag: ['stag_cloak', 'stag_boots'],
   weir: ['weir_cloak', 'weir_boots'],
   ridge: ['ridge_cloak', 'ridge_boots'],
+  hollow: ['hollow_cloak', 'hollow_boots'],
 };
 
 export function setBonus(save: SaveData): number {
@@ -878,6 +918,8 @@ const ARMOR_DEFENCE: Record<string, AttackStyle> = {
   weir_boots: 'slash',
   ridge_cloak: 'crush',
   ridge_boots: 'slash',
+  hollow_cloak: 'stab',
+  hollow_boots: 'crush',
 };
 
 export function itemDefenceStyle(id: string | null): AttackStyle | null {
@@ -915,6 +957,7 @@ const WEAPON_DAMAGE: Record<string, number> = {
   antler_blade: 2,
   eel_fang: 2,
   horn_knife: 2,
+  venom_dirk: 2,
 };
 
 const WEAPON_STYLE: Record<string, AttackStyle> = {
@@ -933,6 +976,7 @@ const WEAPON_STYLE: Record<string, AttackStyle> = {
   antler_blade: 'slash',
   eel_fang: 'stab',
   horn_knife: 'stab',
+  venom_dirk: 'stab',
   frost_bow: 'ranged',
 };
 
@@ -949,6 +993,7 @@ const WEAPON_RECOVERY: Record<string, number> = {
   antler_blade: 0.64,
   eel_fang: 0.4,
   horn_knife: 0.42,
+  venom_dirk: 0.4,
   frost_spear: 0.7,
   frost_bow: 0.9,
   road_mace: 1.0,
@@ -998,6 +1043,7 @@ export const WEAPON_SPECS: Record<string, WeaponSpec> = {
   antler_blade: { name: 'Gore', cost: 32, blurb: 'The tine stays in the cut.', mult: 1.2, heal: 0, bleed: 2, stun: 0 },
   eel_fang: { name: 'Hook', cost: 28, blurb: 'The fang stays in the cut.', mult: 1.15, heal: 0, bleed: 2, stun: 0 },
   horn_knife: { name: 'Skewer', cost: 30, blurb: 'The horn finds the gap.', mult: 1.25, heal: 0, bleed: 1, stun: 0 },
+  venom_dirk: { name: 'Seep', cost: 28, blurb: 'The venom stays in the cut.', mult: 1.15, heal: 0, bleed: 2, stun: 0 },
 };
 
 export function weaponSpec(id: string | null): WeaponSpec | null {
@@ -1032,6 +1078,7 @@ export const MONSTER_PROFILE: Record<string, MonsterProfile> = {
   stag: { level: 23, weak: 'stab' },
   eel: { level: 24, weak: 'crush' },
   goat: { level: 25, weak: 'stab' },
+  adder: { level: 26, weak: 'crush' },
   boar: { level: 22, weak: 'stab' },
   orc: { level: 33, weak: 'stab' },
   yeti: { level: 42, weak: 'crush' },
@@ -1055,6 +1102,7 @@ const MONSTER_ATTACK: Record<string, AttackStyle> = {
   stag: 'slash',
   eel: 'stab',
   goat: 'crush',
+  adder: 'stab',
   boar: 'stab',
   orc: 'stab',
   yeti: 'crush',
@@ -1078,6 +1126,7 @@ const MONSTER_GUARD: Record<string, number> = {
   stag: 2,
   eel: 1,
   goat: 2,
+  adder: 1,
   boar: 1,
   orc: 2,
   yeti: 3,
@@ -1104,6 +1153,7 @@ const MONSTER_TEMPO: Record<string, number> = {
   stag: 1.42,
   eel: 1.16,
   goat: 1.38,
+  adder: 1.18,
   boar: 1.72,
   orc: 1.85,
   yeti: 2.7,
@@ -1169,6 +1219,9 @@ const ITEM_WEIGHT: Record<string, number> = {
   horn_knife: 0.7,
   ridge_cloak: 1.0,
   ridge_boots: 0.7,
+  venom_dirk: 0.7,
+  hollow_cloak: 0.8,
+  hollow_boots: 0.6,
 };
 
 const CAMP_KIT_WEIGHT =
@@ -1215,6 +1268,7 @@ export function gearLine(id: string): string {
     bits.push(`acc ${acc >= 0 ? '+' : ''}${acc}`);
     bits.push(`crit ${weaponCrit(id)}%`);
     bits.push(`pierce ${weaponPierce(id)}`);
+    bits.push(`poison ${weaponPoison(id)}`);
   }
   const arm = itemArmor(id);
   if (arm) bits.push(`+${arm} armour`);
@@ -1224,6 +1278,8 @@ export function gearLine(id: string): string {
   if (cward) bits.push(`crit ward ${cward}`);
   const plate = itemPlating(id);
   if (plate) bits.push(`plating ${plate}`);
+  const pward = itemPoisonWard(id);
+  if (pward) bits.push(`poison ward ${pward}`);
   const soak = itemDefenceStyle(id);
   if (soak) bits.push(`soaks ${soak}`);
   const kilos = itemWeight(id);
@@ -1248,6 +1304,7 @@ const WEAPON_REACH: Record<string, number> = {
   antler_blade: 0.03,
   eel_fang: -0.22,
   horn_knife: -0.2,
+  venom_dirk: -0.22,
   frost_bow: 2.2,
 };
 
@@ -1284,6 +1341,7 @@ const WEAPON_ACCURACY: Record<string, number> = {
   delver_maul: -6,
   eel_fang: 8,
   horn_knife: 7,
+  venom_dirk: 8,
 };
 
 export function weaponAccuracy(id: string | null): number {
@@ -1321,6 +1379,8 @@ const ITEM_WARD: Record<string, number> = {
   weir_boots: 1,
   ridge_cloak: 1,
   ridge_boots: 1,
+  hollow_cloak: 1,
+  hollow_boots: 1,
 };
 
 export function itemWard(id: string | null): number {
@@ -1355,6 +1415,7 @@ const WEAPON_CRIT: Record<string, number> = {
   delver_maul: 3,
   eel_fang: 12,
   horn_knife: 8,
+  venom_dirk: 9,
 };
 
 export function weaponCrit(id: string | null): number {
@@ -1392,6 +1453,8 @@ const ITEM_CRIT_WARD: Record<string, number> = {
   weir_boots: 1,
   ridge_cloak: 2,
   ridge_boots: 1,
+  hollow_cloak: 1,
+  hollow_boots: 1,
 };
 
 export function itemCritWard(id: string | null): number {
@@ -1433,6 +1496,7 @@ const WEAPON_PIERCE: Record<string, number> = {
   frost_hammer: 2,
   delver_maul: 3,
   horn_knife: 4,
+  venom_dirk: 3,
 };
 
 export function weaponPierce(id: string | null): number {
@@ -1455,6 +1519,7 @@ const ITEM_PLATING: Record<string, number> = {
   stag_cloak: 1,
   weir_cloak: 1,
   ridge_cloak: 2,
+  hollow_cloak: 1,
   frost_greaves: 2,
   road_greaves: 1,
   frost_legs: 1,
@@ -1470,6 +1535,7 @@ const ITEM_PLATING: Record<string, number> = {
   stag_boots: 1,
   weir_boots: 1,
   ridge_boots: 1,
+  hollow_boots: 1,
 };
 
 export function itemPlating(id: string | null): number {
@@ -1499,6 +1565,7 @@ const MONSTER_ACCURACY: Record<string, number> = {
   stag: 15,
   eel: 16,
   goat: 15,
+  adder: 17,
   boar: 9,
   orc: 13,
   yeti: 8,
@@ -1525,6 +1592,7 @@ const MONSTER_CRIT: Record<string, number> = {
   stag: 5,
   eel: 10,
   goat: 6,
+  adder: 8,
   boar: 3,
   orc: 6,
   yeti: 4,
@@ -1551,6 +1619,7 @@ const MONSTER_PLATE: Record<string, number> = {
   stag: 2,
   eel: 1,
   goat: 2,
+  adder: 1,
   boar: 1,
   orc: 2,
   yeti: 3,
@@ -1558,6 +1627,107 @@ const MONSTER_PLATE: Record<string, number> = {
 
 export function monsterPlating(kind: string): number {
   return MONSTER_PLATE[kind] ?? 0;
+}
+
+/**
+ * Poison severity a connecting swing leaves behind, in points per tick.
+ * Bronze is 0, so the camp sword does not poison.
+ * Fast blades seep. Heavy heads barely do.
+ */
+const WEAPON_POISON: Record<string, number> = {
+  bronze_sword: 0,
+  frost_sword: 1,
+  briar_sword: 1,
+  bone_sword: 1,
+  antler_blade: 2,
+  dusk_dagger: 3,
+  cinder_knife: 2,
+  mire_dagger: 3,
+  eel_fang: 2,
+  horn_knife: 2,
+  frost_spear: 1,
+  gale_spear: 1,
+  frost_bow: 1,
+  road_mace: 1,
+  frost_hammer: 1,
+  delver_maul: 1,
+  venom_dirk: 4,
+};
+
+export function weaponPoison(id: string | null): number {
+  return id ? (WEAPON_POISON[id] ?? 0) : 0;
+}
+
+/** Points of incoming poison this piece turns aside. Every worn piece has some. */
+const ITEM_POISON_WARD: Record<string, number> = {
+  frost_shield: 2,
+  briar_shield: 1,
+  road_shield: 2,
+  cinder_shield: 1,
+  frost_chest: 2,
+  briar_vest: 1,
+  dusk_cloak: 1,
+  delver_vest: 1,
+  mire_cloak: 1,
+  bone_ribs: 2,
+  gale_cloak: 1,
+  stag_cloak: 1,
+  weir_cloak: 1,
+  ridge_cloak: 1,
+  hollow_cloak: 3,
+  frost_greaves: 2,
+  road_greaves: 1,
+  frost_legs: 1,
+  road_legs: 1,
+  cinder_legs: 1,
+  frost_boots: 1,
+  briar_boots: 1,
+  dusk_boots: 1,
+  delver_boots: 1,
+  mire_boots: 1,
+  bone_boots: 1,
+  gale_boots: 1,
+  stag_boots: 1,
+  weir_boots: 1,
+  ridge_boots: 1,
+  hollow_boots: 1,
+};
+
+export function itemPoisonWard(id: string | null): number {
+  return id ? (ITEM_POISON_WARD[id] ?? 0) : 0;
+}
+
+export function wornPoisonWard(save: SaveData): number {
+  let n = 0;
+  for (const id of Object.values(save.equipped)) n += itemPoisonWard(id);
+  return n;
+}
+
+/**
+ * Poison a connecting bite leaves on the hunter.
+ * Wolves and the dummy are 0, so camp combat is unchanged.
+ */
+const MONSTER_POISON: Record<string, number> = {
+  dummy: 0,
+  wolf: 0,
+  crow: 1,
+  spider: 2,
+  fox: 1,
+  beetle: 1,
+  toad: 3,
+  skeleton: 1,
+  hawk: 1,
+  stag: 1,
+  eel: 2,
+  goat: 1,
+  adder: 3,
+  boar: 1,
+  orc: 1,
+  yeti: 2,
+};
+
+export function monsterPoison(kind: string): number {
+  return MONSTER_POISON[kind] ?? 0;
 }
 
 /** Classic-style XP curve approximation */
@@ -1632,6 +1802,8 @@ export function defaultSave(): SaveData {
       weirUnlocked: false,
       ridge_goats: 'none',
       ridgeUnlocked: false,
+      hollow_adders: 'none',
+      hollowUnlocked: false,
     },
   };
 }

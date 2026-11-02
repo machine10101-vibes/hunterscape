@@ -635,6 +635,29 @@ function chalkCairn(): THREE.Group {
   return g;
 }
 
+function hollowRing(): THREE.Group {
+  const g = new THREE.Group();
+  for (const [x, z] of [[-0.42, 0.1], [0.38, -0.05], [0.05, 0.42]] as const) {
+    const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(0.16, 0), mat(0x3a4038, { roughness: 0.92 }));
+    stone.position.set(x, 0.1, z);
+    add(g, stone);
+  }
+  const vial = new THREE.Mesh(
+    new THREE.SphereGeometry(0.06, 7, 6),
+    mat(0x3d6a32, { emissive: 0x1a3a18, emissiveIntensity: 0.55, roughness: 0.35 }),
+  );
+  vial.position.set(0.12, 0.28, 0.05);
+  vial.name = 'flame';
+  g.add(vial);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.022, 0.06, 5), mat(0xc8c4a0, { roughness: 0.4 }));
+  neck.position.set(0.12, 0.36, 0.05);
+  add(g, neck);
+  const sign = paintedBoard('HOLLOW', 0.92, 0.32, '700 36px Georgia, serif');
+  sign.position.set(-0.05, 0.95, 0.32);
+  g.add(sign);
+  return g;
+}
+
 function bench(): THREE.Group {
   const g = new THREE.Group();
   const seat = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.06, 0.32), mat(0x6a4428));
@@ -853,6 +876,23 @@ export function createTownNpc(id: NpcId): THREE.Group {
     g.add(nameplate('Ivo'));
     return g;
   }
+  if (id === 'sable') {
+    const g = npcBody(0x1e3328, 0x4a3828, true);
+    const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.016, 0.85, 5), mat(0x3a2818));
+    staff.position.set(0.22, 0.85, 0.04);
+    staff.rotation.z = -0.15;
+    add(g, staff);
+    const vial = new THREE.Mesh(
+      new THREE.SphereGeometry(0.035, 6, 5),
+      mat(0x3d6a32, { emissive: 0x1a3a18, emissiveIntensity: 0.7, roughness: 0.35 }),
+    );
+    vial.position.set(-0.2, 0.78, 0.1);
+    vial.name = 'flame';
+    g.add(vial);
+    g.name = 'npc_sable';
+    g.add(nameplate('Sable'));
+    return g;
+  }
   if (id === 'quill') {
     const g = npcBody(0x314050, 0x6a5038, true);
     const glove = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.08), mat(0xc4a060));
@@ -964,6 +1004,7 @@ export function briarfordProps(): TownPlacement[] {
   rootBits.push({ mesh: ashBrake(), x: 13.4, z: -6.2 });
   rootBits.push({ mesh: eelWeir(), x: 19.4, z: 11.2 });
   rootBits.push({ mesh: chalkCairn(), x: 19.6, z: -13.5 });
+  rootBits.push({ mesh: hollowRing(), x: 8.0, z: -13.9 });
   rootBits.push({ mesh: hearth(), x: 13.6, z: -2.9 });
   rootBits.push({ mesh: well(), x: 16.35, z: 0.2 });
   rootBits.push({ mesh: stall(), x: 15.15, z: -1.85, rotY: 0.15 });

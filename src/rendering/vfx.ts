@@ -219,6 +219,15 @@ export class VFX {
     );
   }
 
+  /** Green tick for poison, separate from a weapon hit. */
+  spawnPoison(world: THREE.Vector3, amount: number): void {
+    this.spawnFloatingText(
+      world.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.3, 1.85, 0)),
+      `${amount}`,
+      '#8dce6a',
+    );
+  }
+
 
   /** Icy burst when Frost Yeti swipes or dies */
   spawnIceBurst(origin: THREE.Vector3, count = 16): void {

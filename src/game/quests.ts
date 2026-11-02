@@ -1,6 +1,6 @@
 import { countItem, type SaveData } from './types';
 
-export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve' | 'calder' | 'holt' | 'odell' | 'wren' | 'marr' | 'quill' | 'pell' | 'voss' | 'ivo';
+export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve' | 'calder' | 'holt' | 'odell' | 'wren' | 'marr' | 'quill' | 'pell' | 'voss' | 'ivo' | 'sable';
 export type QuestStage = 'none' | 'active' | 'done';
 
 export interface QuestState {
@@ -18,6 +18,7 @@ export interface QuestState {
   ash_brake: QuestStage;
   weir_eels: QuestStage;
   ridge_goats: QuestStage;
+  hollow_adders: QuestStage;
   wolfKills: number;
   boarKills: number;
   briarUnlocked: boolean;
@@ -31,6 +32,7 @@ export interface QuestState {
   ashUnlocked: boolean;
   weirUnlocked: boolean;
   ridgeUnlocked: boolean;
+  hollowUnlocked: boolean;
 }
 
 export function defaultQuests(): QuestState {
@@ -49,6 +51,7 @@ export function defaultQuests(): QuestState {
     ash_brake: 'none',
     weir_eels: 'none',
     ridge_goats: 'none',
+    hollow_adders: 'none',
     wolfKills: 0,
     boarKills: 0,
     briarUnlocked: false,
@@ -62,6 +65,7 @@ export function defaultQuests(): QuestState {
     ashUnlocked: false,
     weirUnlocked: false,
     ridgeUnlocked: false,
+    hollowUnlocked: false,
   };
 }
 
@@ -77,6 +81,7 @@ export const GALE_NEEDED = 2;
 export const ASH_NEEDED = 2;
 export const WEIR_NEEDED = 2;
 export const RIDGE_NEEDED = 2;
+export const HOLLOW_NEEDED = 2;
 
 export interface DialogueOption {
   id: string;
@@ -486,7 +491,40 @@ export function dialogueFor(save: SaveData, npc: NpcId): DialogueScript {
     }
     return {
       speaker: 'Goatherd Ivo',
-      body: 'Ridge patterns are on the anvil. Knife: 1 horn, 1 hide, 1 copper, 1 log. Cloak: 3 horns, 1 hide. Boots: 2 horns, 1 log. The cloak soaks crush and the boots soak slash. Both add plating, so bites land a little lighter. The goats are still north of the cairn if you need more.',
+      body: 'Ridge patterns are on the anvil. Knife: 1 horn, 1 hide, 1 copper, 1 log. Cloak: 3 horns, 1 hide. Boots: 2 horns, 1 log. The cloak soaks crush and the boots soak slash. Both add plating, so bites land a little lighter. The goats are still north of the cairn if you need more. Hermit Sable in the north hollow wants adder fangs.',
+      options: [CLOSE],
+    };
+  }
+
+  if (npc === 'sable') {
+    const fangs = countItem(save.inventory, 'adder_fang');
+    if (q.hollow_adders === 'none') {
+      return {
+        speaker: 'Hermit Sable',
+        body: 'Hollow adders coil in the dark north of here. They strike with stab, and a crush weapon breaks the coil. Bring me 2 adder fangs and I will set a venom dirk in your hand and open those patterns on the anvil. A venomous edge leaves poison. Poison ward on your armour turns a bite\'s venom aside.',
+        options: [
+          { id: 'sable_accept', label: 'I will bring the fangs.' },
+          { id: 'close', label: 'The hollow can wait.' },
+        ],
+      };
+    }
+    if (q.hollow_adders === 'active' && fangs < HOLLOW_NEEDED) {
+      return {
+        speaker: 'Hermit Sable',
+        body: `The adders are still in the hollow. I need ${HOLLOW_NEEDED} adder fangs (you have ${fangs}). They coil just north of this ring, and a crush weapon breaks them.`,
+        options: [CLOSE],
+      };
+    }
+    if (q.hollow_adders === 'active') {
+      return {
+        speaker: 'Hermit Sable',
+        body: 'Two fangs. That will haft a Venom Dirk, and the anvil will take fangs, skins, copper, and logs for the cloak and boots. Its special is Seep, and it spends Focus. The dirk leaves poison, and the hollow wrap adds poison ward.',
+        options: [{ id: 'sable_turnin', label: 'Take the fangs.' }],
+      };
+    }
+    return {
+      speaker: 'Hermit Sable',
+      body: 'Hollow patterns are on the anvil. Dirk: 1 fang, 1 skin, 1 copper, 1 log. Cloak: 3 fangs, 1 skin. Boots: 2 fangs, 1 log. The cloak soaks stab and the boots soak crush. Both add poison ward, so a venomous bite seeps less. The adders are still north of the hollow if you need more.',
       options: [CLOSE],
     };
   }
@@ -638,6 +676,12 @@ export function trackerLines(save: SaveData): string[] {
     const horns = countItem(save.inventory, 'goat_horn');
     lines.push(horns >= RIDGE_NEEDED ? 'Ridge: return to Goatherd Ivo.' : `Ridge: goat horns ${horns}/${RIDGE_NEEDED}`);
   }
+  if (q.ridge_goats === 'done' && q.hollow_adders === 'none') {
+    lines.push('Hermit Sable needs 2 adder fangs in the north hollow.');
+  } else if (q.hollow_adders === 'active') {
+    const fangs = countItem(save.inventory, 'adder_fang');
+    lines.push(fangs >= HOLLOW_NEEDED ? 'Hollow: return to Hermit Sable.' : `Hollow: adder fangs ${fangs}/${HOLLOW_NEEDED}`);
+  }
   if (q.ash_brake === 'done' && q.weir_eels === 'none') {
     lines.push('Angler Voss needs 2 eel teeth at the south weir.');
   } else if (q.weir_eels === 'active') {
@@ -660,6 +704,7 @@ export function trackerLines(save: SaveData): string[] {
     if (q.ashUnlocked) open.push('ash');
     if (q.weirUnlocked) open.push('weir');
     if (q.ridgeUnlocked) open.push('ridge');
+    if (q.hollowUnlocked) open.push('hollow');
     if (open.length === 1) lines.push('Briar patterns are open.');
     else lines.push(`Anvil: ${open.join(', ')}.`);
   }
