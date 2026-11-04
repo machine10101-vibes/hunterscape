@@ -9,8 +9,8 @@
     <title>Hunterscape — Thornrest Camp</title>
     <link rel="icon" type="image/svg+xml" href="/hunterscape/favicon.svg" />
     <link rel="apple-touch-icon" href="/hunterscape/favicon.svg" />
-    <script type="module" crossorigin src="/hunterscape/assets/index-BGRgYN1g.js"></script>
-    <link rel="stylesheet" crossorigin href="/hunterscape/assets/index-CdfclkIV.css">
+    <script type="module" crossorigin src="/hunterscape/assets/index-B19tIeEH.js"></script>
+    <link rel="stylesheet" crossorigin href="/hunterscape/assets/index-o8P4rjzB.css">
   </head>
   <body>
     <div id="app">
@@ -130,6 +130,29 @@
           </div>
           <p id="forge-blurb">Work frost-yeti hide, fur, bone, and claws into a matching set.</p>
           <div id="forge-list"></div>
+        </div>
+
+        <div id="bank-panel" class="panel" hidden>
+          <div class="panel-head">
+            <span>Briarford Bank</span>
+            <button type="button" class="panel-close" id="bank-close" aria-label="Close bank">✕</button>
+          </div>
+          <p id="bank-blurb">The vault keeps what the pack cannot. Equipped gear stays on you. Quest turn-ins still come from the pack.</p>
+          <div id="bank-tools">
+            <input id="bank-search" type="text" placeholder="Search" autocomplete="off" spellcheck="false" />
+            <button type="button" id="bank-deposit-all">Deposit pack</button>
+            <span id="bank-count">0/200</span>
+          </div>
+          <div id="bank-columns">
+            <div>
+              <div class="bank-col-title">Pack</div>
+              <div id="bank-pack"></div>
+            </div>
+            <div>
+              <div class="bank-col-title">Vault</div>
+              <div id="bank-vault"></div>
+            </div>
+          </div>
         </div>
 
         <div id="quest-tracker" aria-label="Quests"></div>
