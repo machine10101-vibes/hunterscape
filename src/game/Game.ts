@@ -86,6 +86,7 @@ import {
 } from '../rendering/anim';
 import { VFX } from '../rendering/vfx';
 import { loadSave, writeSave } from './Persistence';
+import { clampWorld, plotTerrain } from './plots';
 import {
   COMBAT_SKILLS,
   BONE_RECIPES,
@@ -262,10 +263,6 @@ const BOAR_MAX_HP = 36;
 const SPIDER_MAX_HP = 22;
 const TALK_RANGE = 2.3;
 const BANK_SLOTS = 200;
-const MOVE_MIN_X = -16;
-const MOVE_MAX_X = 23;
-const MOVE_MIN_Z = -16;
-const MOVE_MAX_Z = 14;
 
 const SKILL_SHORT: Record<SkillId, string> = {
   constitution: 'Constitution',
@@ -408,8 +405,12 @@ export class Game {
     this.survey.primeRing();
 
     this.player = createPlayerMesh();
-    this.player.position.set(this.save.x, groundHeight(this.save.x, this.save.z), this.save.z);
+    const spawn = clampWorld(this.save.x, this.save.z);
+    this.save.x = spawn.x;
+    this.save.z = spawn.z;
+    this.player.position.set(spawn.x, groundHeight(spawn.x, spawn.z), spawn.z);
     this.scene.add(this.player);
+    this.survey.followWalker(spawn.x, spawn.z, true);
     this.syncHeldTool();
     animatePlayerIdle(this.player, 0);
 
@@ -452,7 +453,7 @@ export class Game {
     this.hud.chat('The skill bar holds combat arts. Train Attack, Strength, and Defence to learn more.', 'system');
     this.hud.chat('Tap trees and rocks to chop and mine. Eat rations from your inventory.', 'system');
     this.hud.chat('A Frost Yeti hunts the north-east snow. An Orc Scout prowls the south-west trail.', 'combat');
-    this.hud.chat('Open Plots (P) to survey 500 sections. The four around Thornrest are already wooded.', 'system');
+    this.hud.chat('Open Plots (P) to survey 500 sections. Walk past camp and the wood streams in across the seams.', 'system');
     this.hud.chat('Briarford stands on the east road. Elspeth, Bram, Maeve, and Calder each have a starter task.', 'system');
     this.hud.chat('Briar boars root the bean rows south of the square. Thorn spiders den just east of them.', 'combat');
     this.hud.chat('Dusk foxes den in the thicket north of the wayside shrine.', 'combat');
@@ -1386,7 +1387,7 @@ export class Game {
       }
     }
 
-    const groundHits = this.raycaster.intersectObject(this.ground);
+    const groundHits = this.raycaster.intersectObjects([this.ground, ...this.survey.groundMeshes()], false);
     if (groundHits.length > 0) {
       const p = groundHits[0].point;
       this.pendingCombat = false;
@@ -1628,8 +1629,9 @@ export class Game {
   }
 
   private startMove(x: number, z: number): void {
-    x = Math.max(MOVE_MIN_X, Math.min(MOVE_MAX_X, x));
-    z = Math.max(MOVE_MIN_Z, Math.min(MOVE_MAX_Z, z));
+    const clamped = clampWorld(x, z);
+    x = clamped.x;
+    z = clamped.z;
     this.activity = { type: 'move', tx: x, tz: z };
     this.syncHeldTool();
     this.moveMarker.position.set(x, groundHeight(x, z) + 0.06, z);
@@ -3310,6 +3312,13 @@ export class Game {
     if (this.yetiTarget) this.yetiSmoother.apply(this.yetiTarget.mesh, dt, this.yetiAggroed ? 22 : 16);
     if (this.orcTarget) this.orcSmoother.apply(this.orcTarget.mesh, dt, this.orcAggroed ? 24 : 16);
     this.snapMoversToGround();
+    this.clampHunter();
+    if (!this.survey.isOpen()) {
+      const entered = this.survey.followWalker(this.player.position.x, this.player.position.z, true);
+      if (entered) this.hud.chat(`You step into section ${entered.id}. ${plotTerrain(entered)}.`, 'system');
+    } else {
+      this.survey.followWalker(this.player.position.x, this.player.position.z, false);
+    }
     tickTerrainFoliage(this.animTime);
     if (this.survey.isOpen()) {
       this.survey.applyCamera(this.camera, dt);
@@ -4293,6 +4302,16 @@ export class Game {
     this.lookSmooth.set(lookX, this.player.position.y + 1.05 + pull * 0.55, lookZ);
     this.camLook.lerp(this.lookSmooth, follow);
     this.camera.lookAt(this.camLook);
+    this.sun.position.set(this.player.position.x + 18, 28, this.player.position.z + 10);
+    this.rim.position.set(this.player.position.x - 14, 10, this.player.position.z - 16);
+    const sky = this.scene.getObjectByName('sky');
+    if (sky) sky.position.set(this.player.position.x, 0, this.player.position.z);
+  }
+
+  private clampHunter(): void {
+    const p = clampWorld(this.player.position.x, this.player.position.z);
+    this.player.position.x = p.x;
+    this.player.position.z = p.z;
   }
 
   /** Fade pine canopies that sit between camera and combatants. */

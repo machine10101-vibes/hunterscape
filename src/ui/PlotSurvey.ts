@@ -13,6 +13,7 @@ import {
   landmarksIn,
   makePlot,
   parsePlotRef,
+  plotAt,
   plotNumber,
   plotTerrain,
   type Plot,
@@ -67,6 +68,7 @@ export class PlotSurvey {
   private gameCamera: THREE.PerspectiveCamera | null = null;
   private world: PlotWorld;
   private hoverId = '';
+  private walkerPlotId: string | null = null;
 
   constructor(private scene: THREE.Scene) {
     this.root = document.getElementById('plots') as HTMLElement;
@@ -119,6 +121,21 @@ export class PlotSurvey {
 
   primeRing(): void {
     this.world.warmHomeRing();
+  }
+
+  /** Stream the 3×3 around the hunter. Returns the section when they enter a new one. */
+  followWalker(x: number, z: number, stream: boolean): Plot | null {
+    const plot = plotAt(x, z);
+    this.world.holdWalker(plot);
+    if (!plot || !stream || plot.id === this.walkerPlotId) return null;
+    const first = this.walkerPlotId === null;
+    this.walkerPlotId = plot.id;
+    this.world.focus(plot);
+    return first ? null : plot;
+  }
+
+  groundMeshes(): THREE.Mesh[] {
+    return this.world.groundMeshes();
   }
 
   isOpen(): boolean {

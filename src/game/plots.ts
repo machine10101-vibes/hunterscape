@@ -58,6 +58,16 @@ export const PLOT_LANDMARKS: PlotLandmark[] = [
   { name: 'Gale hawks', x: -14.7, z: 2.6 },
   { name: 'Ash brake', x: 13.4, z: -6.2 },
   { name: 'Ash stags', x: 13.8, z: -6.4 },
+  { name: 'Briarford bank', x: 15.05, z: 1.85 },
+  { name: 'South weir', x: 19.4, z: 11.2 },
+  { name: 'Angler Voss', x: 18.6, z: 10.6 },
+  { name: 'Weir eels', x: 21.0, z: 12.4 },
+  { name: 'North-east ridge', x: 19.6, z: -13.5 },
+  { name: 'Goatherd Ivo', x: 20.8, z: -13.6 },
+  { name: 'Chalk goats', x: 22.2, z: -14.6 },
+  { name: 'North hollow', x: 8.0, z: -13.9 },
+  { name: 'Hermit Sable', x: 7.2, z: -13.4 },
+  { name: 'Hollow adders', x: 9.2, z: -14.6 },
   { name: 'Frost cairn', x: 7.5, z: 42 },
   { name: 'Hunter stumps', x: -5.2, z: -41 },
   { name: 'Stream ford', x: 38, z: -8.4 },
@@ -145,6 +155,20 @@ export function homeNeighborhoodPlots(): Plot[] {
 
 export function plotNumber(plot: Plot): number {
   return plot.row * PLOT_COLS + plot.col + 1;
+}
+
+/** Keep a walker inside the 500-section grid, just off the outer rim. */
+export const WORLD_INSET = 1.4;
+export const WORLD_MIN_X = GRID_ORIGIN_X + WORLD_INSET;
+export const WORLD_MAX_X = GRID_ORIGIN_X + PLOT_COLS * PLOT_SIZE - WORLD_INSET;
+export const WORLD_MIN_Z = GRID_ORIGIN_Z + WORLD_INSET;
+export const WORLD_MAX_Z = GRID_ORIGIN_Z + PLOT_ROWS * PLOT_SIZE - WORLD_INSET;
+
+export function clampWorld(x: number, z: number): { x: number; z: number } {
+  return {
+    x: Math.max(WORLD_MIN_X, Math.min(WORLD_MAX_X, x)),
+    z: Math.max(WORLD_MIN_Z, Math.min(WORLD_MAX_Z, z)),
+  };
 }
 
 export function plotAt(x: number, z: number): Plot | null {

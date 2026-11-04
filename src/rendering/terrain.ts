@@ -407,8 +407,9 @@ export function createTerrainFoliage(): THREE.Group {
   const gColB = new THREE.Color(0x6aa832);
   const tmpC = new THREE.Color();
   const gStep = 0.52;
-  for (let gx = -23.6; gx <= 23.6; gx += gStep) {
-    for (let gz = -20; gz <= 20; gz += gStep) {
+  const edge = 23.85;
+  for (let gx = -edge; gx <= edge; gx += gStep) {
+    for (let gz = -edge; gz <= edge; gz += gStep) {
       const jx = (hash2(Math.floor(gx * 20 + 3), Math.floor(gz * 20 + 9)) - 0.5) * gStep * 0.92;
       const jz = (hash2(Math.floor(gx * 20 + 11), Math.floor(gz * 20 + 2)) - 0.5) * gStep * 0.92;
       const x = gx + jx;
@@ -459,8 +460,8 @@ export function createTerrainFoliage(): THREE.Group {
   const flowerCols = [0xfff6dc, 0xffdc3c, 0xff6aa8, 0xc888ff, 0xff8a32];
   const flowerPts: { x: number; z: number; h: number; s: number; r: number; c: THREE.Color }[] = [];
   const fStep = 1.32;
-  for (let fx = -23; fx <= 23; fx += fStep) {
-    for (let fz = -19; fz <= 19; fz += fStep) {
+  for (let fx = -23.5; fx <= 23.5; fx += fStep) {
+    for (let fz = -23.5; fz <= 23.5; fz += fStep) {
       const jx = (hash2(Math.floor(fx * 13 + 21), Math.floor(fz * 13 + 5)) - 0.5) * fStep;
       const jz = (hash2(Math.floor(fx * 13 + 7), Math.floor(fz * 13 + 18)) - 0.5) * fStep;
       const x = fx + jx;
@@ -506,8 +507,8 @@ export function createTerrainFoliage(): THREE.Group {
   const stoneCols = [0x8a8c86, 0x6e6a62, 0x9a9488, 0x5c6454];
   const stonePts: { x: number; z: number; h: number; s: number; rx: number; ry: number; c: THREE.Color }[] = [];
   const sStep = 1.75;
-  for (let sx = -23; sx <= 23; sx += sStep) {
-    for (let sz = -18.5; sz <= 18.5; sz += sStep) {
+  for (let sx = -23.5; sx <= 23.5; sx += sStep) {
+    for (let sz = -23.5; sz <= 23.5; sz += sStep) {
       const jx = (hash2(Math.floor(sx * 11 + 40), Math.floor(sz * 11 + 3)) - 0.5) * sStep;
       const jz = (hash2(Math.floor(sx * 11 + 8), Math.floor(sz * 11 + 33)) - 0.5) * sStep;
       const x = sx + jx;
@@ -573,9 +574,10 @@ export function createPlotFoliage(
   const gColB = new THREE.Color(0x6aa832);
   const tmpC = new THREE.Color();
   const grassPts: { x: number; z: number; h: number; s: number; r: number; c: THREE.Color }[] = [];
-  const gStep = 0.85;
-  for (let gx = minX + 0.4; gx <= maxX - 0.4; gx += gStep) {
-    for (let gz = minZ + 0.4; gz <= maxZ - 0.4; gz += gStep) {
+  const gStep = density > 1.1 ? 0.68 : 0.85;
+  const inset = 0.12;
+  for (let gx = minX + inset; gx <= maxX - inset; gx += gStep) {
+    for (let gz = minZ + inset; gz <= maxZ - inset; gz += gStep) {
       const jx = (hash2(Math.floor(gx * 20 + 3), Math.floor(gz * 20 + 9)) - 0.5) * gStep * 0.9;
       const jz = (hash2(Math.floor(gx * 20 + 11), Math.floor(gz * 20 + 2)) - 0.5) * gStep * 0.9;
       const x = gx + jx;
