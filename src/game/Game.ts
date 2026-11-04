@@ -29,7 +29,7 @@ import {
 } from '../rendering/meshes';
 import { createTerrainFoliage, groundHeight, tickTerrainFoliage } from '../rendering/terrain';
 import { createBriarAnvil } from '../rendering/briarGear';
-import { briarfordProps, createTownNpc } from '../rendering/town';
+import { briarfordProps, createBankBooth, createTownNpc } from '../rendering/town';
 import { createBriarWolf, poseBriarWolf, WOLF_HOMES } from '../rendering/wolf';
 import { createDuskFox, FOX_HOMES, poseDuskFox } from '../rendering/duskFox';
 import { CROW_HOMES, createCinderCrow, poseCinderCrow } from '../rendering/cinderCrow';
@@ -164,7 +164,7 @@ import {
   type NpcId,
 } from './quests';
 
-type InteractKind = 'tree' | 'rock' | 'dummy' | 'yeti' | 'orc' | 'wolf' | 'boar' | 'spider' | 'fox' | 'crow' | 'beetle' | 'toad' | 'skeleton' | 'hawk' | 'stag' | 'eel' | 'goat' | 'adder' | 'forge' | 'npc';
+type InteractKind = 'tree' | 'rock' | 'dummy' | 'yeti' | 'orc' | 'wolf' | 'boar' | 'spider' | 'fox' | 'crow' | 'beetle' | 'toad' | 'skeleton' | 'hawk' | 'stag' | 'eel' | 'goat' | 'adder' | 'forge' | 'bank' | 'npc';
 type ForgeBench = 'camp' | 'briar';
 
 interface WorldObject {
@@ -261,6 +261,7 @@ const WOLF_MAX_HP = 28;
 const BOAR_MAX_HP = 36;
 const SPIDER_MAX_HP = 22;
 const TALK_RANGE = 2.3;
+const BANK_SLOTS = 200;
 const MOVE_MIN_X = -16;
 const MOVE_MAX_X = 23;
 const MOVE_MIN_Z = -16;
@@ -357,6 +358,7 @@ export class Game {
   private pendingCombatTarget: WorldObject | null = null;
   private pendingCombatChat = '';
   private pendingForge: WorldObject | null = null;
+  private pendingBank: WorldObject | null = null;
   private pendingTalk: WorldObject | null = null;
   private forgeBench: ForgeBench = 'camp';
   private foes: FoeRuntime[] = [];
@@ -433,6 +435,8 @@ export class Game {
     this.hud.onInventoryClick = (i) => this.handleInvClick(i);
     this.hud.onGearSlotClick = (slot) => this.unequipSlot(slot);
     this.hud.onForgeCraft = (id) => this.craftAtForge(id);
+    this.hud.onBankMove = (dir, id, all) => this.moveBank(dir, id, all);
+    this.hud.onBankDepositPack = () => this.depositPack();
     this.hud.onStance = (id) => {
       this.save.stance = id;
       const stance = STANCES.find((s) => s.id === id);
@@ -470,6 +474,8 @@ export class Game {
     this.hud.chat('Goatherd Ivo keeps the north-east ridge. Chalk goats butt along the cairn.', 'combat');
     this.hud.chat('A venomous edge leaves poison. Poison ward on your armour turns a bite\'s venom aside.', 'system');
     this.hud.chat('Hermit Sable keeps the north hollow. Hollow adders coil in the dark there.', 'combat');
+    this.hud.chat('The Briarford bank keeps what your pack cannot. The booth is in the square. Press B.', 'system');
+    this.hud.chat('Poison keeps working until it fades, and you do not recover while it lasts.', 'system');
     this.hud.chat('Scroll, pinch, or use + / − to zoom the camera.', 'system');
 
     window.addEventListener('resize', () => this.onResize());
@@ -849,6 +855,19 @@ export class Game {
       depleted: false,
       respawnAt: 0,
       meta: { forge: 'briar' },
+    });
+
+    const bank = createBankBooth();
+    bank.position.set(15.05, groundHeight(15.05, 1.85), 1.85);
+    this.scene.add(bank);
+    this.objects.push({
+      kind: 'bank',
+      mesh: bank,
+      id: 'bank_briar',
+      hp: 1,
+      maxHp: 1,
+      depleted: false,
+      respawnAt: 0,
     });
 
     WOLF_HOMES.forEach((home, i) => {
@@ -1298,7 +1317,7 @@ export class Game {
       (e) => {
         if (this.studio.isOpen()) return;
         const el = e.target as HTMLElement | null;
-        if (el?.closest('#gear-panel, #forge-panel, #inventory, #skills-panel, #chat, #studio, #plots, #dialogue')) return;
+        if (el?.closest('#gear-panel, #forge-panel, #bank-panel, #inventory, #skills-panel, #chat, #studio, #plots, #dialogue')) return;
         e.preventDefault();
         if (this.survey.isOpen()) {
           this.survey.nudgeZoom(Math.sign(e.deltaY) || 1, 0.11);
@@ -1311,8 +1330,14 @@ export class Game {
     );
 
     window.addEventListener('keydown', (e) => {
+      const typing = (e.target as HTMLElement | null)?.closest('input, textarea');
+      if (typing && e.key !== 'Escape') return;
       if (e.key === 'Escape' && this.dialogue.isOpen()) {
         this.dialogue.hide();
+        return;
+      }
+      if (e.key === 'Escape' && this.hud.isBankOpen()) {
+        this.hud.setBankOpen(false);
         return;
       }
       if (this.studio.isOpen() || this.survey.isOpen()) return;
@@ -1332,6 +1357,9 @@ export class Game {
       }
       if (e.key.toLowerCase() === 'f') {
         this.approachThenForge();
+      }
+      if (e.key.toLowerCase() === 'b') {
+        this.approachThenBank();
       }
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.key.toLowerCase()));
@@ -1366,6 +1394,7 @@ export class Game {
       this.pendingCombatChat = '';
       this.pendingGather = null;
       this.pendingForge = null;
+      this.pendingBank = null;
       this.pendingTalk = null;
       this.startMove(p.x, p.z);
     }
@@ -1374,6 +1403,10 @@ export class Game {
   private interactWith(obj: WorldObject): void {
     if (obj.kind === 'forge') {
       this.approachThenForge(obj);
+      return;
+    }
+    if (obj.kind === 'bank') {
+      this.approachThenBank(obj);
       return;
     }
     if (obj.kind === 'npc') {
@@ -1911,6 +1944,8 @@ export class Game {
     else if (all.kind === 'adder')
       this.hud.chat(`A hollow adder. Fangs and skin are what Hermit Sable works into the hollow patterns. ${this.foeCard('adder')}`, 'combat');
     else if (all.kind === 'npc') this.talkTo(all);
+    else if (all.kind === 'bank')
+      this.hud.chat('The Briarford bank. The vault holds what your pack cannot, and equipped gear stays on you.', 'system');
     else if (all.kind === 'forge' && all.meta?.forge === 'briar')
       this.hud.chat('The Briarford anvil. Harl opens it once his commission is paid.', 'system');
     else if (all.kind === 'forge')
@@ -2052,7 +2087,7 @@ export class Game {
       }
     }
     if (this.save.inventory.length >= 28) {
-      this.hud.chat('Inventory full!', 'system');
+      this.hud.chat('Inventory full. The Briarford bank can hold the rest.', 'system');
       return false;
     }
     this.save.inventory.push({ id, qty });
@@ -2087,6 +2122,7 @@ export class Game {
       const n = Math.hypot(dx, dz) || 1;
       this.pendingGather = null;
       this.pendingForge = null;
+      this.pendingBank = null;
       this.pendingCombat = false;
       this.startMove(obj.mesh.position.x - (dx / n) * (TALK_RANGE * 0.75), obj.mesh.position.z - (dz / n) * (TALK_RANGE * 0.75));
       this.pendingTalk = obj;
@@ -2464,6 +2500,7 @@ export class Game {
       const dz = forge.mesh.position.z - this.player.position.z;
       const n = Math.hypot(dx, dz) || 1;
       this.pendingTalk = null;
+      this.pendingBank = null;
       this.startMove(forge.mesh.position.x - (dx / n) * 1.5, forge.mesh.position.z - (dz / n) * 1.5);
       this.pendingForge = forge;
       this.hud.chat(briar ? 'You walk to the Briarford anvil…' : 'You walk to the Thornrest forge…', 'system');
@@ -2549,6 +2586,105 @@ export class Game {
         });
     this.hud.chat(briar ? anvilChat : 'The forge is hot. Choose a frost-yeti pattern to work.', 'system');
     this.pendingForge = null;
+  }
+
+  private nearestBank(): WorldObject | null {
+    let best: WorldObject | null = null;
+    let bestD = Infinity;
+    for (const o of this.objects) {
+      if (o.kind !== 'bank') continue;
+      const d = this.distTo(o);
+      if (d < bestD) {
+        bestD = d;
+        best = o;
+      }
+    }
+    return best;
+  }
+
+  private approachThenBank(target?: WorldObject): void {
+    const bank = target ?? this.nearestBank();
+    if (!bank) return;
+    const dist = this.distTo(bank);
+    if (dist > 2.4) {
+      const dx = bank.mesh.position.x - this.player.position.x;
+      const dz = bank.mesh.position.z - this.player.position.z;
+      const n = Math.hypot(dx, dz) || 1;
+      this.pendingTalk = null;
+      this.pendingForge = null;
+      this.startMove(bank.mesh.position.x - (dx / n) * 1.5, bank.mesh.position.z - (dz / n) * 1.5);
+      this.pendingBank = bank;
+      this.hud.chat('You walk to the Briarford bank…', 'system');
+      return;
+    }
+    this.openBank();
+  }
+
+  private openBank(): void {
+    this.pendingBank = null;
+    this.hud.setBankOpen(true, this.save);
+    this.hud.chat('The bank is open. Deposit from the pack, or withdraw into it.', 'system');
+  }
+
+  /** Move stacks between the pack (28) and the vault (200). Stacks share a slot. */
+  private moveBank(dir: 'deposit' | 'withdraw', id: string, all: boolean): void {
+    const from = dir === 'deposit' ? this.save.inventory : this.save.bank;
+    const to = dir === 'deposit' ? this.save.bank : this.save.inventory;
+    const cap = dir === 'deposit' ? BANK_SLOTS : 28;
+    const have = countItem(from, id);
+    const qty = all ? have : Math.min(1, have);
+    const moved = this.transferStacks(from, to, id, qty, cap);
+    if (moved <= 0) {
+      this.hud.chat(dir === 'deposit' ? 'The bank has no room for that.' : 'Your pack has no room for that.', 'system');
+    }
+    this.hud.setBankOpen(true, this.save);
+    this.refreshUI();
+    this.persist();
+  }
+
+  private depositPack(): void {
+    const ids = [...new Set(this.save.inventory.map((s) => s.id))];
+    let moved = 0;
+    for (const id of ids) moved += this.transferStacks(this.save.inventory, this.save.bank, id, countItem(this.save.inventory, id), BANK_SLOTS);
+    this.hud.chat(moved > 0 ? 'You deposit the pack.' : 'Nothing in the pack would fit in the bank.', 'system');
+    this.hud.setBankOpen(true, this.save);
+    this.refreshUI();
+    this.persist();
+  }
+
+  private transferStacks(from: { id: string; qty: number }[], to: { id: string; qty: number }[], id: string, qty: number, toCap: number): number {
+    const meta = ITEM_META[id];
+    if (!meta || qty <= 0) return 0;
+    let left = qty;
+    let moved = 0;
+    while (left > 0) {
+      const src = from.find((s) => s.id === id && s.qty > 0);
+      if (!src) break;
+      if (meta.stackable) {
+        const dest = to.find((s) => s.id === id);
+        const take = Math.min(src.qty, left);
+        if (dest) {
+          dest.qty += take;
+          src.qty -= take;
+          moved += take;
+          left -= take;
+        } else if (to.length < toCap) {
+          to.push({ id, qty: take });
+          src.qty -= take;
+          moved += take;
+          left -= take;
+        } else break;
+        if (src.qty <= 0) from.splice(from.indexOf(src), 1);
+        continue;
+      }
+      if (to.length >= toCap) break;
+      to.push({ id, qty: 1 });
+      src.qty -= 1;
+      moved += 1;
+      left -= 1;
+      if (src.qty <= 0) from.splice(from.indexOf(src), 1);
+    }
+    return moved;
   }
 
   private craftAtForge(recipeId: string): void {
@@ -2697,13 +2833,13 @@ export class Game {
     this.refreshSpecButton();
     this.tickBleeds(dt);
     this.tickPoisons(dt);
-    if (this.save.hp < this.save.maxHp) {
+    if (this.hunterPoisonTicks <= 0 && this.save.hp < this.save.maxHp) {
       this.save.hp = Math.min(this.save.maxHp, this.save.hp + dt * 1.5);
     }
 
     const now = performance.now() / 1000;
     for (const o of this.objects) {
-      if (o.depleted && o.kind !== 'dummy' && o.kind !== 'yeti' && o.kind !== 'orc' && now >= o.respawnAt) {
+      if ((o.kind === 'tree' || o.kind === 'rock') && o.depleted && now >= o.respawnAt) {
         o.depleted = false;
         o.mesh.visible = true;
         this.hud.chat(
@@ -2939,6 +3075,10 @@ export class Game {
           const forge = this.pendingForge;
           this.pendingForge = null;
           this.openForge(forge);
+        } else if (this.pendingBank) {
+          const bank = this.pendingBank;
+          this.pendingBank = null;
+          this.approachThenBank(bank);
         } else if (this.pendingTalk) {
           const npc = this.pendingTalk;
           this.pendingTalk = null;
@@ -4233,6 +4373,7 @@ export class Game {
       else if (o.kind === 'npc') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#f0d070' });
       else if (o.kind === 'forge' && o.meta?.forge === 'briar')
         markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#e09040' });
+      else if (o.kind === 'bank') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#e0c56a' });
       else markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#c43c3c' });
     }
     markers.push({ x: -1.2, z: -0.5, color: '#ff8844' });

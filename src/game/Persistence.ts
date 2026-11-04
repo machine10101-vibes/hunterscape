@@ -25,6 +25,9 @@ export function loadSave(): SaveData {
       skills: { ...base.skills, ...data.skills },
       equipped: { ...base.equipped, ...data.equipped },
       inventory: data.inventory ?? base.inventory,
+      bank: Array.isArray(data.bank)
+        ? data.bank.filter((s) => !!s && !!ITEM_META[s.id] && s.qty > 0)
+        : base.bank,
       quests: { ...base.quests, ...(data.quests ?? {}) },
       stance: STANCES.some((s) => s.id === data.stance) ? data.stance : base.stance,
     });

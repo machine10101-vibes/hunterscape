@@ -58,6 +58,8 @@ export class HUD {
   private forgeRecipes: Recipe[] = YETI_RECIPES;
   private forgeReady = true;
   private forgeLocked = new Set<string>();
+  private bankSave: SaveData | null = null;
+  private bankPanel!: HTMLElement;
   private questTracker!: HTMLElement;
   private narrowMq!: MediaQueryList;
   private desktopInvInited = false;
@@ -67,6 +69,8 @@ export class HUD {
   onInventoryClick: ((index: number) => void) | null = null;
   onGearSlotClick: ((slot: EquipSlot) => void) | null = null;
   onForgeCraft: ((recipeId: string) => void) | null = null;
+  onBankMove: ((dir: 'deposit' | 'withdraw', id: string, all: boolean) => void) | null = null;
+  onBankDepositPack: (() => void) | null = null;
   onStance: ((stance: CombatStance) => void) | null = null;
   onSpec: (() => void) | null = null;
 
@@ -100,8 +104,14 @@ export class HUD {
     this.heroPane = new HeroPane(el('gear-hero') as HTMLCanvasElement);
     this.forgePanel = el('forge-panel');
     this.forgeList = el('forge-list');
+    this.bankPanel = el('bank-panel');
     this.questTracker = el('quest-tracker');
     el('forge-close').addEventListener('click', () => this.setForgeOpen(false));
+    el('bank-close').addEventListener('click', () => this.setBankOpen(false));
+    el('bank-deposit-all').addEventListener('click', () => this.onBankDepositPack?.());
+    el('bank-search').addEventListener('input', () => {
+      if (!this.bankPanel.hidden) this.renderBank(this.bankSave);
+    });
     this.narrowMq = window.matchMedia('(max-width: 480px)');
 
     this.btnGear.addEventListener('click', () => this.setGearOpen(this.gearPanel.hidden));
@@ -259,6 +269,72 @@ export class HUD {
     }
   }
 
+  setBankOpen(open: boolean, save?: SaveData): void {
+    if (save) this.bankSave = save;
+    this.bankPanel.hidden = !open;
+    if (open) {
+      this.closeSidePanels('bank');
+      this.renderBank(this.bankSave);
+    }
+  }
+
+  isBankOpen(): boolean {
+    return !this.bankPanel.hidden;
+  }
+
+  private renderBank(save: SaveData | null): void {
+    if (!save) return;
+    const q = (el('bank-search') as HTMLInputElement).value.trim().toLowerCase();
+    el('bank-count').textContent = `${save.bank.length}/200`;
+    this.fillBankList(el('bank-pack'), save.inventory, q, 'deposit');
+    this.fillBankList(el('bank-vault'), save.bank, q, 'withdraw');
+  }
+
+  private fillBankList(
+    host: HTMLElement,
+    stacks: ItemStack[],
+    q: string,
+    dir: 'deposit' | 'withdraw',
+  ): void {
+    host.innerHTML = '';
+    const shown = stacks.filter((s) => {
+      const name = ITEM_META[s.id]?.name ?? s.id;
+      return !q || name.toLowerCase().includes(q);
+    });
+    if (shown.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'bank-empty';
+      empty.textContent = q ? 'Nothing matches.' : dir === 'deposit' ? 'Pack is empty.' : 'Vault is empty.';
+      host.appendChild(empty);
+      return;
+    }
+    for (const stack of shown) {
+      const row = document.createElement('div');
+      row.className = 'bank-row';
+      const icon = document.createElement('canvas');
+      icon.className = 'item-icon';
+      icon.width = 128;
+      icon.height = 128;
+      paintItemIcon(icon, stack.id);
+      const name = document.createElement('div');
+      name.className = 'bank-name';
+      name.textContent = `${ITEM_META[stack.id]?.name ?? stack.id} ×${stack.qty}`;
+      const actions = document.createElement('div');
+      actions.className = 'bank-actions';
+      for (const all of [false, true]) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'bank-move';
+        btn.textContent = all ? 'All' : '1';
+        const id = stack.id;
+        btn.addEventListener('click', () => this.onBankMove?.(dir, id, all));
+        actions.appendChild(btn);
+      }
+      row.append(icon, name, actions);
+      host.appendChild(row);
+    }
+  }
+
   setQuests(lines: string[]): void {
     this.questTracker.innerHTML = '';
     for (const line of lines) {
@@ -269,7 +345,7 @@ export class HUD {
     }
   }
 
-  private closeSidePanels(keep: 'gear' | 'skills' | 'forge'): void {
+  private closeSidePanels(keep: 'gear' | 'skills' | 'forge' | 'bank'): void {
     if (keep !== 'gear') {
       this.gearPanel.hidden = true;
       this.btnGear.setAttribute('aria-expanded', 'false');
@@ -280,6 +356,7 @@ export class HUD {
       el('btn-skills').setAttribute('aria-expanded', 'false');
     }
     if (keep !== 'forge') this.forgePanel.hidden = true;
+    if (keep !== 'bank') this.bankPanel.hidden = true;
   }
 
   isForgeOpen(): boolean {
@@ -328,6 +405,10 @@ export class HUD {
 
   setEquipment(save: SaveData, inspect?: string): void {
     if (this.isForgeOpen()) this.setForgeRecipes(save);
+    if (this.isBankOpen()) {
+      this.bankSave = save;
+      this.renderBank(save);
+    }
     this.heroPane.syncEquipment(save);
     for (const { id, label } of EQUIP_SLOTS) {
       const btn = this.gearPanel.querySelector(`.gear-slot[data-slot="${id}"]`) as HTMLElement | null;

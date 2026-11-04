@@ -934,6 +934,43 @@ export function createTownNpc(id: NpcId): THREE.Group {
   return g;
 }
 
+/** A brass-barred booth the hunter can click. Faces +Z, toward the camp camera. */
+export function createBankBooth(): THREE.Group {
+  const g = new THREE.Group();
+  const plinth = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.12, 0.62), mat(0x6a5a48, { roughness: 0.9 }));
+  plinth.position.y = 0.06;
+  add(g, plinth);
+  const counter = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.42, 0.48), mat(0x5a3a22));
+  counter.position.y = 0.32;
+  add(g, counter);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(1.12, 0.06, 0.54), mat(0x8a6840, { roughness: 0.55 }));
+  top.position.y = 0.55;
+  add(g, top);
+  for (const x of [-0.28, 0, 0.28]) {
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.42, 5), mat(0xc6a15a, { metalness: 0.72, roughness: 0.32 }));
+    bar.position.set(x, 0.82, 0.22);
+    add(g, bar);
+  }
+  const rail = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.03, 0.03), mat(0xc6a15a, { metalness: 0.72, roughness: 0.32 }));
+  rail.position.set(0, 1.02, 0.22);
+  add(g, rail);
+  const ledger = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.04, 0.2), mat(0x2f4a32, { roughness: 0.7 }));
+  ledger.position.set(-0.28, 0.6, 0.02);
+  add(g, ledger);
+  const seal = new THREE.Mesh(
+    new THREE.SphereGeometry(0.035, 6, 5),
+    mat(0xe0b84a, { metalness: 0.6, roughness: 0.35, emissive: 0x6a4a10, emissiveIntensity: 0.25 }),
+  );
+  seal.position.set(0.32, 0.62, 0.08);
+  seal.name = 'flame';
+  g.add(seal);
+  const sign = paintedBoard('BANK', 0.7, 0.28, '700 42px Georgia, serif');
+  sign.position.set(0, 1.22, 0.16);
+  g.add(sign);
+  g.name = 'bank_booth';
+  return g;
+}
+
 export interface TownPlacement {
   mesh: THREE.Object3D;
   x: number;
