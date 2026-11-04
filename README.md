@@ -1,24 +1,21 @@
 # Hunterscape
 
-Browser fantasy adventure set in the **Whisperwood** — start at **Thornrest Camp**, chop timber, mine ore, spar with the training dummy, face the **Frost Yeti** in the north-east clearing, and duel the **Orc Scout** on the south-west trail.
+Browser fantasy adventure in the **Whisperwood**. You start at **Thornrest Camp**: click or tap to walk, chop timber, mine ore, fight beasts, and follow the road east into **Briarford**.
 
-Original world, names, and art (procedural Three.js). Visual layout inspired by classic elevated fantasy MMO HUDs.
+The view is an elevated top-down 3D scene (Three.js). Original world, names, and procedural art. The layout of the HUD takes its cues from classic fantasy MMOs.
 
 **Play:** https://machine10101-vibes.github.io/hunterscape/
 
-## Phase 1 features
+## What you can do
 
-- Vite + TypeScript + Three.js
-- Click / tap-to-move with follow camera
-- RS3-inspired HUD: chat, action bar, inventory, minimap, HP / Focus / Stamina orbs, skills panel
-- Woodcutting (Whisperwood trees → Whisper Logs)
-- Mining (copper & tin rocks)
-- Combat vs training dummy, Frost Yeti, and Orc Scout (Attack / Strength / Defence / Constitution XP)
-- Inventory + tools; progress saved in `localStorage`
-- Desktop + mobile (touch-friendly)
-- Studio-style low-poly character/monster art with richer world lighting
-- Walk/attack/gather animation cycles, hit flinch, death collapse, combat telegraphs
-- Model Studio (`V`) to orbit every 3D mesh and review poses
+- Walk the camp and keep going. The wood is **500 sections** (20×25, each the size of Thornrest). Sections stream in around you and share one height and color field, so the seams stay continuous. **Plots (P)** surveys any section from above.
+- Skills: Attack, Strength, Defence, Constitution, Woodcutting, Mining. Combat arts on the bar: Strike, Lunge, Smash, Guard, Rend, plus a weapon special.
+- Stances, armour styles, weapon speed and reach, accuracy, critical hits, pierce, poison, Focus, and stamina. Beasts have a bite style, armour, tempo, and enrage below 40% health.
+- Gather Whisperwood trees and ore rocks. The pack holds 28 slots. The **Briarford bank** (press B) keeps the rest, up to 200, and that vault is saved with everything else.
+- Gear and the camp forge. Briarford’s anvil crafts town kits once the matching quest is done.
+- Starter work from Elspeth, Bram, Maeve, Calder, Holt, Wren, Marr, Quill, Pell, Voss, Ivo, and Hermit Sable. Beasts include wolves, boars, spiders, dusk foxes, cinder crows, ore beetles, mire toads, barrow skeletons, gale hawks, ash stags, weir eels, chalk goats, and hollow adders, plus the training dummy, the Frost Yeti, and the Orc Scout.
+- Progress is stored in `localStorage` (`hunterscape_save_v1`), including bank, quests, gear, and where you are standing.
+- Desktop and mobile: tap to move, and pinch to zoom the camera. **Model Studio (V)** orbits the hunter and camp meshes.
 
 ## Develop
 
@@ -43,13 +40,17 @@ Production base path is `/hunterscape/` for GitHub Pages.
 | Input | Action |
 |--------|--------|
 | Click / tap ground | Walk |
-| Click / tap tree, rock, dummy, yeti, orc | Gather or fight |
-| Action bar 1–5 / keys 1–5 | Attack, Chop, Mine, Eat, Examine |
-| Skills button / `K` | Toggle skills |
-| Studio button / `V` | Inspect 3D models (drag to orbit) |
-| Inventory rations | Click to eat |
+| Click / tap a tree, rock, beast, or NPC | Gather, fight, or talk |
+| 1–5 | Strike, Lunge, Smash, Guard, Rend |
+| 6 | Arm the weapon special |
+| K | Skills and stance |
+| C | Gear |
+| V | Model Studio |
+| P | Plot survey (500 sections) |
+| F | Walk to the forge |
+| B | Walk to the Briarford bank |
+| Scroll, pinch, or + / − | Zoom the camera |
 
 ## Deploy notes
 
-- Source on `main`
-- Built site on `gh-pages` (contents of `dist/` at branch root)
+- Built site on `gh-pages` (contents of `dist/` at branch root, with `.nojekyll` kept)

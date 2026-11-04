@@ -38,7 +38,7 @@ import {
   createStump,
 } from './wildDress';
 
-type Chunk = { id: string; root: THREE.Group; pinned: boolean };
+type Chunk = { id: string; root: THREE.Group; pinned: boolean; held: boolean };
 
 /** Same tessellation as camp so shared edges land on the same world vertices. */
 const GROUND_SEGS = 128;
@@ -55,12 +55,39 @@ const BOULDER_STEP = 7.4;
 export class PlotWorld {
   private chunks = new Map<string, Chunk>();
   private lru: string[] = [];
+  private heldId: string | null = null;
   private readonly maxLoose = 12;
 
   constructor(private scene: THREE.Scene) {}
 
   warmHomeRing(): void {
     for (const plot of homeNeighborhoodPlots()) this.ensure(plot, true);
+  }
+
+  /** Keep the section under the hunter from being evicted while the survey looks elsewhere. */
+  holdWalker(plot: Plot | null): void {
+    if (this.heldId) {
+      const prev = this.chunks.get(this.heldId);
+      if (prev) prev.held = false;
+      this.heldId = null;
+    }
+    if (!plot || isHomePlot(plot)) return;
+    this.ensure(plot, false);
+    const chunk = this.chunks.get(plot.id);
+    if (!chunk) return;
+    chunk.held = true;
+    this.heldId = plot.id;
+  }
+
+  groundMeshes(): THREE.Mesh[] {
+    const meshes: THREE.Mesh[] = [];
+    for (const chunk of this.chunks.values()) {
+      for (const child of chunk.root.children) {
+        const mesh = child as THREE.Mesh;
+        if (mesh.isMesh && mesh.name.startsWith('ground')) meshes.push(mesh);
+      }
+    }
+    return meshes;
   }
 
   focus(plot: Plot): void {
@@ -87,7 +114,7 @@ export class PlotWorld {
     }
     const root = this.buildWild(plot);
     this.scene.add(root);
-    this.chunks.set(plot.id, { id: plot.id, root, pinned: pin || isNearHome(plot) });
+    this.chunks.set(plot.id, { id: plot.id, root, pinned: pin || isNearHome(plot), held: false });
     this.lru.push(plot.id);
     this.evict();
   }
@@ -99,7 +126,10 @@ export class PlotWorld {
   }
 
   private evict(): void {
-    const loose = this.lru.filter((id) => !this.chunks.get(id)?.pinned);
+    const loose = this.lru.filter((id) => {
+      const chunk = this.chunks.get(id);
+      return !!chunk && !chunk.pinned && !chunk.held;
+    });
     while (loose.length > this.maxLoose) {
       const id = loose.shift();
       if (!id) break;
