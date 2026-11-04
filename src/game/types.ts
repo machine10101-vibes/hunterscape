@@ -52,6 +52,8 @@ export interface SaveData {
   stance: CombatStance;
   skills: Record<SkillId, SkillState>;
   inventory: ItemStack[];
+  /** Briarford vault. Separate from the 28-slot pack. */
+  bank: ItemStack[];
   equipped: {
     weapon: string | null;
     shield: string | null;
@@ -1764,6 +1766,7 @@ export function defaultSave(): SaveData {
       mining: { level: 1, xp: 0 },
     },
     inventory: [{ id: 'camp_rations', qty: 5 }],
+    bank: [],
     equipped: {
       weapon: 'bronze_sword',
       shield: null,
