@@ -6,7 +6,8 @@ export type SkillId =
   | 'strength'
   | 'defence'
   | 'woodcutting'
-  | 'mining';
+  | 'mining'
+  | 'cooking';
 
 export interface SkillState {
   level: number;
@@ -77,6 +78,7 @@ export const SKILL_META: Record<
   defence: { name: 'Defence', icon: '🛡' },
   woodcutting: { name: 'Woodcutting', icon: '🪓' },
   mining: { name: 'Mining', icon: '⛏' },
+  cooking: { name: 'Cooking', icon: '🍲' },
 };
 
 export type CombatSkillId = 'strike' | 'lunge' | 'smash' | 'guard' | 'rend';
@@ -203,6 +205,8 @@ export const ITEM_META: Record<
   copper_ore: { name: 'Copper Ore', icon: '🟠', stackable: true },
   tin_ore: { name: 'Tin Ore', icon: '⚪', stackable: true },
   camp_rations: { name: 'Camp Rations', icon: '🍖', stackable: true },
+  whisper_berries: { name: 'Whisper Berries', icon: '🫐', stackable: true },
+  berry_stew: { name: 'Berry Stew', icon: '🍲', stackable: true },
   yeti_fur: { name: 'Yeti Fur', icon: '🧣', stackable: true },
   frost_claw: { name: 'Frost Claw', icon: '🧊', stackable: true },
   yeti_hide: { name: 'Yeti Hide', icon: '🧥', stackable: true },
@@ -300,6 +304,35 @@ export const EQUIP_SLOTS: { id: EquipSlot; label: string }[] = [
 export interface RecipeCost {
   id: string;
   qty: number;
+}
+
+/** Raw food cooked on the Thornrest campfire. */
+export interface CookRecipe {
+  raw: string;
+  cooked: string;
+  xp: number;
+  level: number;
+  seconds: number;
+}
+
+export const COOK_RECIPES: CookRecipe[] = [
+  { raw: 'whisper_berries', cooked: 'berry_stew', xp: 42, level: 1, seconds: 2.2 },
+];
+
+/** Foods the pack can be eaten for. Heal is flat, like a bite of rations. */
+export const FOOD: Record<string, { heal: number; label: string }> = {
+  camp_rations: { heal: 25, label: 'camp rations' },
+  boar_roast: { heal: 40, label: 'a boar roast' },
+  berry_stew: { heal: 32, label: 'berry stew' },
+};
+
+export function cookReady(save: SaveData): CookRecipe | null {
+  for (const recipe of COOK_RECIPES) {
+    if (save.skills.cooking.level < recipe.level) continue;
+    if (countItem(save.inventory, recipe.raw) <= 0) continue;
+    return recipe;
+  }
+  return null;
 }
 
 export interface Recipe {
@@ -1764,6 +1797,7 @@ export function defaultSave(): SaveData {
       defence: { level: 1, xp: 0 },
       woodcutting: { level: 1, xp: 0 },
       mining: { level: 1, xp: 0 },
+      cooking: { level: 1, xp: 0 },
     },
     inventory: [{ id: 'camp_rations', qty: 5 }],
     bank: [],
@@ -1807,6 +1841,7 @@ export function defaultSave(): SaveData {
       ridgeUnlocked: false,
       hollow_adders: 'none',
       hollowUnlocked: false,
+      hearth_stew: 'none',
     },
   };
 }

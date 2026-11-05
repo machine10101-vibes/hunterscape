@@ -9,9 +9,9 @@ The view is an elevated top-down 3D scene (Three.js). Original world, names, and
 ## What you can do
 
 - Walk the camp and keep going. The wood is **500 sections** (20×25, each the size of Thornrest). Sections stream in around you and share one height and color field, so the seams stay continuous. **Plots (P)** surveys any section from above.
-- Skills: Attack, Strength, Defence, Constitution, Woodcutting, Mining. Combat arts on the bar: Strike, Lunge, Smash, Guard, Rend, plus a weapon special.
+- Skills: Attack, Strength, Defence, Constitution, Woodcutting, Mining, and Cooking. Combat arts on the bar: Strike, Lunge, Smash, Guard, Rend, plus a weapon special.
 - Stances, armour styles, weapon speed and reach, accuracy, critical hits, pierce, poison, Focus, and stamina. Beasts have a bite style, armour, tempo, and enrage below 40% health.
-- Gather Whisperwood trees and ore rocks. The pack holds 28 slots. The **Briarford bank** (press B) keeps the rest, up to 200, and that vault is saved with everything else.
+- Gather Whisperwood trees and ore rocks, including a few nodes on the sections just outside camp. Whisper berries fruit on each side of Thornrest. Cook them on the campfire into berry stew, which heals more than rations. The pack holds 28 slots. The **Briarford bank** (press B) keeps the rest, up to 200, and that vault is saved with everything else.
 - Gear and the camp forge. Briarford’s anvil crafts town kits once the matching quest is done.
 - Starter work from Elspeth, Bram, Maeve, Calder, Holt, Wren, Marr, Quill, Pell, Voss, Ivo, and Hermit Sable. Beasts include wolves, boars, spiders, dusk foxes, cinder crows, ore beetles, mire toads, barrow skeletons, gale hawks, ash stags, weir eels, chalk goats, and hollow adders, plus the training dummy, the Frost Yeti, and the Orc Scout.
 - Progress is stored in `localStorage` (`hunterscape_save_v1`), including bank, quests, gear, and where you are standing.
@@ -40,7 +40,8 @@ Production base path is `/hunterscape/` for GitHub Pages.
 | Input | Action |
 |--------|--------|
 | Click / tap ground | Walk |
-| Click / tap a tree, rock, beast, or NPC | Gather, fight, or talk |
+| Click / tap a tree, rock, berry bush, beast, or NPC | Gather, fight, or talk |
+| Click / tap the Thornrest campfire | Cook berries from your pack |
 | 1–5 | Strike, Lunge, Smash, Guard, Rend |
 | 6 | Arm the weapon special |
 | K | Skills and stance |

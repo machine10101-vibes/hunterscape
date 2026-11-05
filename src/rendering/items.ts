@@ -128,6 +128,8 @@ export function createItemMesh(id: string): THREE.Group {
   if (id === 'copper_ore') return makeOre(0xb87333, 0x8a4a1c);
   if (id === 'tin_ore') return makeOre(0xc8d0d4, 0x8a9296);
   if (id === 'camp_rations') return makeRations();
+  if (id === 'whisper_berries') return makeBerries();
+  if (id === 'berry_stew') return makeStew();
   if (id === 'yeti_fur') return makeFur();
   if (id === 'frost_claw') return makeClaw();
   if (id === 'yeti_hide') return createYetiHideItem();
@@ -263,6 +265,35 @@ function makeRations(): THREE.Group {
   const strip = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.03, 0.05), meat);
   strip.position.y = 0.06;
   add(g, strip);
+  return g;
+}
+
+function makeBerries(): THREE.Group {
+  const g = new THREE.Group();
+  const berry = std(0xc43848, { roughness: 0.42 });
+  const leaf = std(0x2f6a30, { roughness: 0.8 });
+  for (let i = 0; i < 5; i++) {
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.042, 6, 5), berry);
+    const a = (i / 5) * Math.PI * 2;
+    b.position.set(Math.cos(a) * 0.055, (i % 2) * 0.02, Math.sin(a) * 0.05);
+    add(g, b);
+  }
+  const sprig = new THREE.Mesh(new THREE.SphereGeometry(0.04, 5, 4), leaf);
+  sprig.scale.set(1.4, 0.35, 0.8);
+  sprig.position.set(0.02, 0.04, -0.02);
+  add(g, sprig);
+  return g;
+}
+
+function makeStew(): THREE.Group {
+  const g = new THREE.Group();
+  const bowl = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), std(0x6a4a32, { roughness: 0.72 }));
+  bowl.scale.set(1.15, 0.42, 1.15);
+  add(g, bowl);
+  const stew = new THREE.Mesh(new THREE.SphereGeometry(0.072, 8, 6), std(0x8a3058, { roughness: 0.38 }));
+  stew.position.y = 0.028;
+  stew.scale.y = 0.38;
+  add(g, stew);
   return g;
 }
 

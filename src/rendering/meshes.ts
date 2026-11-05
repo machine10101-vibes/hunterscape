@@ -322,6 +322,14 @@ export function createCampfire(): THREE.Group {
   flame.name = 'flame';
   g.add(flame);
 
+  const hit = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.9, 0.9, 1.3, 8),
+    new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
+  );
+  hit.position.y = 0.55;
+  hit.name = 'fireHit';
+  g.add(hit);
+
   const glow = new THREE.Mesh(
     new THREE.SphereGeometry(0.18, 8, 6),
     new THREE.MeshBasicMaterial({

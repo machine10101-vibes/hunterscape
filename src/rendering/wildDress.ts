@@ -77,6 +77,20 @@ export function createBerryBush(seed: number): THREE.Group {
   return g;
 }
 
+/** A pickable whisper-berry bush. Larger fruit than the wild dressing. */
+export function createWhisperBush(seed: number): THREE.Group {
+  const g = createBerryBush(seed);
+  g.name = 'whisperBush';
+  const fruit = dressMat(0xd24558);
+  for (let i = 0; i < 7; i++) {
+    const berry = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 5), fruit);
+    const a = (i / 7) * Math.PI * 2 + 0.3;
+    berry.position.set(Math.cos(a) * 0.22, 0.42 + (i % 3) * 0.05, Math.sin(a) * 0.18);
+    g.add(berry);
+  }
+  return g;
+}
+
 export function createBush(seed: number): THREE.Group {
   const g = new THREE.Group();
   g.name = 'wildBush';

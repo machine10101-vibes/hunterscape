@@ -28,6 +28,7 @@ import {
   weaponHeldFromId,
 } from '../rendering/meshes';
 import { createTerrainFoliage, groundHeight, tickTerrainFoliage } from '../rendering/terrain';
+import { createWhisperBush } from '../rendering/wildDress';
 import { createBriarAnvil } from '../rendering/briarGear';
 import { briarfordProps, createBankBooth, createTownNpc } from '../rendering/town';
 import { createBriarWolf, poseBriarWolf, WOLF_HOMES } from '../rendering/wolf';
@@ -109,6 +110,8 @@ import {
   carryBurden,
   combatSkillUnlocked,
   countItem,
+  cookReady,
+  FOOD,
   gearLine,
   levelFromXp,
   monsterAccuracy,
@@ -156,6 +159,7 @@ import {
   WEIR_NEEDED,
   RIDGE_NEEDED,
   HOLLOW_NEEDED,
+  STEW_NEEDED,
   GALE_NEEDED,
   FEATHER_NEEDED,
   FUR_NEEDED,
@@ -165,7 +169,7 @@ import {
   type NpcId,
 } from './quests';
 
-type InteractKind = 'tree' | 'rock' | 'dummy' | 'yeti' | 'orc' | 'wolf' | 'boar' | 'spider' | 'fox' | 'crow' | 'beetle' | 'toad' | 'skeleton' | 'hawk' | 'stag' | 'eel' | 'goat' | 'adder' | 'forge' | 'bank' | 'npc';
+type InteractKind = 'tree' | 'rock' | 'bush' | 'fire' | 'dummy' | 'yeti' | 'orc' | 'wolf' | 'boar' | 'spider' | 'fox' | 'crow' | 'beetle' | 'toad' | 'skeleton' | 'hawk' | 'stag' | 'eel' | 'goat' | 'adder' | 'forge' | 'bank' | 'npc';
 type ForgeBench = 'camp' | 'briar';
 
 interface WorldObject {
@@ -271,6 +275,7 @@ const SKILL_SHORT: Record<SkillId, string> = {
   defence: 'Defence',
   woodcutting: 'Woodcutting',
   mining: 'Mining',
+  cooking: 'Cooking',
 };
 
 export class Game {
@@ -477,6 +482,7 @@ export class Game {
     this.hud.chat('Hermit Sable keeps the north hollow. Hollow adders coil in the dark there.', 'combat');
     this.hud.chat('The Briarford bank keeps what your pack cannot. The booth is in the square. Press B.', 'system');
     this.hud.chat('Poison keeps working until it fades, and you do not recover while it lasts.', 'system');
+    this.hud.chat('Whisper berries fruit just past each side of camp. Cook them on the Thornrest fire to train Cooking.', 'system');
     this.hud.chat('Scroll, pinch, or use + / − to zoom the camera.', 'system');
 
     window.addEventListener('resize', () => this.onResize());
@@ -550,6 +556,15 @@ export class Game {
     const fire = createCampfire();
     plant(fire, -1.2, -0.5);
     this.scene.add(fire);
+    this.objects.push({
+      kind: 'fire',
+      mesh: fire,
+      id: 'fire_0',
+      hp: 1,
+      maxHp: 1,
+      depleted: false,
+      respawnAt: 0,
+    });
 
     const forge = createForge();
     plant(forge, 2.2, 0.35);
@@ -671,6 +686,74 @@ export class Game {
         depleted: false,
         respawnAt: 0,
         meta: { ore: r.ore },
+      });
+    });
+
+    // Gatherables just outside camp, on the sections the hunter can now walk.
+    const wildTrees: [number, number][] = [
+      [30, 6],
+      [-30, 5],
+      [5, 30],
+      [4, -30],
+    ];
+    wildTrees.forEach(([x, z], i) => {
+      const mesh = createTree(20 + i);
+      mesh.position.set(x, groundHeight(x, z), z);
+      this.scene.add(mesh);
+      this.objects.push({
+        kind: 'tree',
+        mesh,
+        id: `tree_wild_${i}`,
+        hp: 1,
+        maxHp: 1,
+        depleted: false,
+        respawnAt: 0,
+      });
+    });
+    const wildRocks: { x: number; z: number; ore: 'copper' | 'tin' }[] = [
+      { x: 33, z: -1, ore: 'copper' },
+      { x: -33, z: 1, ore: 'tin' },
+      { x: -3, z: 32, ore: 'copper' },
+      { x: -2, z: -32, ore: 'tin' },
+    ];
+    wildRocks.forEach((r, i) => {
+      const mesh = createRock(r.ore, 20 + i);
+      mesh.position.set(r.x, groundHeight(r.x, r.z), r.z);
+      this.scene.add(mesh);
+      this.objects.push({
+        kind: 'rock',
+        mesh,
+        id: `rock_wild_${i}`,
+        hp: 1,
+        maxHp: 1,
+        depleted: false,
+        respawnAt: 0,
+        meta: { ore: r.ore },
+      });
+    });
+    const berrySpots: [number, number][] = [
+      [31, 2],
+      [33.5, 5],
+      [4, 31],
+      [-2, 33],
+      [-31, 3],
+      [-34, 6],
+      [3, -31],
+      [-4, -33],
+    ];
+    berrySpots.forEach(([x, z], i) => {
+      const mesh = createWhisperBush(i + 3);
+      mesh.position.set(x, groundHeight(x, z), z);
+      mesh.scale.setScalar(1.65);
+      this.scene.add(mesh);
+      this.objects.push({
+        kind: 'bush',
+        mesh,
+        id: `bush_${i}`,
+        hp: 1,
+        maxHp: 1,
+        depleted: false,
+        respawnAt: 0,
       });
     });
 
@@ -1414,6 +1497,18 @@ export class Game {
       this.approachThenTalk(obj);
       return;
     }
+    if (obj.kind === 'fire') {
+      const recipe = cookReady(this.save);
+      if (!recipe) {
+        this.hud.chat(
+          'The Thornrest fire. Pick whisper berries past camp, then cook them here. Berry stew heals more than rations.',
+          'system',
+        );
+        return;
+      }
+      this.approachThenGather(obj, recipe.seconds, `Cooking ${ITEM_META[recipe.cooked].name}…`);
+      return;
+    }
     if (this.isBeast(obj.kind)) {
       const foe = this.foeOf(obj);
       if (obj.depleted || obj.hp <= 0) {
@@ -1480,6 +1575,10 @@ export class Game {
         return;
       }
       this.approachThenGather(obj, 2.6, `Mining ${obj.meta?.ore === 'tin' ? 'tin' : 'copper'}…`);
+      return;
+    }
+    if (obj.kind === 'bush') {
+      this.approachThenGather(obj, 1.6, 'Picking whisper berries…');
     }
   }
 
@@ -1624,7 +1723,8 @@ export class Game {
     }
     this.faceToward(obj.mesh.position.x, obj.mesh.position.z);
     this.activity = { type: 'gather', target: obj, elapsed: 0, duration, label };
-    setPlayerTool(this.player, obj.kind === 'tree' ? 'hatchet' : 'pickaxe');
+    const tool = obj.kind === 'tree' ? 'hatchet' : obj.kind === 'rock' ? 'pickaxe' : null;
+    setPlayerTool(this.player, tool);
     this.hud.showProgress(label, 0);
   }
 
@@ -1945,6 +2045,10 @@ export class Game {
       this.hud.chat(`A chalk goat. Horns and hide are what Goatherd Ivo works into the ridge patterns. ${this.foeCard('goat')}`, 'combat');
     else if (all.kind === 'adder')
       this.hud.chat(`A hollow adder. Fangs and skin are what Hermit Sable works into the hollow patterns. ${this.foeCard('adder')}`, 'combat');
+    else if (all.kind === 'bush')
+      this.hud.chat('A whisper-berry bush. The fruit cooks on the Thornrest fire into berry stew.', 'system');
+    else if (all.kind === 'fire')
+      this.hud.chat('The Thornrest campfire. Cook whisper berries here to train Cooking.', 'system');
     else if (all.kind === 'npc') this.talkTo(all);
     else if (all.kind === 'bank')
       this.hud.chat('The Briarford bank. The vault holds what your pack cannot, and equipped gear stays on you.', 'system');
@@ -1953,10 +2057,6 @@ export class Game {
     else if (all.kind === 'forge')
       this.hud.chat('The Thornrest forge. Bring frost-yeti parts here to smith a matching set.', 'system');
     else this.hud.chat(`A stuffed training dummy. Safe practice for combat skills. ${this.foeCard('dummy')}`, 'system');
-  }
-
-  private eatFood(): void {
-    this.eatStack('camp_rations', 25, 'camp rations');
   }
 
   private handleInvClick(index: number): void {
@@ -1968,8 +2068,8 @@ export class Game {
       return;
     }
     this.hud.chat(`${meta?.name ?? item.id}${item.qty > 1 ? ` ×${item.qty}` : ''}`, 'system');
-    if (item.id === 'camp_rations') this.eatFood();
-    if (item.id === 'boar_roast') this.eatStack('boar_roast', 40, 'a boar roast');
+    const food = FOOD[item.id];
+    if (food) this.eatStack(item.id, food.heal, food.label);
   }
 
   private eatStack(id: string, heal: number, label: string): void {
@@ -1994,6 +2094,7 @@ export class Game {
       const kind = this.activity.target.kind;
       if (kind === 'tree') return this.save.equipped.hatchet ? 'hatchet' as const : null;
       if (kind === 'rock') return this.save.equipped.pickaxe ? 'pickaxe' as const : null;
+      return null;
     }
     return weaponHeldFromId(this.save.equipped.weapon);
   }
@@ -2208,6 +2309,22 @@ export class Game {
       this.save.quests.hearth_boars = 'done';
       this.grantXp('strength', 40);
       this.hud.chat('Bram hands you a boar roast. The hides you skinned stay in your pack.', 'loot');
+    } else if (id === 'bram_stew_accept') {
+      this.save.quests.hearth_stew = 'active';
+      this.hud.chat('Quest started: cook 2 berry stews on the Thornrest fire for Innkeeper Bram.', 'system');
+    } else if (
+      id === 'bram_stew_turnin' &&
+      this.save.quests.hearth_stew === 'active' &&
+      countItem(this.save.inventory, 'berry_stew') >= STEW_NEEDED
+    ) {
+      if (!this.consumeId('berry_stew', STEW_NEEDED)) {
+        this.dialogue.hide();
+        return;
+      }
+      this.save.quests.hearth_stew = 'done';
+      this.grantXp('cooking', 80);
+      this.addItem('camp_rations', 3);
+      this.hud.chat('Bram takes the stews and tucks three camp rations into your pack.', 'loot');
     } else if (id === 'maeve_accept') {
       this.save.quests.silk_loom = 'active';
       this.hud.chat('Quest started: bring Weaver Maeve 2 spider silk.', 'system');
@@ -2841,11 +2958,15 @@ export class Game {
 
     const now = performance.now() / 1000;
     for (const o of this.objects) {
-      if ((o.kind === 'tree' || o.kind === 'rock') && o.depleted && now >= o.respawnAt) {
+      if ((o.kind === 'tree' || o.kind === 'rock' || o.kind === 'bush') && o.depleted && now >= o.respawnAt) {
         o.depleted = false;
         o.mesh.visible = true;
         this.hud.chat(
-          o.kind === 'tree' ? 'A Whisperwood tree has grown back.' : 'An ore rock has respawned.',
+          o.kind === 'tree'
+            ? 'A Whisperwood tree has grown back.'
+            : o.kind === 'rock'
+              ? 'An ore rock has respawned.'
+              : 'A berry bush fruits again.',
           'system',
         );
       }
@@ -3155,7 +3276,7 @@ export class Game {
           const p = act.target.mesh.position.clone();
           p.y = act.target.kind === 'tree' ? 1.05 : 0.7;
           if (act.target.kind === 'tree') this.vfx.spawnWoodchips(p, 12);
-          else this.vfx.spawnMineSparks(p, 14);
+          else if (act.target.kind === 'rock') this.vfx.spawnMineSparks(p, 14);
         }
         if (act.elapsed >= act.duration) {
           this.completeGather(act.target);
@@ -3368,6 +3489,25 @@ export class Game {
       obj.depleted = true;
       obj.mesh.visible = false;
       obj.respawnAt = performance.now() / 1000 + 14;
+    } else if (obj.kind === 'bush') {
+      if (!this.addItem('whisper_berries', 1)) return;
+      this.grantXp('cooking', 16);
+      this.hud.chat('You pick some Whisper Berries.', 'loot');
+      obj.depleted = true;
+      obj.mesh.visible = false;
+      obj.respawnAt = performance.now() / 1000 + 10;
+    } else if (obj.kind === 'fire') {
+      const recipe = cookReady(this.save);
+      if (!recipe) {
+        this.hud.chat('You have nothing to cook.', 'system');
+      } else if (this.consumeId(recipe.raw, 1)) {
+        if (!this.addItem(recipe.cooked, 1)) {
+          this.addItem(recipe.raw, 1);
+        } else {
+          this.grantXp('cooking', recipe.xp);
+          this.hud.chat(`You cook ${ITEM_META[recipe.cooked].name}.`, 'loot');
+        }
+      }
     }
     this.refreshUI();
     this.persist();
@@ -4374,6 +4514,8 @@ export class Game {
       if (o.depleted && o.kind !== 'dummy' && o.kind !== 'yeti' && o.kind !== 'orc' && !this.isBeast(o.kind)) continue;
       if (o.kind === 'tree') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#2d8a2d' });
       else if (o.kind === 'rock') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#888' });
+      else if (o.kind === 'bush') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#c43848' });
+      else if (o.kind === 'fire') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#e07030' });
       else if (o.kind === 'yeti') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#7ec8ff' });
       else if (o.kind === 'orc') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#6a9a2a' });
       else if (o.kind === 'wolf') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#c4783a' });
