@@ -1687,6 +1687,8 @@ html, body {
   z-index: 15;
 }
 
+.float-xp.crit { font-size: 26px; }
+.float-xp.miss { font-size: 15px; letter-spacing: 0.08em; }
 .float-xp {
   position: absolute;
   left: 0;
