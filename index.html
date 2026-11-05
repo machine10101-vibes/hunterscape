@@ -9,8 +9,8 @@
     <title>Hunterscape — Thornrest Camp</title>
     <link rel="icon" type="image/svg+xml" href="/hunterscape/favicon.svg" />
     <link rel="apple-touch-icon" href="/hunterscape/favicon.svg" />
-    <script type="module" crossorigin src="/hunterscape/assets/index-BiTycOCk.js"></script>
-    <link rel="stylesheet" crossorigin href="/hunterscape/assets/index-o8P4rjzB.css">
+    <script type="module" crossorigin src="/hunterscape/assets/index-DgLcx2SZ.js"></script>
+    <link rel="stylesheet" crossorigin href="/hunterscape/assets/index-DHGVT_6o.css">
   </head>
   <body>
     <div id="app">
@@ -72,6 +72,11 @@
             <span class="nav-ico" aria-hidden="true">▣</span>
             <span class="nav-txt">Plots</span>
             <kbd class="nav-key">P</kbd>
+          </button>
+          <button type="button" id="btn-journal" title="Quest journal (J)" aria-expanded="false" aria-controls="journal-panel">
+            <span class="nav-ico" aria-hidden="true">☰</span>
+            <span class="nav-txt">Quests</span>
+            <kbd class="nav-key">J</kbd>
           </button>
         </nav>
 
@@ -170,6 +175,14 @@
             <button type="button" class="panel-close" id="skills-close" aria-label="Close">✕</button>
           </div>
           <div id="skills-list"></div>
+        </div>
+
+        <div id="journal-panel" class="panel" hidden>
+          <div class="panel-head">
+            <span>Quest journal</span>
+            <button type="button" class="panel-close" id="journal-close" aria-label="Close">✕</button>
+          </div>
+          <div id="journal-list"></div>
         </div>
 
         <div id="chat" class="panel" aria-label="Game log">
