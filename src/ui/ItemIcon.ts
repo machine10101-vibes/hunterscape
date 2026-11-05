@@ -81,6 +81,8 @@ export function getItemIcon(id: string): HTMLCanvasElement {
   if (id === 'hawk_talon') mesh.rotation.set(0.4, 0.5, 0.3);
   if (id === 'spider_silk') mesh.rotation.set(0.2, 0.8, 0.15);
   if (id === 'boar_roast') mesh.rotation.set(0.45, 0.4, 0.1);
+  if (id === 'whisper_berries') mesh.rotation.set(0.5, 0.4, 0.1);
+  if (id === 'berry_stew') mesh.rotation.set(0.55, 0.35, 0.05);
   scene!.add(mesh);
   frame(mesh);
   renderer!.render(scene!, camera!);

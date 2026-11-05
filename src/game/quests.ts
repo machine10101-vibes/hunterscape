@@ -19,6 +19,7 @@ export interface QuestState {
   weir_eels: QuestStage;
   ridge_goats: QuestStage;
   hollow_adders: QuestStage;
+  hearth_stew: QuestStage;
   wolfKills: number;
   boarKills: number;
   briarUnlocked: boolean;
@@ -52,6 +53,7 @@ export function defaultQuests(): QuestState {
     weir_eels: 'none',
     ridge_goats: 'none',
     hollow_adders: 'none',
+    hearth_stew: 'none',
     wolfKills: 0,
     boarKills: 0,
     briarUnlocked: false,
@@ -82,6 +84,7 @@ export const ASH_NEEDED = 2;
 export const WEIR_NEEDED = 2;
 export const RIDGE_NEEDED = 2;
 export const HOLLOW_NEEDED = 2;
+export const STEW_NEEDED = 2;
 
 export interface DialogueOption {
   id: string;
@@ -192,9 +195,37 @@ export function dialogueFor(save: SaveData, npc: NpcId): DialogueScript {
         options: [{ id: 'bram_turnin', label: 'The rows are quieter.' }],
       };
     }
+    if (q.hollow_adders === 'done' && q.hearth_stew === 'none') {
+      return {
+        speaker: 'Innkeeper Bram',
+        body: 'The hearth can do more than roast boar. Whisper berries fruit just past each side of camp. Cook 2 berry stews on the Thornrest fire and bring them here.',
+        options: [
+          { id: 'bram_stew_accept', label: 'I will cook the stews.' },
+          { id: 'close', label: 'The fire can wait.' },
+        ],
+      };
+    }
+    if (q.hearth_stew === 'active') {
+      const stews = countItem(save.inventory, 'berry_stew');
+      return {
+        speaker: 'Innkeeper Bram',
+        body:
+          stews >= STEW_NEEDED
+            ? 'Two bowls. That is a proper hearth meal, and the Cooking will stay with you.'
+            : `The pot is still short. I need 2 berry stews (you have ${stews}). Pick the bushes beyond camp and cook them on the Thornrest fire.`,
+        options: stews >= STEW_NEEDED ? [{ id: 'bram_stew_turnin', label: 'Here are the stews.' }] : [CLOSE],
+      };
+    }
+    if (q.hearth_stew === 'done') {
+      return {
+        speaker: 'Innkeeper Bram',
+        body: 'Hearth’s warm, and the stew was good. Whisper berries keep fruiting past camp if you want another bowl.',
+        options: [CLOSE],
+      };
+    }
     return {
       speaker: 'Innkeeper Bram',
-      body: 'Hearth’s warm. If a boar still wanders the rows, its hide and tusks are what Maeve’s roadwarden kit is cut from.',
+      body: 'Hearth’s warm. Whisper berries fruit just past each side of camp — cook them on the Thornrest fire if you want a bowl that beats rations. A boar hide still feeds Maeve’s roadwarden kit.',
       options: [CLOSE],
     };
   }
@@ -675,6 +706,12 @@ export function trackerLines(save: SaveData): string[] {
   } else if (q.ridge_goats === 'active') {
     const horns = countItem(save.inventory, 'goat_horn');
     lines.push(horns >= RIDGE_NEEDED ? 'Ridge: return to Goatherd Ivo.' : `Ridge: goat horns ${horns}/${RIDGE_NEEDED}`);
+  }
+  if (q.hollow_adders === 'done' && q.hearth_stew === 'none') {
+    lines.push('Innkeeper Bram wants 2 berry stews from the Thornrest fire.');
+  } else if (q.hearth_stew === 'active') {
+    const stews = countItem(save.inventory, 'berry_stew');
+    lines.push(stews >= STEW_NEEDED ? 'Hearth: return to Innkeeper Bram.' : `Hearth: berry stew ${stews}/${STEW_NEEDED}`);
   }
   if (q.ridge_goats === 'done' && q.hollow_adders === 'none') {
     lines.push('Hermit Sable needs 2 adder fangs in the north hollow.');
