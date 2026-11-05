@@ -127,6 +127,7 @@ export function createItemMesh(id: string): THREE.Group {
   if (id === 'whisper_logs') return makeLogs();
   if (id === 'copper_ore') return makeOre(0xb87333, 0x8a4a1c);
   if (id === 'tin_ore') return makeOre(0xc8d0d4, 0x8a9296);
+  if (id === 'bronze_bar') return makeBar();
   if (id === 'camp_rations') return makeRations();
   if (id === 'whisper_berries') return makeBerries();
   if (id === 'berry_stew') return makeStew();
@@ -250,6 +251,17 @@ function makeOre(color: number, dark: number): THREE.Group {
     chip.rotation.set(a, i, 0.3);
     add(g, chip);
   }
+  return g;
+}
+
+function makeBar(): THREE.Group {
+  const g = new THREE.Group();
+  const bronze = std(0xb87333, { roughness: 0.42, metalness: 0.62 });
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.07, 0.1), bronze);
+  add(g, bar);
+  const lip = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.02, 0.1), std(0x8a5a28, { roughness: 0.5, metalness: 0.4 }));
+  lip.position.set(-0.11, 0.04, 0);
+  add(g, lip);
   return g;
 }
 

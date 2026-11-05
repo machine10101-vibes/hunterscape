@@ -390,7 +390,8 @@ export class HUD {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'forge-craft';
-      btn.textContent = locked ? 'Locked' : owned ? 'Owned' : 'Forge';
+      const stackable = !!ITEM_META[recipe.id]?.stackable;
+      btn.textContent = locked ? 'Locked' : owned && !stackable ? 'Owned' : (recipe.verb ?? 'Forge');
       btn.disabled = !ready;
       const id = recipe.id;
       btn.addEventListener('click', () => this.onForgeCraft?.(id));

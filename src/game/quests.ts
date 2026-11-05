@@ -20,6 +20,7 @@ export interface QuestState {
   ridge_goats: QuestStage;
   hollow_adders: QuestStage;
   hearth_stew: QuestStage;
+  bronze_bars: QuestStage;
   wolfKills: number;
   boarKills: number;
   briarUnlocked: boolean;
@@ -54,6 +55,7 @@ export function defaultQuests(): QuestState {
     ridge_goats: 'none',
     hollow_adders: 'none',
     hearth_stew: 'none',
+    bronze_bars: 'none',
     wolfKills: 0,
     boarKills: 0,
     briarUnlocked: false,
@@ -85,6 +87,7 @@ export const WEIR_NEEDED = 2;
 export const RIDGE_NEEDED = 2;
 export const HOLLOW_NEEDED = 2;
 export const STEW_NEEDED = 2;
+export const BARS_NEEDED = 2;
 
 export interface DialogueOption {
   id: string;
@@ -163,9 +166,37 @@ export function dialogueFor(save: SaveData, npc: NpcId): DialogueScript {
           : [CLOSE],
       };
     }
+    if (q.hearth_stew === 'done' && q.bronze_bars === 'none') {
+      return {
+        speaker: 'Smith Harl',
+        body: 'The Thornrest forge will take a copper ore and a tin ore and give you a bronze bar. Smelt 2 bars and bring them here. I want to see the pour.',
+        options: [
+          { id: 'harl_bars_accept', label: 'I will smelt the bars.' },
+          { id: 'close', label: 'The forge can wait.' },
+        ],
+      };
+    }
+    if (q.bronze_bars === 'active') {
+      const bars = countItem(save.inventory, 'bronze_bar');
+      return {
+        speaker: 'Smith Harl',
+        body:
+          bars >= BARS_NEEDED
+            ? 'Two bronze bars. That is a clean pour, and the Smithing stays with you.'
+            : `I still need 2 bronze bars (you have ${bars}). One copper and one tin, at the Thornrest forge.`,
+        options: bars >= BARS_NEEDED ? [{ id: 'harl_bars_turnin', label: 'Here are the bars.' }] : [CLOSE],
+      };
+    }
+    if (q.bronze_bars === 'done') {
+      return {
+        speaker: 'Smith Harl',
+        body: 'The anvil is yours, and the Thornrest forge still smelts bronze from one copper and one tin. Sword: 1 pelt, 2 fangs, 1 copper, 1 log. Shield: 2 pelts, 1 log. Vest: 3 pelts, 1 fang. Boots: 2 pelts, 1 log.',
+        options: [CLOSE],
+      };
+    }
     return {
       speaker: 'Smith Harl',
-      body: 'The anvil is yours. Sword: 1 pelt, 2 fangs, 1 copper, 1 log. Shield: 2 pelts, 1 log. Vest: 3 pelts, 1 fang. Boots: 2 pelts, 1 log. When Maeve opens the roadwarden patterns, mace, shield, chaps, and greaves share this same anvil.',
+      body: 'The anvil is yours. The Thornrest forge also smelts a bronze bar from 1 copper ore and 1 tin ore. Sword: 1 pelt, 2 fangs, 1 copper, 1 log. Shield: 2 pelts, 1 log. Vest: 3 pelts, 1 fang. Boots: 2 pelts, 1 log.',
       options: [CLOSE],
     };
   }
@@ -712,6 +743,12 @@ export function trackerLines(save: SaveData): string[] {
   } else if (q.hearth_stew === 'active') {
     const stews = countItem(save.inventory, 'berry_stew');
     lines.push(stews >= STEW_NEEDED ? 'Hearth: return to Innkeeper Bram.' : `Hearth: berry stew ${stews}/${STEW_NEEDED}`);
+  }
+  if (q.hearth_stew === 'done' && q.bronze_bars === 'none') {
+    lines.push('Smith Harl wants 2 bronze bars from the Thornrest forge.');
+  } else if (q.bronze_bars === 'active') {
+    const bars = countItem(save.inventory, 'bronze_bar');
+    lines.push(bars >= BARS_NEEDED ? 'Forge: return to Smith Harl.' : `Forge: bronze bars ${bars}/${BARS_NEEDED}`);
   }
   if (q.ridge_goats === 'done' && q.hollow_adders === 'none') {
     lines.push('Hermit Sable needs 2 adder fangs in the north hollow.');
