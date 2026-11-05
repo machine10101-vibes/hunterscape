@@ -3608,6 +3608,7 @@ export class Game {
     const label = this.combatName(target);
     if (Math.random() > hitChance) {
       this.hud.chat(`You miss the ${label} with ${art.name}.`, 'combat');
+      this.vfx.spawnMiss(target.mesh.position.clone().setY(1.4));
       return;
     }
     let dmg = Math.max(
@@ -3625,6 +3626,7 @@ export class Game {
     dmg = Math.max(0, dmg - guard - plate);
     if (dmg <= 0) {
       this.hud.chat(`Your ${art.name.toLowerCase()} glances off the ${label}.`, 'combat');
+      this.vfx.spawnMiss(target.mesh.position.clone().setY(1.4));
       this.grantSwingXp(target);
       if (target.hp > 0) this.hud.showTarget(label, target.hp / target.maxHp, this.combatDetail(target));
       this.refreshUI();
@@ -4073,7 +4075,7 @@ export class Game {
       this.poisonHunter(Math.max(0, monsterPoison(beast.kind) - wornPoisonWard(this.save)), foe?.label ?? 'beast');
     }
     this.vfx.spawnHitSparks(this.player.position.clone().setY(0.9), 10);
-    this.vfx.spawnDamage(this.player.position.clone().setY(1.2), mitigated, bite.crit);
+    this.vfx.spawnDamage(this.player.position.clone().setY(1.2), mitigated, bite.crit, true);
     this.playerFlinch = 0.45;
     const away = Math.atan2(
       this.player.position.x - beast.mesh.position.x,
@@ -4253,7 +4255,7 @@ export class Game {
     this.vfx.spawnClawSlash(this.player.position.clone(), 14);
     this.vfx.spawnIceBurst(this.player.position.clone(), 16);
     this.vfx.spawnImpactBurst(this.player.position.clone().setY(1.1), 16, true);
-    this.vfx.spawnDamage(this.player.position.clone().setY(1.3), mitigated, bite.crit);
+    this.vfx.spawnDamage(this.player.position.clone().setY(1.3), mitigated, bite.crit, true);
     // Player flinch + knockback scaled to damage
     this.playerFlinch = mitigated >= 8 ? 1.15 : 0.75;
     const away = Math.atan2(
@@ -4405,7 +4407,7 @@ export class Game {
     this.vfx.spawnSpearThrust(this.player.position.clone(), 14);
     this.vfx.spawnHitSparks(this.player.position.clone().setY(1.1), 14);
     this.vfx.spawnImpactBurst(this.player.position.clone().setY(1.05), 16, false);
-    this.vfx.spawnDamage(this.player.position.clone().setY(1.3), mitigated, bite.crit);
+    this.vfx.spawnDamage(this.player.position.clone().setY(1.3), mitigated, bite.crit, true);
     this.playerFlinch = mitigated >= 7 ? 1.05 : 0.7;
     const away = Math.atan2(
       this.player.position.x - orc.mesh.position.x,

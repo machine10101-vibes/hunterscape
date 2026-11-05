@@ -15,6 +15,7 @@ interface FloatXp {
   maxLife: number;
   world: THREE.Vector3;
   driftY: number;
+  driftX: number;
 }
 
 export class VFX {
@@ -188,9 +189,10 @@ export class VFX {
     world: THREE.Vector3,
     text: string,
     color = '#7ec87e',
+    kind = '',
   ): void {
     const el = document.createElement('div');
-    el.className = 'float-xp';
+    el.className = kind ? `float-xp ${kind}` : 'float-xp';
     el.textContent = text;
     el.style.color = color;
     this.overlay.appendChild(el);
@@ -200,6 +202,7 @@ export class VFX {
       maxLife: 1.55,
       world: world.clone(),
       driftY: 0,
+      driftX: (Math.random() - 0.5) * 1.4,
     });
   }
 
@@ -211,11 +214,22 @@ export class VFX {
     );
   }
 
-  spawnDamage(world: THREE.Vector3, amount: number, crit = false): void {
+  /** Brass is a blow you landed. Coral is a bite you took. A crit is larger. */
+  spawnDamage(world: THREE.Vector3, amount: number, crit = false, taken = false): void {
     this.spawnFloatingText(
       world.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.25, 1.7, 0)),
       crit ? `${amount}!` : String(amount),
-      crit ? '#ffe066' : '#ff8a78',
+      crit ? '#ffe066' : taken ? '#ff8a78' : '#f0d078',
+      crit ? 'crit' : taken ? 'taken' : 'dealt',
+    );
+  }
+
+  spawnMiss(world: THREE.Vector3): void {
+    this.spawnFloatingText(
+      world.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.2, 1.7, 0)),
+      'Miss',
+      '#d9cbb0',
+      'miss',
     );
   }
 
@@ -456,7 +470,7 @@ export class VFX {
       const f = this.floats[i];
       f.life += dt;
       f.driftY += dt * 0.55;
-      this.tmp.set(f.world.x, f.world.y + f.driftY, f.world.z);
+      this.tmp.set(f.world.x + f.driftX * f.life, f.world.y + f.driftY, f.world.z);
       this.tmp.project(this.camera);
       const x = (this.tmp.x * 0.5 + 0.5) * window.innerWidth;
       const y = (-this.tmp.y * 0.5 + 0.5) * window.innerHeight;

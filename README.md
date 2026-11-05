@@ -9,7 +9,7 @@ The view is an elevated top-down 3D scene (Three.js). Original world, names, and
 ## What you can do
 
 - Walk the camp and keep going. The wood is **500 sections** (20×25, each the size of Thornrest). Sections stream in around you and share one height and color field, so the seams stay continuous. **Plots (P)** surveys any section from above.
-- Skills: Attack, Strength, Defence, Constitution, Woodcutting, Mining, Cooking, and Smithing. Combat arts on the bar: Strike, Lunge, Smash, Guard, Rend, plus a weapon special.
+- Skills: Attack, Strength, Defence, Constitution, Woodcutting, Mining, Cooking, and Smithing. Combat arts on the bar: Strike, Lunge, Smash, Guard, Rend, plus a weapon special. A number over a fight is brass when you land the blow and coral when the bite lands on you. A critical hit is larger. A miss floats as its own word.
 - Stances, armour styles, weapon speed and reach, accuracy, critical hits, pierce, poison, Focus, and stamina. Beasts have a bite style, armour, tempo, and enrage below 40% health.
 - Gather Whisperwood trees and ore rocks, including nodes just outside camp and beside the dressed landmarks farther out (frost cairn, hunter stumps, stream ford, stone fold, icemound, thicket verge, ridge stones, and the south-west copse). Whisper berries fruit on each side of Thornrest and at a few of those landmarks. Cook them on the campfire into berry stew, which heals more than rations. The pack holds 28 slots. The **Briarford bank** (press B) keeps the rest, up to 200, and that vault is saved with everything else.
 - Gear and the camp forge. One copper ore and one tin ore smelt into a bronze bar there. Briarford’s anvil crafts town kits once the matching quest is done.
