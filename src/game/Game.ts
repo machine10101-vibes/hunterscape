@@ -153,6 +153,8 @@ import {
   dialogueFor,
   harlMaterialsReady,
   trackerLines,
+  journalLines,
+  finishedQuestNames,
   BOAR_KILLS,
   BONE_NEEDED,
   EAST_ROAD_KILLS,
@@ -1442,7 +1444,7 @@ export class Game {
       (e) => {
         if (this.studio.isOpen()) return;
         const el = e.target as HTMLElement | null;
-        if (el?.closest('#gear-panel, #forge-panel, #bank-panel, #inventory, #skills-panel, #chat, #studio, #plots, #dialogue')) return;
+        if (el?.closest('#gear-panel, #forge-panel, #bank-panel, #inventory, #skills-panel, #journal-panel, #chat, #studio, #plots, #dialogue')) return;
         e.preventDefault();
         if (this.survey.isOpen()) {
           this.survey.nudgeZoom(Math.sign(e.deltaY) || 1, 0.11);
@@ -1474,6 +1476,9 @@ export class Game {
       if (e.key === '=' || e.key === '+') this.nudgeZoom(-1, 0.16);
       if (e.key.toLowerCase() === 'k') {
         this.hud.setSkillsOpen(!this.hud.isSkillsOpen());
+      }
+      if (e.key.toLowerCase() === 'j') {
+        this.hud.setJournalOpen(!this.hud.isJournalOpen());
       }
       if (e.key.toLowerCase() === 'c') {
         const open = !this.hud.isGearOpen();
@@ -4627,6 +4632,7 @@ export class Game {
     this.hud.setOrbs(this.save.hp, this.save.maxHp, this.save.focus, this.save.stamina);
     this.hud.setSkillBar(this.save, this.skillCd, this.guardLeft);
     this.hud.setQuests(trackerLines(this.save));
+    this.hud.setJournal(journalLines(this.save), finishedQuestNames(this.save));
   }
 
   private persist(): void {
