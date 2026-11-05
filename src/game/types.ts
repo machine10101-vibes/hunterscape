@@ -7,7 +7,8 @@ export type SkillId =
   | 'defence'
   | 'woodcutting'
   | 'mining'
-  | 'cooking';
+  | 'cooking'
+  | 'smithing';
 
 export interface SkillState {
   level: number;
@@ -79,6 +80,7 @@ export const SKILL_META: Record<
   woodcutting: { name: 'Woodcutting', icon: '🪓' },
   mining: { name: 'Mining', icon: '⛏' },
   cooking: { name: 'Cooking', icon: '🍲' },
+  smithing: { name: 'Smithing', icon: '🔨' },
 };
 
 export type CombatSkillId = 'strike' | 'lunge' | 'smash' | 'guard' | 'rend';
@@ -204,6 +206,7 @@ export const ITEM_META: Record<
   whisper_logs: { name: 'Whisper Logs', icon: '🪵', stackable: true },
   copper_ore: { name: 'Copper Ore', icon: '🟠', stackable: true },
   tin_ore: { name: 'Tin Ore', icon: '⚪', stackable: true },
+  bronze_bar: { name: 'Bronze Bar', icon: '🟫', stackable: true },
   camp_rations: { name: 'Camp Rations', icon: '🍖', stackable: true },
   whisper_berries: { name: 'Whisper Berries', icon: '🫐', stackable: true },
   berry_stew: { name: 'Berry Stew', icon: '🍲', stackable: true },
@@ -340,7 +343,28 @@ export interface Recipe {
   name: string;
   blurb: string;
   cost: RecipeCost[];
+  /** Trained when the piece is made. Gear patterns leave this unset. */
+  skill?: SkillId;
+  xp?: number;
+  /** Button label. Gear patterns say Forge. */
+  verb?: string;
 }
+
+/** Thornrest forge — copper and tin become a bronze bar. */
+export const SMELT_RECIPES: Recipe[] = [
+  {
+    id: 'bronze_bar',
+    name: 'Bronze Bar',
+    blurb: 'One copper ore and one tin ore, melted in the Thornrest forge.',
+    cost: [
+      { id: 'copper_ore', qty: 1 },
+      { id: 'tin_ore', qty: 1 },
+    ],
+    skill: 'smithing',
+    xp: 48,
+    verb: 'Smelt',
+  },
+];
 
 /** Thornrest forge — every piece is cut from Frost Yeti parts. */
 export const YETI_RECIPES: Recipe[] = [
@@ -1798,6 +1822,7 @@ export function defaultSave(): SaveData {
       woodcutting: { level: 1, xp: 0 },
       mining: { level: 1, xp: 0 },
       cooking: { level: 1, xp: 0 },
+      smithing: { level: 1, xp: 0 },
     },
     inventory: [{ id: 'camp_rations', qty: 5 }],
     bank: [],
@@ -1842,6 +1867,7 @@ export function defaultSave(): SaveData {
       hollow_adders: 'none',
       hollowUnlocked: false,
       hearth_stew: 'none',
+      bronze_bars: 'none',
     },
   };
 }

@@ -105,6 +105,7 @@ import {
   ROAD_RECIPES,
   STANCES,
   YETI_RECIPES,
+  SMELT_RECIPES,
   armorMitigation,
   canCraft,
   carryBurden,
@@ -160,6 +161,7 @@ import {
   RIDGE_NEEDED,
   HOLLOW_NEEDED,
   STEW_NEEDED,
+  BARS_NEEDED,
   GALE_NEEDED,
   FEATHER_NEEDED,
   FUR_NEEDED,
@@ -276,6 +278,7 @@ const SKILL_SHORT: Record<SkillId, string> = {
   woodcutting: 'Woodcutting',
   mining: 'Mining',
   cooking: 'Cooking',
+  smithing: 'Smithing',
 };
 
 export class Game {
@@ -483,6 +486,7 @@ export class Game {
     this.hud.chat('The Briarford bank keeps what your pack cannot. The booth is in the square. Press B.', 'system');
     this.hud.chat('Poison keeps working until it fades, and you do not recover while it lasts.', 'system');
     this.hud.chat('Whisper berries fruit just past each side of camp. Cook them on the Thornrest fire to train Cooking.', 'system');
+    this.hud.chat('The Thornrest forge smelts a bronze bar from one copper ore and one tin ore. That trains Smithing.', 'system');
     this.hud.chat('Scroll, pinch, or use + / − to zoom the camera.', 'system');
 
     window.addEventListener('resize', () => this.onResize());
@@ -2055,7 +2059,7 @@ export class Game {
     else if (all.kind === 'forge' && all.meta?.forge === 'briar')
       this.hud.chat('The Briarford anvil. Harl opens it once his commission is paid.', 'system');
     else if (all.kind === 'forge')
-      this.hud.chat('The Thornrest forge. Bring frost-yeti parts here to smith a matching set.', 'system');
+      this.hud.chat('The Thornrest forge. Smelt a bronze bar from one copper and one tin, or work frost-yeti parts into a matching set.', 'system');
     else this.hud.chat(`A stuffed training dummy. Safe practice for combat skills. ${this.foeCard('dummy')}`, 'system');
   }
 
@@ -2284,6 +2288,21 @@ export class Game {
       this.grantXp('strength', 30);
       this.grantXp('attack', 20);
       this.hud.chat('Harl sets a Briar Sword in your pack and unlocks the anvil.', 'loot');
+    } else if (id === 'harl_bars_accept') {
+      this.save.quests.bronze_bars = 'active';
+      this.hud.chat('Quest started: smelt 2 bronze bars at the Thornrest forge for Smith Harl.', 'system');
+    } else if (
+      id === 'harl_bars_turnin' &&
+      this.save.quests.bronze_bars === 'active' &&
+      countItem(this.save.inventory, 'bronze_bar') >= BARS_NEEDED
+    ) {
+      if (!this.consumeId('bronze_bar', BARS_NEEDED)) {
+        this.dialogue.hide();
+        return;
+      }
+      this.save.quests.bronze_bars = 'done';
+      this.grantXp('smithing', 70);
+      this.hud.chat('Harl nods at the pour. The bars stay his, and the Smithing stays yours.', 'loot');
     } else if (id === 'nessa_accept') {
       this.save.quests.lanterns = 'active';
       this.hud.chat('Quest started: bring Shopkeep Nessa 2 tin ore.', 'system');
@@ -2699,11 +2718,11 @@ export class Game {
         }
       : {
           title: 'Thornrest Forge',
-          blurb: 'Work frost-yeti hide, fur, bone, and claws into a matching set.',
-          recipes: YETI_RECIPES,
+          blurb: 'Smelt bronze from copper and tin, or work frost-yeti parts into a matching set.',
+          recipes: [...SMELT_RECIPES, ...YETI_RECIPES],
           forgeable: true,
         });
-    this.hud.chat(briar ? anvilChat : 'The forge is hot. Choose a frost-yeti pattern to work.', 'system');
+    this.hud.chat(briar ? anvilChat : 'The forge is hot. Smelt bronze, or choose a frost-yeti pattern.', 'system');
     this.pendingForge = null;
   }
 
@@ -2807,7 +2826,7 @@ export class Game {
   }
 
   private craftAtForge(recipeId: string): void {
-    const list = this.forgeBench === 'briar' ? [...BRIAR_RECIPES, ...ROAD_RECIPES, ...DUSK_RECIPES, ...CINDER_RECIPES, ...DELVER_RECIPES, ...MIRE_RECIPES, ...BONE_RECIPES, ...GALE_RECIPES, ...ASH_RECIPES, ...WEIR_RECIPES, ...RIDGE_RECIPES, ...HOLLOW_RECIPES] : YETI_RECIPES;
+    const list = this.forgeBench === 'briar' ? [...BRIAR_RECIPES, ...ROAD_RECIPES, ...DUSK_RECIPES, ...CINDER_RECIPES, ...DELVER_RECIPES, ...MIRE_RECIPES, ...BONE_RECIPES, ...GALE_RECIPES, ...ASH_RECIPES, ...WEIR_RECIPES, ...RIDGE_RECIPES, ...HOLLOW_RECIPES] : [...SMELT_RECIPES, ...YETI_RECIPES];
     const recipe = list.find((r) => r.id === recipeId);
     if (!recipe) return;
     if (this.forgeBench === 'briar' && !this.save.quests.briarUnlocked) {
@@ -2871,10 +2890,13 @@ export class Game {
       for (const cost of recipe.cost) this.addItem(cost.id, cost.qty);
       return;
     }
+    if (recipe.skill && recipe.xp) this.grantXp(recipe.skill, recipe.xp);
     this.hud.chat(
-      this.forgeBench === 'briar'
-        ? `You forge the ${recipe.name} on the Briarford anvil.`
-        : `You forge the ${recipe.name} from frost-yeti parts.`,
+      recipe.skill === 'smithing'
+        ? `You smelt ${recipe.name}.`
+        : this.forgeBench === 'briar'
+          ? `You forge the ${recipe.name} on the Briarford anvil.`
+          : `You forge the ${recipe.name} from frost-yeti parts.`,
       'loot',
     );
     this.refreshUI();
