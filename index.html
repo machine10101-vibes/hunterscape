@@ -72,6 +72,11 @@
             <span class="nav-txt">Plots</span>
             <kbd class="nav-key">P</kbd>
           </button>
+          <button type="button" id="btn-journal" title="Quest journal (J)" aria-expanded="false" aria-controls="journal-panel">
+            <span class="nav-ico" aria-hidden="true">☰</span>
+            <span class="nav-txt">Quests</span>
+            <kbd class="nav-key">J</kbd>
+          </button>
         </nav>
 
         <!-- Hero gear / equipment -->
@@ -169,6 +174,14 @@
             <button type="button" class="panel-close" id="skills-close" aria-label="Close">✕</button>
           </div>
           <div id="skills-list"></div>
+        </div>
+
+        <div id="journal-panel" class="panel" hidden>
+          <div class="panel-head">
+            <span>Quest journal</span>
+            <button type="button" class="panel-close" id="journal-close" aria-label="Close">✕</button>
+          </div>
+          <div id="journal-list"></div>
         </div>
 
         <div id="chat" class="panel" aria-label="Game log">

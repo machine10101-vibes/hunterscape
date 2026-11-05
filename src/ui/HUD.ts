@@ -32,6 +32,8 @@ export class HUD {
   private invCount: HTMLElement;
   private skillsList: HTMLElement;
   private skillsPanel: HTMLElement;
+  private journalPanel: HTMLElement;
+  private journalList: HTMLElement;
   private progressWrap: HTMLElement;
   private progressFill: HTMLElement;
   private progressLabel: HTMLElement;
@@ -80,6 +82,8 @@ export class HUD {
     this.invCount = el('inv-count');
     this.skillsList = el('skills-list');
     this.skillsPanel = el('skills-panel');
+    this.journalPanel = el('journal-panel');
+    this.journalList = el('journal-list');
     this.progressWrap = el('progress-wrap');
     this.progressFill = el('progress-fill');
     this.progressLabel = el('progress-label');
@@ -125,6 +129,8 @@ export class HUD {
 
     el('btn-skills').addEventListener('click', () => this.setSkillsOpen(this.skillsPanel.hidden));
     el('skills-close').addEventListener('click', () => this.setSkillsOpen(false));
+    el('btn-journal').addEventListener('click', () => this.setJournalOpen(this.journalPanel.hidden));
+    el('journal-close').addEventListener('click', () => this.setJournalOpen(false));
 
     this.btnInventory.addEventListener('click', () => {
       this.setInventoryOpen(this.inventory.hidden);
@@ -250,6 +256,47 @@ export class HUD {
     return !this.skillsPanel.hidden;
   }
 
+  setJournalOpen(open: boolean): void {
+    this.journalPanel.hidden = !open;
+    el('btn-journal').setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) this.closeSidePanels('journal');
+  }
+
+  isJournalOpen(): boolean {
+    return !this.journalPanel.hidden;
+  }
+
+  setJournal(openLines: string[], finished: string[]): void {
+    this.journalList.innerHTML = '';
+    const openKicker = document.createElement('div');
+    openKicker.className = 'journal-kicker';
+    openKicker.textContent = 'Open';
+    this.journalList.appendChild(openKicker);
+    for (const line of openLines) {
+      const row = document.createElement('div');
+      row.className = 'journal-line';
+      row.textContent = line;
+      this.journalList.appendChild(row);
+    }
+    const doneKicker = document.createElement('div');
+    doneKicker.className = 'journal-kicker';
+    doneKicker.textContent = 'Finished';
+    this.journalList.appendChild(doneKicker);
+    if (finished.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'journal-empty';
+      empty.textContent = 'None yet.';
+      this.journalList.appendChild(empty);
+      return;
+    }
+    for (const name of finished) {
+      const row = document.createElement('div');
+      row.className = 'journal-line done';
+      row.textContent = name;
+      this.journalList.appendChild(row);
+    }
+  }
+
   setForgeOpen(
     open: boolean,
     save?: SaveData,
@@ -345,7 +392,7 @@ export class HUD {
     }
   }
 
-  private closeSidePanels(keep: 'gear' | 'skills' | 'forge' | 'bank'): void {
+  private closeSidePanels(keep: 'gear' | 'skills' | 'journal' | 'forge' | 'bank'): void {
     if (keep !== 'gear') {
       this.gearPanel.hidden = true;
       this.btnGear.setAttribute('aria-expanded', 'false');
@@ -354,6 +401,10 @@ export class HUD {
     if (keep !== 'skills') {
       this.skillsPanel.hidden = true;
       el('btn-skills').setAttribute('aria-expanded', 'false');
+    }
+    if (keep !== 'journal') {
+      this.journalPanel.hidden = true;
+      el('btn-journal').setAttribute('aria-expanded', 'false');
     }
     if (keep !== 'forge') this.forgePanel.hidden = true;
     if (keep !== 'bank') this.bankPanel.hidden = true;

@@ -45,6 +45,7 @@ Production base path is `/hunterscape/` for GitHub Pages.
 | 1–5 | Strike, Lunge, Smash, Guard, Rend |
 | 6 | Arm the weapon special |
 | K | Skills and stance |
+| J | Quest journal. The corner list stays at six lines. The journal has every open task and the ones you have finished. |
 | C | Gear |
 | V | Model Studio |
 | P | Plot survey (500 sections) |

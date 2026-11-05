@@ -660,7 +660,28 @@ export function harlMaterialsReady(save: SaveData): boolean {
   );
 }
 
-export function trackerLines(save: SaveData): string[] {
+const FINISHED_QUESTS: { key: keyof QuestState; name: string }[] = [
+  { key: 'east_road', name: 'The east road' },
+  { key: 'harl_commission', name: "Harl's commission" },
+  { key: 'lanterns', name: 'Square lanterns' },
+  { key: 'hearth_boars', name: 'Bean-row boars' },
+  { key: 'silk_loom', name: "Maeve's loom" },
+  { key: 'shrine_foxes', name: 'Wayside shrine' },
+  { key: 'kiln_crows', name: 'Charcoal kiln' },
+  { key: 'claim_beetles', name: 'Copper claim' },
+  { key: 'mire_toads', name: 'Reed mire' },
+  { key: 'barrow_bones', name: 'North barrow' },
+  { key: 'gale_roost', name: 'West roost' },
+  { key: 'ash_brake', name: 'Ash brake' },
+  { key: 'weir_eels', name: 'South weir' },
+  { key: 'ridge_goats', name: 'Chalk ridge' },
+  { key: 'hollow_adders', name: 'North hollow' },
+  { key: 'hearth_stew', name: 'Hearth stew' },
+  { key: 'bronze_bars', name: 'Bronze bars' },
+];
+
+/** Every open task, including ones the corner tracker has no room to show. */
+export function journalLines(save: SaveData): string[] {
   const q = save.quests;
   const lines: string[] = [];
   if (q.east_road === 'none') lines.push('Speak with Warden Elspeth in Briarford, east of camp.');
@@ -783,5 +804,14 @@ export function trackerLines(save: SaveData): string[] {
     else lines.push(`Anvil: ${open.join(', ')}.`);
   }
   if (lines.length === 0) lines.push('Briarford is settled.');
-  return lines.slice(0, 6);
+  return lines;
+}
+
+/** The corner tracker stays short. The journal (J) has the rest. */
+export function trackerLines(save: SaveData): string[] {
+  return journalLines(save).slice(0, 6);
+}
+
+export function finishedQuestNames(save: SaveData): string[] {
+  return FINISHED_QUESTS.filter((q) => save.quests[q.key] === 'done').map((q) => q.name);
 }

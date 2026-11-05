@@ -57,7 +57,7 @@ html, body {
 
 #hud { pointer-events: none; }
 #hud button, #hud .ab-slot, #hud .inv-slot, #hud-nav, #skill-slots,
-#chat, #inventory, #skills-panel, #gear-panel, #forge-panel, #bank-panel, #btn-inventory, #dialogue {
+#chat, #inventory, #skills-panel, #journal-panel, #gear-panel, #forge-panel, #bank-panel, #btn-inventory, #dialogue {
   pointer-events: auto;
 }
 
@@ -597,7 +597,7 @@ html, body {
 }
 .panel-close:hover { color: var(--gold); border-color: var(--gold-dim); }
 
-#skills-panel {
+#skills-panel, #journal-panel {
   position: absolute;
   top: calc(140px + var(--safe-top));
   left: 10px;
@@ -605,6 +605,26 @@ html, body {
   max-height: 70vh;
   overflow-y: auto;
   z-index: 20;
+}
+#journal-panel { width: min(340px, 78vw); z-index: 22; }
+.journal-kicker {
+  padding: 8px 10px 0;
+  color: var(--gold-dim);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.journal-line {
+  padding: 4px 10px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--gold);
+}
+.journal-line.done { color: var(--gold-dim); }
+.journal-empty {
+  padding: 4px 10px 8px;
+  font-size: 13px;
+  color: var(--gold-dim);
 }
 
 #gear-panel {
@@ -1548,7 +1568,7 @@ html, body {
   #orbs { padding: 5px 6px 14px; gap: 4px; }
   #minimap-wrap { width: 96px; height: 96px; }
 
-  #skills-panel {
+  #skills-panel, #journal-panel {
     top: calc(128px + var(--safe-top));
     width: min(260px, calc(100vw - 16px));
     max-height: min(50vh, calc(100vh - 200px));
