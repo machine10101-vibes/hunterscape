@@ -487,6 +487,7 @@ export class Game {
     this.hud.chat('Poison keeps working until it fades, and you do not recover while it lasts.', 'system');
     this.hud.chat('Whisper berries fruit just past each side of camp. Cook them on the Thornrest fire to train Cooking.', 'system');
     this.hud.chat('The Thornrest forge smelts a bronze bar from one copper ore and one tin ore. That trains Smithing.', 'system');
+    this.hud.chat('Past the berry patches, the cairn, the fold, the ford, and the copse each hide another tree, rock, or bush.', 'system');
     this.hud.chat('Scroll, pinch, or use + / − to zoom the camera.', 'system');
 
     window.addEventListener('resize', () => this.onResize());
@@ -758,6 +759,42 @@ export class Game {
         maxHp: 1,
         depleted: false,
         respawnAt: 0,
+      });
+    });
+
+    // Gatherables beside the dressed landmarks past the berry ring.
+    const outerNodes: { x: number; z: number; kind: 'tree' | 'bush' | 'rock'; ore?: 'copper' | 'tin' }[] = [
+      { x: 9.4, z: 43.6, kind: 'rock', ore: 'tin' },
+      { x: -7.6, z: -39.2, kind: 'tree' },
+      { x: 38.2, z: -5.8, kind: 'bush' },
+      { x: -42.4, z: 7.4, kind: 'rock', ore: 'copper' },
+      { x: 38.4, z: 41.6, kind: 'rock', ore: 'tin' },
+      { x: 33.8, z: 42.2, kind: 'tree' },
+      { x: 36.2, z: -36.2, kind: 'bush' },
+      { x: 32.2, z: -36.4, kind: 'tree' },
+      { x: -35.8, z: 40.2, kind: 'rock', ore: 'copper' },
+      { x: -33.6, z: -37.8, kind: 'tree' },
+      { x: -38.2, z: -38.2, kind: 'bush' },
+    ];
+    outerNodes.forEach((n, i) => {
+      const mesh =
+        n.kind === 'tree'
+          ? createTree(40 + i)
+          : n.kind === 'bush'
+            ? createWhisperBush(40 + i)
+            : createRock(n.ore ?? 'tin', 40 + i);
+      mesh.position.set(n.x, groundHeight(n.x, n.z), n.z);
+      if (n.kind === 'bush') mesh.scale.setScalar(1.65);
+      this.scene.add(mesh);
+      this.objects.push({
+        kind: n.kind,
+        mesh,
+        id: `outer_${n.kind}_${i}`,
+        hp: 1,
+        maxHp: 1,
+        depleted: false,
+        respawnAt: 0,
+        meta: n.kind === 'rock' ? { ore: n.ore ?? 'tin' } : undefined,
       });
     });
 
