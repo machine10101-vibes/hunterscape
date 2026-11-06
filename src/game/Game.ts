@@ -4093,6 +4093,7 @@ export class Game {
         foe.biteT = 0.001;
         foe.hitDone = false;
         foe.cd = monsterTempo(obj.kind);
+        this.vfx.spawnTelegraph(obj.mesh.position.clone(), false, 0.55, Math.max(foe.range, 1.05));
       }
       let bite = 0;
       if (foe.biteT > 0) {
