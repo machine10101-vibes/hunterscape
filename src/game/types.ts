@@ -1833,6 +1833,15 @@ export function xpForLevel(level: number): number {
   return Math.floor(total / 4);
 }
 
+/**
+ * Seconds for a chop or a mine.
+ * Level 1 keeps the base time. Each level after that shaves a little, down to a floor.
+ */
+export function gatherPace(level: number, base: number, floor: number): number {
+  const steps = Math.max(0, level - 1);
+  return Math.max(floor, Math.round((base - steps * 0.04) * 100) / 100);
+}
+
 export function levelFromXp(xp: number): number {
   let level = 1;
   while (level < 99 && xpForLevel(level + 1) <= xp) level++;
