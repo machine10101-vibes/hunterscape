@@ -84,6 +84,7 @@ export const PLOT_LANDMARKS: PlotLandmark[] = [
   { name: 'Icemound hollow', x: 36, z: 40 },
   { name: 'Thicket verge', x: 34, z: -38 },
   { name: 'Ridge stones', x: -38, z: 38 },
+  { name: 'Stone hares', x: -42.4, z: 36.2 },
   { name: 'South-west copse', x: -36, z: -40 },
   { name: 'Pine martens', x: -30.2, z: -33.4 },
 ];

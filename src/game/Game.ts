@@ -177,7 +177,7 @@ import {
   type NpcId,
 } from './quests';
 
-type InteractKind = 'tree' | 'rock' | 'bush' | 'fire' | 'dummy' | 'yeti' | 'orc' | 'wolf' | 'boar' | 'spider' | 'fox' | 'lynx' | 'newt' | 'marten' | 'crow' | 'beetle' | 'toad' | 'skeleton' | 'hawk' | 'stag' | 'eel' | 'goat' | 'adder' | 'forge' | 'bank' | 'npc';
+type InteractKind = 'tree' | 'rock' | 'bush' | 'fire' | 'dummy' | 'yeti' | 'orc' | 'wolf' | 'boar' | 'spider' | 'fox' | 'lynx' | 'newt' | 'marten' | 'hare' | 'crow' | 'beetle' | 'toad' | 'skeleton' | 'hawk' | 'stag' | 'eel' | 'goat' | 'adder' | 'forge' | 'bank' | 'npc';
 type ForgeBench = 'camp' | 'briar';
 
 interface WorldObject {
@@ -499,6 +499,7 @@ export class Game {
     this.hud.chat('Wader Reed stands at the stream ford. The newt skin is his once Nia has her pelt.', 'system');
     this.hud.chat('Pine martens den at the south-west copse and the hunter stumps. A fur comes off the hide.', 'system');
     this.hud.chat('Trapper Wynn waits at the hunter stumps. The marten fur is his once Reed has his skin.', 'system');
+    this.hud.chat('Stone hares bolt around the ridge stones. A foot comes off the hide.', 'system');
     this.hud.chat('Scroll, pinch, or use + / − to zoom the camera.', 'system');
 
     window.addEventListener('resize', () => this.onResize());
@@ -1369,10 +1370,38 @@ export class Game {
         pose: poseDuskFox,
       });
     });
+
+    const hareHomes = [
+      { x: -42.4, z: 36.2 },
+      { x: -41.2, z: 33.4 },
+    ];
+    hareHomes.forEach((home, i) => {
+      const mesh = createDuskFox();
+      tintHare(mesh);
+      mesh.scale.setScalar(1.85);
+      this.spawnFoe('hare', mesh, home, `hare_${i}`, 14, {
+        aggroR: 3.4,
+        range: 1.2,
+        leash: 5,
+        chase: 2.5,
+        dmgMin: 1,
+        dmgMax: 3,
+        knock: 0.5,
+        respawn: 16,
+        label: 'Stone Hare',
+        snarl: 'A stone hare thumps and bolts!',
+        engage: 'A stone hare engages you!',
+        biteLine: 'The stone hare kicks you for',
+        loseLine: 'The stone hare bolts back to the stones.',
+        returnLine: 'A stone hare settles back among the stones.',
+        corpse: 'The stone hare is dead. Another will bolt back among the stones.',
+        pose: poseDuskFox,
+      });
+    });
   }
 
   private spawnFoe(
-    kind: 'wolf' | 'boar' | 'spider' | 'fox' | 'lynx' | 'newt' | 'marten' | 'crow' | 'beetle' | 'toad' | 'skeleton' | 'hawk' | 'stag' | 'eel' | 'goat' | 'adder',
+    kind: 'wolf' | 'boar' | 'spider' | 'fox' | 'lynx' | 'newt' | 'marten' | 'hare' | 'crow' | 'beetle' | 'toad' | 'skeleton' | 'hawk' | 'stag' | 'eel' | 'goat' | 'adder',
     mesh: THREE.Group,
     home: { x: number; z: number },
     id: string,
@@ -1394,7 +1423,7 @@ export class Game {
     };
     this.objects.push(obj);
     this.foes.push({ obj, aggro: false, cd: 1.15, biteT: 0, hitDone: false, ...stats });
-    const markY = kind === 'hawk' ? 1.35 : kind === 'stag' ? 1.25 : kind === 'goat' ? 0.95 : kind === 'adder' ? 0.42 : kind === 'eel' ? 0.55 : kind === 'crow' ? 0.95 : kind === 'skeleton' ? 1.05 : kind === 'spider' ? 0.34 : kind === 'beetle' ? 0.48 : kind === 'toad' || kind === 'newt' ? 0.58 : kind === 'fox' || kind === 'lynx' || kind === 'marten' ? 0.62 : 0.72;
+    const markY = kind === 'hawk' ? 1.35 : kind === 'stag' ? 1.25 : kind === 'goat' ? 0.95 : kind === 'adder' ? 0.42 : kind === 'eel' ? 0.55 : kind === 'crow' ? 0.95 : kind === 'skeleton' ? 1.05 : kind === 'spider' ? 0.34 : kind === 'beetle' ? 0.48 : kind === 'toad' || kind === 'newt' ? 0.58 : kind === 'fox' || kind === 'lynx' || kind === 'marten' || kind === 'hare' ? 0.62 : 0.72;
     addWeaknessMark(mesh, monsterProfile(kind).weak, markY);
   }
 
@@ -1403,7 +1432,7 @@ export class Game {
   }
 
   private isBeast(kind: InteractKind): boolean {
-    return kind === 'wolf' || kind === 'boar' || kind === 'spider' || kind === 'fox' || kind === 'lynx' || kind === 'newt' || kind === 'marten' || kind === 'crow' || kind === 'beetle' || kind === 'toad' || kind === 'skeleton' || kind === 'hawk' || kind === 'stag' || kind === 'eel' || kind === 'goat' || kind === 'adder';
+    return kind === 'wolf' || kind === 'boar' || kind === 'spider' || kind === 'fox' || kind === 'lynx' || kind === 'newt' || kind === 'marten' || kind === 'hare' || kind === 'crow' || kind === 'beetle' || kind === 'toad' || kind === 'skeleton' || kind === 'hawk' || kind === 'stag' || kind === 'eel' || kind === 'goat' || kind === 'adder';
   }
 
   private bindInput(canvas: HTMLCanvasElement): void {
@@ -2176,6 +2205,8 @@ export class Game {
       this.hud.chat(`A ford newt. The skin on its back is the prize. ${this.foeCard('newt')}`, 'combat');
     else if (all.kind === 'marten')
       this.hud.chat(`A pine marten. The fur is the prize. ${this.foeCard('marten')}`, 'combat');
+    else if (all.kind === 'hare')
+      this.hud.chat(`A stone hare. The foot is the prize. ${this.foeCard('hare')}`, 'combat');
     else if (all.kind === 'crow')
       this.hud.chat(`A cinder crow. Soot feathers and charcoal are what Burner Holt works into the cinder patterns. ${this.foeCard('crow')}`, 'combat');
     else if (all.kind === 'beetle')
@@ -4045,6 +4076,9 @@ export class Game {
     } else if (target.kind === 'marten') {
       this.hud.chat('The pine marten drops. A russet fur comes free.', 'combat');
       if (this.addItem('marten_fur', 1)) this.hud.chat('You skin a Marten Fur.', 'loot');
+    } else if (target.kind === 'hare') {
+      this.hud.chat('The stone hare drops. A foot comes free.', 'combat');
+      if (this.addItem('hare_foot', 1)) this.hud.chat('You take a Hare Foot.', 'loot');
     } else if (target.kind === 'fox') {
       this.hud.chat('The dusk fox drops. Fur and a fang come free of the hide.', 'combat');
       if (this.addItem('fox_fur', 1)) this.hud.chat('You skin a Fox Fur.', 'loot');
@@ -4816,6 +4850,7 @@ export class Game {
       else if (o.kind === 'lynx') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#d8c48a' });
       else if (o.kind === 'newt') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#7a9a48' });
       else if (o.kind === 'marten') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#a06038' });
+      else if (o.kind === 'hare') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#c8c2ae' });
       else if (o.kind === 'crow') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#5c5348' });
       else if (o.kind === 'beetle') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#6a8a48' });
       else if (o.kind === 'toad') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#3e7a3a' });
@@ -4915,6 +4950,20 @@ function tintNewt(root: THREE.Object3D): void {
     const mat = src.clone();
     mat.color.lerp(olive, 0.35);
     if (mat.emissive) mat.emissive.multiplyScalar(0.35);
+    mesh.material = mat;
+  });
+}
+
+/** Shift a dusk-fox mesh toward the pale grey of a stone hare. */
+function tintHare(root: THREE.Object3D): void {
+  const stone = new THREE.Color(0x6e5844);
+  root.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    const src = mesh.material as THREE.MeshStandardMaterial;
+    if (!src?.color) return;
+    const mat = src.clone();
+    mat.color.lerp(stone, 0.78);
     mesh.material = mat;
   });
 }
