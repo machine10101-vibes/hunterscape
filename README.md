@@ -15,7 +15,7 @@ The view is an elevated top-down 3D scene (Three.js). Original world, names, and
 - Gear and the camp forge. One copper ore and one tin ore smelt into a bronze bar there. Briarford’s anvil crafts town kits once the matching quest is done.
 - Starter work from Elspeth, Bram, Maeve, Calder, Holt, Wren, Marr, Quill, Pell, Voss, Ivo, and Hermit Sable. Beasts include wolves, boars, spiders, dusk foxes, cairn lynxes at the frost cairn and the icemound, ford newts at the stream ford and the stone fold, pine martens at the south-west copse and the hunter stumps, cinder crows, ore beetles, mire toads, barrow skeletons, gale hawks, ash stags, weir eels, chalk goats, and hollow adders, plus the training dummy, the Frost Yeti, and the Orc Scout. A cairn lynx drops a lynx pelt. A ford newt drops a newt skin. A pine marten drops a marten fur. After the bronze bars, Tracker Nia at the frost cairn asks for one lynx pelt. After that, Wader Reed at the stream ford asks for one newt skin. After that, Trapper Wynn at the hunter stumps asks for one marten fur.
 - Progress is stored in `localStorage` (`hunterscape_save_v1`), including bank, quests, gear, and where you are standing.
-- Desktop and mobile: tap to move, and pinch to zoom the camera. Townsfolk have a wider tap target so a finger can start a conversation. **Model Studio (V)** orbits the hunter and camp meshes.
+- Desktop and mobile: tap to move, and pinch to zoom the camera. Townsfolk have a wider tap target so a finger can start a conversation. On a phone the pack slots, dialogue answers, and side menu are tall enough to tap. **Model Studio (V)** orbits the hunter and camp meshes.
 
 ## Develop
 
