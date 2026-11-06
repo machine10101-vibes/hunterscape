@@ -489,7 +489,7 @@ export class Game {
     this.hud.chat('Hermit Sable keeps the north hollow. Hollow adders coil in the dark there.', 'combat');
     this.hud.chat('The Briarford bank keeps what your pack cannot. The booth is in the square. Press B.', 'system');
     this.hud.chat('Poison keeps working until it fades, and you do not recover while it lasts.', 'system');
-    this.hud.chat('Whisper berries fruit just past each side of camp. Cook them on the Thornrest fire to train Cooking.', 'system');
+    this.hud.chat('Whisper berries fruit just past each side of camp. Cook them on the Thornrest fire to train Cooking. Newt meat skewers there once Cooking is 5.', 'system');
     this.hud.chat('The Thornrest forge smelts a bronze bar from one copper ore and one tin ore. That trains Smithing.', 'system');
     this.hud.chat('Past the berry patches, the cairn, the fold, the ford, and the copse each hide another tree, rock, or bush.', 'system');
     this.hud.chat('Pale cairn lynxes hunt the frost cairn and the icemound. A pelt comes off the hide.', 'system');
@@ -2162,7 +2162,7 @@ export class Game {
     else if (all.kind === 'bush')
       this.hud.chat('A whisper-berry bush. The fruit cooks on the Thornrest fire into berry stew.', 'system');
     else if (all.kind === 'fire')
-      this.hud.chat('The Thornrest campfire. Cook whisper berries here to train Cooking.', 'system');
+      this.hud.chat('The Thornrest campfire. Cook whisper berries here, or newt meat once Cooking is 5.', 'system');
     else if (all.kind === 'npc') this.talkTo(all);
     else if (all.kind === 'bank')
       this.hud.chat('The Briarford bank. The vault holds what your pack cannot, and equipped gear stays on you.', 'system');
@@ -3939,6 +3939,7 @@ export class Game {
     } else if (target.kind === 'newt') {
       this.hud.chat('The ford newt drops. A skin comes free of the back.', 'combat');
       if (this.addItem('newt_skin', 1)) this.hud.chat('You peel a Newt Skin.', 'loot');
+      if (Math.random() < 0.45 && this.addItem('newt_meat', 1)) this.hud.chat('You cut a strip of Newt Meat.', 'loot');
     } else if (target.kind === 'fox') {
       this.hud.chat('The dusk fox drops. Fur and a fang come free of the hide.', 'combat');
       if (this.addItem('fox_fur', 1)) this.hud.chat('You skin a Fox Fur.', 'loot');
