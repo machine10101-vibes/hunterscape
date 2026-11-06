@@ -77,6 +77,7 @@ export const PLOT_LANDMARKS: PlotLandmark[] = [
   { name: 'Tracker Nia', x: 8.4, z: 44.6 },
   { name: 'Hunter stumps', x: -5.2, z: -41 },
   { name: 'Stream ford', x: 38, z: -8.4 },
+  { name: 'Ford newts', x: 41.2, z: -10.4 },
   { name: 'Stone fold', x: -40, z: 5.5 },
   { name: 'Icemound hollow', x: 36, z: 40 },
   { name: 'Thicket verge', x: 34, z: -38 },
