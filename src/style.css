@@ -1688,6 +1688,7 @@ html, body {
 }
 
 .float-xp.crit { font-size: 26px; }
+.float-xp.heal { font-size: 20px; }
 .float-xp.miss { font-size: 15px; letter-spacing: 0.08em; }
 .float-xp {
   position: absolute;

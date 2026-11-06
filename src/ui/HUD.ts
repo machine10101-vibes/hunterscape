@@ -2,6 +2,7 @@ import type { Texture } from 'three';
 import {
   COMBAT_SKILLS,
   EQUIP_SLOTS,
+  FOOD,
   ITEM_META,
   SKILL_META,
   STANCES,
@@ -541,7 +542,7 @@ export class HUD {
         paintItemIcon(icon, item.id);
         slot.appendChild(icon);
         slot.title = `${gearLine(item.id)}${item.qty > 1 ? ` ×${item.qty}` : ''}${
-          meta?.slot ? ' — click to equip' : item.id === 'camp_rations' ? ' — click to eat' : ''
+          meta?.slot ? ' — click to equip' : FOOD[item.id] ? ' — click to eat' : ''
         }`;
         if (item.qty > 1) {
           const q = document.createElement('span');
