@@ -1,6 +1,6 @@
 import { countItem, type SaveData } from './types';
 
-export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve' | 'calder' | 'holt' | 'odell' | 'wren' | 'marr' | 'quill' | 'pell' | 'voss' | 'ivo' | 'sable' | 'nia';
+export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve' | 'calder' | 'holt' | 'odell' | 'wren' | 'marr' | 'quill' | 'pell' | 'voss' | 'ivo' | 'sable' | 'nia' | 'reed';
 export type QuestStage = 'none' | 'active' | 'done';
 
 export interface QuestState {
@@ -22,6 +22,7 @@ export interface QuestState {
   hearth_stew: QuestStage;
   bronze_bars: QuestStage;
   lynx_pelts: QuestStage;
+  newt_skins: QuestStage;
   wolfKills: number;
   boarKills: number;
   briarUnlocked: boolean;
@@ -58,6 +59,7 @@ export function defaultQuests(): QuestState {
     hearth_stew: 'none',
     bronze_bars: 'none',
     lynx_pelts: 'none',
+    newt_skins: 'none',
     wolfKills: 0,
     boarKills: 0,
     briarUnlocked: false,
@@ -91,6 +93,7 @@ export const HOLLOW_NEEDED = 2;
 export const STEW_NEEDED = 2;
 export const BARS_NEEDED = 2;
 export const PELT_NEEDED = 1;
+export const SKIN_NEEDED = 1;
 
 export interface DialogueOption {
   id: string;
@@ -629,7 +632,47 @@ export function dialogueFor(save: SaveData, npc: NpcId): DialogueScript {
     }
     return {
       speaker: 'Tracker Nia',
-      body: 'The stones still have lynxes if you want another pelt. I have what I asked for.',
+      body: 'The stones still have lynxes if you want another pelt. Wader Reed at the stream ford wants a newt skin.',
+      options: [CLOSE],
+    };
+  }
+
+  if (npc === 'reed') {
+    const skins = countItem(save.inventory, 'newt_skin');
+    if (q.lynx_pelts !== 'done' && q.newt_skins === 'none') {
+      return {
+        speaker: 'Wader Reed',
+        body: 'Ford newts sit on the stones just south of here, and another keeps the stone fold. When Tracker Nia has her lynx pelt, bring me a newt skin.',
+        options: [CLOSE],
+      };
+    }
+    if (q.newt_skins === 'none') {
+      return {
+        speaker: 'Wader Reed',
+        body: 'Nia has her pelt. The newts are still on the ford stones. Bring me 1 newt skin. A crush weapon sits on them well.',
+        options: [
+          { id: 'reed_accept', label: 'I will bring the skin.' },
+          { id: 'close', label: 'The ford can wait.' },
+        ],
+      };
+    }
+    if (q.newt_skins === 'active' && skins < SKIN_NEEDED) {
+      return {
+        speaker: 'Wader Reed',
+        body: `I still need ${SKIN_NEEDED} newt skin (you have ${skins}). They sit just south of this ford, and again at the stone fold.`,
+        options: [CLOSE],
+      };
+    }
+    if (q.newt_skins === 'active') {
+      return {
+        speaker: 'Wader Reed',
+        body: 'A green skin. That will do. I will set a berry stew in your pack for the walk.',
+        options: [{ id: 'reed_turnin', label: 'Take the skin.' }],
+      };
+    }
+    return {
+      speaker: 'Wader Reed',
+      body: 'The ford still has newts if you want another skin. I have what I asked for.',
       options: [CLOSE],
     };
   }
@@ -722,6 +765,7 @@ const FINISHED_QUESTS: { key: keyof QuestState; name: string }[] = [
   { key: 'hearth_stew', name: 'Hearth stew' },
   { key: 'bronze_bars', name: 'Bronze bars' },
   { key: 'lynx_pelts', name: 'Cairn pelt' },
+  { key: 'newt_skins', name: 'Ford skin' },
 ];
 
 /** Every open task, including ones the corner tracker has no room to show. */
@@ -820,6 +864,12 @@ export function journalLines(save: SaveData): string[] {
   } else if (q.lynx_pelts === 'active') {
     const pelts = countItem(save.inventory, 'lynx_pelt');
     lines.push(pelts >= PELT_NEEDED ? 'Cairn: return to Tracker Nia.' : `Cairn: lynx pelt ${pelts}/${PELT_NEEDED}`);
+  }
+  if (q.lynx_pelts === 'done' && q.newt_skins === 'none') {
+    lines.push('Wader Reed wants a newt skin from the stream ford.');
+  } else if (q.newt_skins === 'active') {
+    const skins = countItem(save.inventory, 'newt_skin');
+    lines.push(skins >= SKIN_NEEDED ? 'Ford: return to Wader Reed.' : `Ford: newt skin ${skins}/${SKIN_NEEDED}`);
   }
   if (q.ridge_goats === 'done' && q.hollow_adders === 'none') {
     lines.push('Hermit Sable needs 2 adder fangs in the north hollow.');
