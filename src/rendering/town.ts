@@ -214,6 +214,14 @@ function npcBody(tunic: number, hair: number, hood: boolean): THREE.Group {
     arm.rotation.z = sx * 0.15;
     add(g, arm);
   }
+  // Invisible volume so a finger can tap the figure, not only the slim mesh.
+  const tap = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.95, 0.95, 1.85, 8),
+    new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
+  );
+  tap.position.y = 0.9;
+  tap.name = 'npcHit';
+  g.add(tap);
   return g;
 }
 
