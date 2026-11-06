@@ -3170,6 +3170,7 @@ export class Game {
       if ((o.kind === 'tree' || o.kind === 'rock' || o.kind === 'bush') && o.depleted && now >= o.respawnAt) {
         o.depleted = false;
         o.mesh.visible = true;
+        this.setGatherCut(o, false);
         this.hud.chat(
           o.kind === 'tree'
             ? 'A Whisperwood tree has grown back.'
@@ -3463,11 +3464,13 @@ export class Game {
     } else if (this.activity.type === 'gather') {
       const act = this.activity;
       if (act.target.depleted) {
+        this.settleGatherNode(act.target);
         this.activity = { type: 'idle' };
         this.syncHeldTool();
         resetPlayerPose(this.player);
         this.hud.hideProgress();
       } else if (this.distTo(act.target) > GATHER_RANGE + 0.35) {
+        this.settleGatherNode(act.target);
         this.activity = { type: 'idle' };
         this.syncHeldTool();
         resetPlayerPose(this.player);
@@ -3487,7 +3490,9 @@ export class Game {
           if (act.target.kind === 'tree') this.vfx.spawnWoodchips(p, 12);
           else if (act.target.kind === 'rock') this.vfx.spawnMineSparks(p, 14);
         }
+        this.wobbleGatherNode(act.target);
         if (act.elapsed >= act.duration) {
+          this.settleGatherNode(act.target);
           this.completeGather(act.target);
           this.activity = { type: 'idle' };
           this.syncHeldTool();
@@ -3680,14 +3685,44 @@ export class Game {
     this.drawMinimapMarkers();
   }
 
+  private wobbleGatherNode(obj: WorldObject): void {
+    if (obj.kind !== 'tree' && obj.kind !== 'rock') return;
+    const stand = obj.mesh.getObjectByName(obj.kind === 'rock' ? 'ore' : 'stand');
+    if (!stand) return;
+    stand.rotation.z = Math.sin(this.toolSwing * 14) * (obj.kind === 'tree' ? 0.045 : 0.06);
+    stand.rotation.x = Math.sin(this.toolSwing * 11) * 0.03;
+  }
+
+  private settleGatherNode(obj: WorldObject): void {
+    const stand = obj.mesh.getObjectByName(obj.kind === 'rock' ? 'ore' : 'stand');
+    if (stand) stand.rotation.set(0, 0, 0);
+  }
+
+  /** Hide the standing tree or the ore body. Roots and rubble stay so the node reads as cut. */
+  private setGatherCut(obj: WorldObject, cut: boolean): void {
+    const stand = obj.mesh.getObjectByName(obj.kind === 'rock' ? 'ore' : 'stand');
+    const rubble = obj.mesh.getObjectByName('rubble');
+    if (stand) {
+      stand.visible = !cut;
+      stand.rotation.set(0, 0, 0);
+    }
+    if (rubble) rubble.visible = cut;
+    if (!stand) obj.mesh.visible = !cut;
+  }
+
+  private floatGather(obj: WorldObject, name: string, color: string): void {
+    this.vfx.spawnFloatingText(obj.mesh.position.clone().setY(obj.kind === 'tree' ? 1.7 : 1.2), name, color, 'loot');
+  }
+
   private completeGather(obj: WorldObject): void {
     if (obj.kind === 'tree') {
       if (!this.addItem('whisper_logs', 1)) return;
       this.grantXp('woodcutting', 25);
       this.hud.chat('You chop some Whisper Logs.', 'loot');
       this.vfx.spawnWoodchips(obj.mesh.position.clone().setY(1.1), 22);
+      this.floatGather(obj, 'Whisper Logs', '#e2c48a');
       obj.depleted = true;
-      obj.mesh.visible = false;
+      this.setGatherCut(obj, true);
       obj.respawnAt = performance.now() / 1000 + 12;
     } else if (obj.kind === 'rock') {
       const ore = obj.meta?.ore === 'tin' ? 'tin_ore' : 'copper_ore';
@@ -3695,8 +3730,9 @@ export class Game {
       this.grantXp('mining', 28);
       this.hud.chat(`You mine some ${ITEM_META[ore].name}.`, 'loot');
       this.vfx.spawnMineSparks(obj.mesh.position.clone().setY(0.7), 24);
+      this.floatGather(obj, ITEM_META[ore].name, ore === 'tin_ore' ? '#d5dbe4' : '#e0a060');
       obj.depleted = true;
-      obj.mesh.visible = false;
+      this.setGatherCut(obj, true);
       obj.respawnAt = performance.now() / 1000 + 14;
     } else if (obj.kind === 'bush') {
       if (!this.addItem('whisper_berries', 1)) return;
