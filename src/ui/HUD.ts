@@ -271,8 +271,14 @@ export class HUD {
     this.journalList.innerHTML = '';
     const openKicker = document.createElement('div');
     openKicker.className = 'journal-kicker';
-    openKicker.textContent = 'Open';
+    openKicker.textContent = `Open · ${openLines.length}`;
     this.journalList.appendChild(openKicker);
+    if (openLines.length > 6) {
+      const note = document.createElement('div');
+      note.className = 'journal-empty';
+      note.textContent = 'The corner list keeps the first six.';
+      this.journalList.appendChild(note);
+    }
     for (const line of openLines) {
       const row = document.createElement('div');
       row.className = 'journal-line';
@@ -281,7 +287,7 @@ export class HUD {
     }
     const doneKicker = document.createElement('div');
     doneKicker.className = 'journal-kicker';
-    doneKicker.textContent = 'Finished';
+    doneKicker.textContent = `Finished · ${finished.length}`;
     this.journalList.appendChild(doneKicker);
     if (finished.length === 0) {
       const empty = document.createElement('div');
@@ -383,8 +389,13 @@ export class HUD {
     }
   }
 
-  setQuests(lines: string[]): void {
+  setQuests(lines: string[], total = lines.length): void {
     this.questTracker.innerHTML = '';
+    const head = document.createElement('div');
+    head.className = 'quest-head';
+    const extra = Math.max(0, total - lines.length);
+    head.textContent = extra > 0 ? `Quests · +${extra} in journal` : 'Quests';
+    this.questTracker.appendChild(head);
     for (const line of lines) {
       const row = document.createElement('div');
       row.className = 'quest-line';

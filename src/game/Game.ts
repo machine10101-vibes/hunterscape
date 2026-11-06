@@ -4828,7 +4828,7 @@ export class Game {
     this.hud.setSkills(this.save);
     this.hud.setOrbs(this.save.hp, this.save.maxHp, this.save.focus, this.save.stamina);
     this.hud.setSkillBar(this.save, this.skillCd, this.guardLeft);
-    this.hud.setQuests(trackerLines(this.save));
+    this.hud.setQuests(trackerLines(this.save), journalLines(this.save).length);
     this.hud.setJournal(journalLines(this.save), finishedQuestNames(this.save));
   }
 
