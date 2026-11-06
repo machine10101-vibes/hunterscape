@@ -111,6 +111,7 @@ import {
   carryBurden,
   combatSkillUnlocked,
   countItem,
+  gatherPace,
   cookReady,
   FOOD,
   gearLine,
@@ -1699,7 +1700,7 @@ export class Game {
         if (this.hasItem('bronze_hatchet')) this.hud.setGearOpen(true);
         return;
       }
-      this.approachThenGather(obj, 2.4, 'Chopping Whisperwood…');
+      this.approachThenGather(obj, gatherPace(this.save.skills.woodcutting.level, 2.4, 1.2), 'Chopping Whisperwood…');
       return;
     }
     if (obj.kind === 'rock') {
@@ -1713,7 +1714,7 @@ export class Game {
         if (this.hasItem('bronze_pickaxe')) this.hud.setGearOpen(true);
         return;
       }
-      this.approachThenGather(obj, 2.6, `Mining ${obj.meta?.ore === 'tin' ? 'tin' : 'copper'}…`);
+      this.approachThenGather(obj, gatherPace(this.save.skills.mining.level, 2.6, 1.35), `Mining ${obj.meta?.ore === 'tin' ? 'tin' : 'copper'}…`);
       return;
     }
     if (obj.kind === 'bush') {
