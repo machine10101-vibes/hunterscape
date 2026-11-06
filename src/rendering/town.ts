@@ -930,6 +930,16 @@ export function createTownNpc(id: NpcId): THREE.Group {
     g.add(nameplate('Wynn'));
     return g;
   }
+  if (id === 'pim') {
+    const g = npcBody(0x6a6458, 0x4a4034, true);
+    const mallet = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.22, 0.06), mat(0x6a5030));
+    mallet.position.set(0.24, 0.82, 0.04);
+    mallet.rotation.z = 0.35;
+    add(g, mallet);
+    g.name = 'npc_pim';
+    g.add(nameplate('Pim'));
+    return g;
+  }
   if (id === 'quill') {
     const g = npcBody(0x314050, 0x6a5038, true);
     const glove = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.08), mat(0xc4a060));

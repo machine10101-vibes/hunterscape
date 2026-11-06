@@ -1924,6 +1924,7 @@ export function defaultSave(): SaveData {
       lynx_pelts: 'none',
       newt_skins: 'none',
       marten_furs: 'none',
+      hare_feet: 'none',
     },
   };
 }
