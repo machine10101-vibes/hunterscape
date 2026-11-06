@@ -165,6 +165,7 @@ import {
   STEW_NEEDED,
   BARS_NEEDED,
   PELT_NEEDED,
+  SKIN_NEEDED,
   GALE_NEEDED,
   FEATHER_NEEDED,
   FUR_NEEDED,
@@ -493,6 +494,7 @@ export class Game {
     this.hud.chat('Past the berry patches, the cairn, the fold, the ford, and the copse each hide another tree, rock, or bush.', 'system');
     this.hud.chat('Pale cairn lynxes hunt the frost cairn and the icemound. A pelt comes off the hide.', 'system');
     this.hud.chat('Ford newts sit by the stream ford and the stone fold. A skin comes off the back.', 'system');
+    this.hud.chat('Wader Reed stands at the stream ford. The newt skin is his once Nia has her pelt.', 'system');
     this.hud.chat('Scroll, pinch, or use + / − to zoom the camera.', 'system');
 
     window.addEventListener('resize', () => this.onResize());
@@ -955,6 +957,7 @@ export class Game {
       { id: 'ivo', x: 20.8, z: -13.6, rot: 2.2 },
       { id: 'sable', x: 7.2, z: -13.4, rot: 0.8 },
       { id: 'nia', x: 8.4, z: 44.6, rot: 0.4 },
+      { id: 'reed', x: 35.4, z: -7.2, rot: 0.6 },
     ];
     for (const n of npcs) {
       const mesh = createTownNpc(n.id);
@@ -1709,6 +1712,7 @@ export class Game {
       if (obj.meta?.npc === 'ivo') return 'Goatherd Ivo';
       if (obj.meta?.npc === 'sable') return 'Hermit Sable';
       if (obj.meta?.npc === 'nia') return 'Tracker Nia';
+      if (obj.meta?.npc === 'reed') return 'Wader Reed';
       return 'Shopkeep Nessa';
     }
     return obj.kind;
@@ -2430,7 +2434,29 @@ export class Game {
       }
       this.save.quests.lynx_pelts = 'done';
       this.grantXp('attack', 55);
-      this.hud.chat('Nia takes the pelt and sets two camp rations in your pack.', 'loot');
+      this.hud.chat('Nia takes the pelt and sets two camp rations in your pack. Wader Reed at the stream ford wants a newt skin.', 'loot');
+    } else if (id === 'reed_accept') {
+      this.save.quests.newt_skins = 'active';
+      this.hud.chat('Quest started: bring Wader Reed 1 newt skin from the stream ford or the stone fold.', 'system');
+    } else if (
+      id === 'reed_turnin' &&
+      this.save.quests.newt_skins === 'active' &&
+      countItem(this.save.inventory, 'newt_skin') >= SKIN_NEEDED
+    ) {
+      if (!this.consumeId('newt_skin', SKIN_NEEDED)) {
+        this.dialogue.hide();
+        return;
+      }
+      if (!this.addItem('berry_stew', 1)) {
+        this.addItem('newt_skin', SKIN_NEEDED);
+        this.hud.chat('Your pack is full — Reed will not take the skin until the stew will fit.', 'system');
+        this.dialogue.hide();
+        this.refreshUI();
+        return;
+      }
+      this.save.quests.newt_skins = 'done';
+      this.grantXp('defence', 50);
+      this.hud.chat('Reed takes the skin and sets a berry stew in your pack.', 'loot');
     } else if (id === 'nessa_accept') {
       this.save.quests.lanterns = 'active';
       this.hud.chat('Quest started: bring Shopkeep Nessa 2 tin ore.', 'system');
