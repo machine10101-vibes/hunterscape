@@ -1,6 +1,6 @@
 import { countItem, type SaveData } from './types';
 
-export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve' | 'calder' | 'holt' | 'odell' | 'wren' | 'marr' | 'quill' | 'pell' | 'voss' | 'ivo' | 'sable' | 'nia' | 'reed';
+export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve' | 'calder' | 'holt' | 'odell' | 'wren' | 'marr' | 'quill' | 'pell' | 'voss' | 'ivo' | 'sable' | 'nia' | 'reed' | 'wynn';
 export type QuestStage = 'none' | 'active' | 'done';
 
 export interface QuestState {
@@ -23,6 +23,7 @@ export interface QuestState {
   bronze_bars: QuestStage;
   lynx_pelts: QuestStage;
   newt_skins: QuestStage;
+  marten_furs: QuestStage;
   wolfKills: number;
   boarKills: number;
   briarUnlocked: boolean;
@@ -60,6 +61,7 @@ export function defaultQuests(): QuestState {
     bronze_bars: 'none',
     lynx_pelts: 'none',
     newt_skins: 'none',
+    marten_furs: 'none',
     wolfKills: 0,
     boarKills: 0,
     briarUnlocked: false,
@@ -94,6 +96,7 @@ export const STEW_NEEDED = 2;
 export const BARS_NEEDED = 2;
 export const PELT_NEEDED = 1;
 export const SKIN_NEEDED = 1;
+export const MARTEN_NEEDED = 1;
 
 export interface DialogueOption {
   id: string;
@@ -672,7 +675,47 @@ export function dialogueFor(save: SaveData, npc: NpcId): DialogueScript {
     }
     return {
       speaker: 'Wader Reed',
-      body: 'The ford still has newts if you want another skin. I have what I asked for.',
+      body: 'The ford still has newts if you want another skin. Trapper Wynn at the hunter stumps wants a marten fur.',
+      options: [CLOSE],
+    };
+  }
+
+  if (npc === 'wynn') {
+    const furs = countItem(save.inventory, 'marten_fur');
+    if (q.newt_skins !== 'done' && q.marten_furs === 'none') {
+      return {
+        speaker: 'Trapper Wynn',
+        body: 'Pine martens den in the south-west copse and in these stumps. When Wader Reed has his newt skin, bring me a marten fur.',
+        options: [CLOSE],
+      };
+    }
+    if (q.marten_furs === 'none') {
+      return {
+        speaker: 'Trapper Wynn',
+        body: 'Reed has his skin. The martens are still in the brush. Bring me 1 marten fur. A slash weapon sits on them well.',
+        options: [
+          { id: 'wynn_accept', label: 'I will bring the fur.' },
+          { id: 'close', label: 'The stumps can wait.' },
+        ],
+      };
+    }
+    if (q.marten_furs === 'active' && furs < MARTEN_NEEDED) {
+      return {
+        speaker: 'Trapper Wynn',
+        body: `I still need ${MARTEN_NEEDED} marten fur (you have ${furs}). One dens in these stumps, and another in the south-west copse.`,
+        options: [CLOSE],
+      };
+    }
+    if (q.marten_furs === 'active') {
+      return {
+        speaker: 'Trapper Wynn',
+        body: 'A russet fur. That will do. I will set rations in your pack for the walk.',
+        options: [{ id: 'wynn_turnin', label: 'Take the fur.' }],
+      };
+    }
+    return {
+      speaker: 'Trapper Wynn',
+      body: 'The brush still has martens if you want another fur. I have what I asked for.',
       options: [CLOSE],
     };
   }
@@ -766,6 +809,7 @@ const FINISHED_QUESTS: { key: keyof QuestState; name: string }[] = [
   { key: 'bronze_bars', name: 'Bronze bars' },
   { key: 'lynx_pelts', name: 'Cairn pelt' },
   { key: 'newt_skins', name: 'Ford skin' },
+  { key: 'marten_furs', name: 'Stump fur' },
 ];
 
 /** Every open task, including ones the corner tracker has no room to show. */
@@ -870,6 +914,12 @@ export function journalLines(save: SaveData): string[] {
   } else if (q.newt_skins === 'active') {
     const skins = countItem(save.inventory, 'newt_skin');
     lines.push(skins >= SKIN_NEEDED ? 'Ford: return to Wader Reed.' : `Ford: newt skin ${skins}/${SKIN_NEEDED}`);
+  }
+  if (q.newt_skins === 'done' && q.marten_furs === 'none') {
+    lines.push('Trapper Wynn wants a marten fur from the hunter stumps.');
+  } else if (q.marten_furs === 'active') {
+    const furs = countItem(save.inventory, 'marten_fur');
+    lines.push(furs >= MARTEN_NEEDED ? 'Stumps: return to Trapper Wynn.' : `Stumps: marten fur ${furs}/${MARTEN_NEEDED}`);
   }
   if (q.ridge_goats === 'done' && q.hollow_adders === 'none') {
     lines.push('Hermit Sable needs 2 adder fangs in the north hollow.');

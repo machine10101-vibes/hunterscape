@@ -1905,6 +1905,7 @@ export function defaultSave(): SaveData {
       bronze_bars: 'none',
       lynx_pelts: 'none',
       newt_skins: 'none',
+      marten_furs: 'none',
     },
   };
 }
