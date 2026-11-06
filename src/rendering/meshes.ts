@@ -59,6 +59,9 @@ export { createForge } from './yetiGear';
 export function createTree(seed = 0): THREE.Group {
   const g = new THREE.Group();
   g.name = 'tree';
+  const stand = new THREE.Group();
+  stand.name = 'stand';
+  g.add(stand);
   const h = 1.55 + (seed % 5) * 0.18;
   const trunkTint = seed % 3 === 0 ? 0x4a3218 : seed % 3 === 1 ? 0x5a3a1a : 0x3e2a12;
   const trunk = new THREE.Mesh(
@@ -68,7 +71,7 @@ export function createTree(seed = 0): THREE.Group {
   trunk.position.y = h / 2;
   trunk.castShadow = true;
   trunk.receiveShadow = true;
-  g.add(trunk);
+  stand.add(trunk);
 
   // Bark ridges + dark AO seams for depth
   for (let i = 0; i < 3; i++) {
@@ -79,7 +82,7 @@ export function createTree(seed = 0): THREE.Group {
     );
     ridge.position.set(Math.cos(a) * 0.15, h * 0.45, Math.sin(a) * 0.15);
     ridge.rotation.y = a;
-    g.add(ridge);
+    stand.add(ridge);
   }
   // Horizontal bark rings
   for (let i = 0; i < 3; i++) {
@@ -89,7 +92,7 @@ export function createTree(seed = 0): THREE.Group {
     );
     ring.rotation.x = Math.PI / 2;
     ring.position.y = 0.35 + i * (h * 0.28);
-    g.add(ring);
+    stand.add(ring);
   }
 
   const canopyA = seed % 2 === 0 ? 0x2f7230 : 0x3a8638;
@@ -105,7 +108,7 @@ export function createTree(seed = 0): THREE.Group {
     leaf.position.y = h + 0.22 + i * 0.42;
     leaf.rotation.y = (seed + i) * 0.45;
     leaf.castShadow = true;
-    g.add(leaf);
+    stand.add(leaf);
     // Inner darker canopy for depth
     if (i < 3) {
       const inner = new THREE.Mesh(
@@ -113,7 +116,7 @@ export function createTree(seed = 0): THREE.Group {
         mat(0x143818, { roughness: 0.95 }),
       );
       inner.position.y = h + 0.35 + i * 0.42;
-      g.add(inner);
+      stand.add(inner);
     }
   }
 
@@ -144,6 +147,9 @@ export function createTree(seed = 0): THREE.Group {
 export function createRock(kind: 'copper' | 'tin', seed = 0): THREE.Group {
   const g = new THREE.Group();
   g.name = 'rock';
+  const ore = new THREE.Group();
+  ore.name = 'ore';
+  g.add(ore);
   const base = new THREE.Mesh(
     new THREE.DodecahedronGeometry(0.55 + (seed % 3) * 0.06, 0),
     mat(seed % 2 === 0 ? 0x5e6268 : 0x4e5258, { roughness: 0.9 }),
@@ -152,7 +158,7 @@ export function createRock(kind: 'copper' | 'tin', seed = 0): THREE.Group {
   base.rotation.set(0.2, seed, 0.1);
   base.castShadow = true;
   base.receiveShadow = true;
-  g.add(base);
+  ore.add(base);
 
   // Soft contact / AO darkening under rock
   const ao = new THREE.Mesh(
@@ -170,7 +176,7 @@ export function createRock(kind: 'copper' | 'tin', seed = 0): THREE.Group {
   chunk.position.set(0.35, 0.22, -0.15);
   chunk.rotation.set(0.4, seed * 0.5, 0.2);
   chunk.castShadow = true;
-  g.add(chunk);
+  ore.add(chunk);
 
   const veinColor = kind === 'copper' ? 0xb87333 : 0xc0c0c8;
   for (let i = 0; i < 4; i++) {
@@ -185,7 +191,7 @@ export function createRock(kind: 'copper' | 'tin', seed = 0): THREE.Group {
     );
     const a = (i / 4) * Math.PI * 2 + seed;
     vein.position.set(Math.cos(a) * 0.32, 0.42 + (i % 2) * 0.18, Math.sin(a) * 0.32);
-    g.add(vein);
+    ore.add(vein);
   }
 
   const moss = new THREE.Mesh(
@@ -194,7 +200,23 @@ export function createRock(kind: 'copper' | 'tin', seed = 0): THREE.Group {
   );
   moss.position.set(-0.25, 0.55, 0.2);
   moss.scale.set(1.2, 0.5, 1);
-  g.add(moss);
+  ore.add(moss);
+
+  const rubble = new THREE.Group();
+  rubble.name = 'rubble';
+  rubble.visible = false;
+  for (let i = 0; i < 4; i++) {
+    const chip = new THREE.Mesh(
+      new THREE.DodecahedronGeometry(0.12 + (i % 2) * 0.04, 0),
+      mat(kind === 'copper' ? 0x6a5344 : 0x6a6e76, { roughness: 0.95 }),
+    );
+    const a = (i / 4) * Math.PI * 2 + seed;
+    chip.position.set(Math.cos(a) * 0.22, 0.08, Math.sin(a) * 0.22);
+    chip.rotation.set(0.4, a, 0.2);
+    chip.castShadow = true;
+    rubble.add(chip);
+  }
+  g.add(rubble);
 
   const hit = new THREE.Mesh(
     new THREE.SphereGeometry(0.75, 8, 6),
