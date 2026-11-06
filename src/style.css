@@ -1569,7 +1569,8 @@ html, body {
     grid-template-columns: repeat(4, 1fr);
   }
 
-  .inv-slot { min-height: 32px; font-size: 15px; }
+  .inv-slot { min-height: 44px; font-size: 15px; }
+  .dialogue-opt { min-height: 44px; padding: 10px 14px; font-size: 15px; }
 
   /* Compact top chrome */
   .orb { width: 38px; height: 38px; }
@@ -1588,9 +1589,11 @@ html, body {
   #hud-nav { left: 8px; }
   #hud-nav button {
     min-width: 0;
-    padding: 5px 6px;
-    font-size: 12px;
+    min-height: 44px;
+    padding: 8px 10px;
+    font-size: 13px;
   }
+  .nav-ico { width: 26px; height: 26px; font-size: 14px; }
   .nav-key { display: none; }
 
   #gear-panel {
