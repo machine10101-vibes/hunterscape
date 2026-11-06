@@ -16,6 +16,7 @@ interface FloatXp {
   world: THREE.Vector3;
   driftY: number;
   driftX: number;
+  rise: number;
 }
 
 export class VFX {
@@ -190,6 +191,8 @@ export class VFX {
     text: string,
     color = '#7ec87e',
     kind = '',
+    rise = 0.48,
+    lane = 0,
   ): void {
     const el = document.createElement('div');
     el.className = kind ? `float-xp ${kind}` : 'float-xp';
@@ -202,34 +205,42 @@ export class VFX {
       maxLife: 1.55,
       world: world.clone(),
       driftY: 0,
-      driftX: (Math.random() - 0.5) * 1.4,
+      driftX: lane + (Math.random() - 0.5) * 0.35,
+      rise,
     });
   }
 
   spawnXp(world: THREE.Vector3, amount: number, skillLabel: string): void {
     this.spawnFloatingText(
-      world.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.4, 1.6, 0)),
+      world.clone().add(new THREE.Vector3(-0.15, 1.35, 0)),
       `+${amount} ${skillLabel}`,
       '#7ec87e',
+      '',
+      0.42,
+      -0.85,
     );
   }
 
   /** Brass is a blow you landed. Coral is a bite you took. A crit is larger. */
   spawnDamage(world: THREE.Vector3, amount: number, crit = false, taken = false): void {
     this.spawnFloatingText(
-      world.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.25, 1.7, 0)),
+      world.clone().add(new THREE.Vector3(0.15, 2.05, 0)),
       crit ? `${amount}!` : String(amount),
       crit ? '#ffe066' : taken ? '#ff8a78' : '#f0d078',
       crit ? 'crit' : taken ? 'taken' : 'dealt',
+      1.15,
+      0.9,
     );
   }
 
   spawnMiss(world: THREE.Vector3): void {
     this.spawnFloatingText(
-      world.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.2, 1.7, 0)),
+      world.clone().add(new THREE.Vector3(0.15, 2.05, 0)),
       'Miss',
       '#d9cbb0',
       'miss',
+      1.05,
+      0.9,
     );
   }
 
@@ -490,7 +501,7 @@ export class VFX {
     for (let i = this.floats.length - 1; i >= 0; i--) {
       const f = this.floats[i];
       f.life += dt;
-      f.driftY += dt * 0.55;
+      f.driftY += dt * f.rise;
       this.tmp.set(f.world.x + f.driftX * f.life, f.world.y + f.driftY, f.world.z);
       this.tmp.project(this.camera);
       const x = (this.tmp.x * 0.5 + 0.5) * window.innerWidth;
