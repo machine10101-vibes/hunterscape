@@ -385,7 +385,9 @@ export class VFX {
       frost ? this.frostTeleMat.clone() : this.telegraphMat.clone(),
     );
     outer.rotation.x = -Math.PI / 2;
-    outer.position.set(origin.x, 0.09, origin.z);
+    outer.position.set(origin.x, 0.22, origin.z);
+    outer.renderOrder = 3;
+    outer.userData.teleRing = true;
     this.scene.add(outer);
     this.particles.push({
       mesh: outer,
@@ -400,8 +402,9 @@ export class VFX {
     fillMat.opacity = frost ? 0.28 : 0.32;
     const fill = new THREE.Mesh(new THREE.CircleGeometry(radius * 0.7, 28), fillMat);
     fill.rotation.x = -Math.PI / 2;
-    fill.position.set(origin.x, 0.07, origin.z);
+    fill.position.set(origin.x, 0.18, origin.z);
     fill.scale.setScalar(0.15);
+    fill.renderOrder = 2;
     this.scene.add(fill);
     this.particles.push({
       mesh: fill,
@@ -441,8 +444,11 @@ export class VFX {
       p.life += dt;
       p.vel.y -= p.gravity * dt;
       p.mesh.position.addScaledVector(p.vel, dt);
-      p.mesh.rotation.x += p.spin * dt;
-      p.mesh.rotation.z += p.spin * 0.7 * dt;
+      const flatTele = !!(p.mesh.userData && (p.mesh.userData.teleRing || p.mesh.userData.teleFill));
+      if (!flatTele) {
+        p.mesh.rotation.x += p.spin * dt;
+        p.mesh.rotation.z += p.spin * 0.7 * dt;
+      }
       const t = p.life / p.maxLife;
       const s = Math.max(0.05, 1 - t * 0.85);
       const geoType = (p.mesh.geometry as THREE.BufferGeometry).type;
@@ -452,14 +458,19 @@ export class VFX {
         const grow = Math.min(1, t / 0.85);
         p.mesh.scale.setScalar(0.15 + grow * 0.85);
         const m = p.mesh.material as THREE.MeshBasicMaterial;
-        if (m && m.opacity !== undefined) m.opacity = Math.max(0, (1 - t) * 0.35);
+        if (m && m.opacity !== undefined) m.opacity = t < 0.72 ? 0.42 : Math.max(0, (1 - t) / 0.28) * 0.42;
       } else if (geoType === 'RingGeometry') {
         // Outer danger rings pulse slightly then fade (telegraphs don't explode)
         const pulse = p.gravity === 0 && p.spin > 0 && p.spin < 3 ? 1 + Math.sin(t * Math.PI) * 0.08 : 1 + t * 1.8;
         p.mesh.scale.setScalar(pulse);
         const m = p.mesh.material as THREE.MeshBasicMaterial;
         if (m && m.opacity !== undefined) {
-          m.opacity = Math.max(0, (1 - t) * (p.spin > 0 && p.spin < 3 ? 0.6 : 0.7));
+          const tele = !!(p.mesh.userData && p.mesh.userData.teleRing);
+          m.opacity = tele
+            ? t < 0.72
+              ? 0.92
+              : Math.max(0, (1 - t) / 0.28) * 0.92
+            : Math.max(0, (1 - t) * (p.spin > 0 && p.spin < 3 ? 0.6 : 0.7));
         }
       } else if (geoType === 'CircleGeometry') {
         p.mesh.scale.setScalar(s);
