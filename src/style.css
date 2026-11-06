@@ -786,6 +786,7 @@ html, body {
 }
 #bank-deposit-all, .bank-move {
   padding: 6px 8px;
+  min-height: 36px;
   background: #2a2418;
   border: 1px solid var(--gold-dim);
   color: var(--gold);
@@ -1537,6 +1538,7 @@ html, body {
     width: min(220px, calc(100vw - 16px));
     padding: 6px 8px;
   }
+  #bank-deposit-all, .bank-move { min-height: 44px; font-size: 14px; }
   .quest-head { font-size: 9px; margin-bottom: 2px; }
   .quest-line { font-size: 11px; }
   #dialogue {

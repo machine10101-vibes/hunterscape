@@ -2985,8 +2985,14 @@ export class Game {
     const have = countItem(from, id);
     const qty = all ? have : Math.min(1, have);
     const moved = this.transferStacks(from, to, id, qty, cap);
+    const name = ITEM_META[id]?.name ?? id;
     if (moved <= 0) {
       this.hud.chat(dir === 'deposit' ? 'The bank has no room for that.' : 'Your pack has no room for that.', 'system');
+    } else {
+      this.hud.chat(
+        dir === 'deposit' ? `You deposit ${name} ×${moved}.` : `You withdraw ${name} ×${moved}.`,
+        'loot',
+      );
     }
     this.hud.setBankOpen(true, this.save);
     this.refreshUI();
