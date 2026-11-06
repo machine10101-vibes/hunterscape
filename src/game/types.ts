@@ -1877,6 +1877,7 @@ export function defaultSave(): SaveData {
       hollowUnlocked: false,
       hearth_stew: 'none',
       bronze_bars: 'none',
+      lynx_pelts: 'none',
     },
   };
 }

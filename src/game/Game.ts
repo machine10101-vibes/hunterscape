@@ -164,6 +164,7 @@ import {
   HOLLOW_NEEDED,
   STEW_NEEDED,
   BARS_NEEDED,
+  PELT_NEEDED,
   GALE_NEEDED,
   FEATHER_NEEDED,
   FUR_NEEDED,
@@ -952,6 +953,7 @@ export class Game {
       { id: 'voss', x: 18.6, z: 10.6, rot: 0.4 },
       { id: 'ivo', x: 20.8, z: -13.6, rot: 2.2 },
       { id: 'sable', x: 7.2, z: -13.4, rot: 0.8 },
+      { id: 'nia', x: 8.4, z: 44.6, rot: 0.4 },
     ];
     for (const n of npcs) {
       const mesh = createTownNpc(n.id);
@@ -1677,6 +1679,7 @@ export class Game {
       if (obj.meta?.npc === 'voss') return 'Angler Voss';
       if (obj.meta?.npc === 'ivo') return 'Goatherd Ivo';
       if (obj.meta?.npc === 'sable') return 'Hermit Sable';
+      if (obj.meta?.npc === 'nia') return 'Tracker Nia';
       return 'Shopkeep Nessa';
     }
     return obj.kind;
@@ -2374,7 +2377,29 @@ export class Game {
       }
       this.save.quests.bronze_bars = 'done';
       this.grantXp('smithing', 70);
-      this.hud.chat('Harl nods at the pour. The bars stay his, and the Smithing stays yours.', 'loot');
+      this.hud.chat('Harl nods at the pour. The bars stay his, and the Smithing stays yours. Tracker Nia at the frost cairn wants a lynx pelt.', 'loot');
+    } else if (id === 'nia_accept') {
+      this.save.quests.lynx_pelts = 'active';
+      this.hud.chat('Quest started: bring Tracker Nia 1 lynx pelt from the frost cairn or the icemound.', 'system');
+    } else if (
+      id === 'nia_turnin' &&
+      this.save.quests.lynx_pelts === 'active' &&
+      countItem(this.save.inventory, 'lynx_pelt') >= PELT_NEEDED
+    ) {
+      if (!this.consumeId('lynx_pelt', PELT_NEEDED)) {
+        this.dialogue.hide();
+        return;
+      }
+      if (!this.addItem('camp_rations', 2)) {
+        this.addItem('lynx_pelt', PELT_NEEDED);
+        this.hud.chat('Your pack is full — Nia will not take the pelt until the rations will fit.', 'system');
+        this.dialogue.hide();
+        this.refreshUI();
+        return;
+      }
+      this.save.quests.lynx_pelts = 'done';
+      this.grantXp('attack', 55);
+      this.hud.chat('Nia takes the pelt and sets two camp rations in your pack.', 'loot');
     } else if (id === 'nessa_accept') {
       this.save.quests.lanterns = 'active';
       this.hud.chat('Quest started: bring Shopkeep Nessa 2 tin ore.', 'system');
