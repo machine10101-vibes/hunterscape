@@ -131,6 +131,8 @@ export function createItemMesh(id: string): THREE.Group {
   if (id === 'camp_rations') return makeRations();
   if (id === 'whisper_berries') return makeBerries();
   if (id === 'berry_stew') return makeStew();
+  if (id === 'newt_meat') return makeNewtMeat();
+  if (id === 'newt_skewer') return makeNewtSkewer();
   if (id === 'yeti_fur') return makeFur();
   if (id === 'frost_claw') return makeClaw();
   if (id === 'yeti_hide') return createYetiHideItem();
@@ -319,6 +321,25 @@ function makeBerries(): THREE.Group {
   sprig.scale.set(1.4, 0.35, 0.8);
   sprig.position.set(0.02, 0.04, -0.02);
   add(g, sprig);
+  return g;
+}
+
+function makeNewtMeat(): THREE.Group {
+  const g = new THREE.Group();
+  const cut = new THREE.Mesh(new THREE.SphereGeometry(0.08, 7, 5), std(0xc46a58, { roughness: 0.55 }));
+  cut.scale.set(1.2, 0.55, 0.8);
+  add(g, cut);
+  return g;
+}
+
+function makeNewtSkewer(): THREE.Group {
+  const g = new THREE.Group();
+  const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.28, 5), std(0x6a5030, { roughness: 0.7 }));
+  stick.rotation.z = 0.7;
+  add(g, stick);
+  const meat = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 5), std(0x8a4a32, { roughness: 0.5 }));
+  meat.scale.set(1.1, 0.7, 0.9);
+  add(g, meat);
   return g;
 }
 

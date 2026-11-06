@@ -210,6 +210,8 @@ export const ITEM_META: Record<
   camp_rations: { name: 'Camp Rations', icon: '🍖', stackable: true },
   whisper_berries: { name: 'Whisper Berries', icon: '🫐', stackable: true },
   berry_stew: { name: 'Berry Stew', icon: '🍲', stackable: true },
+  newt_meat: { name: 'Newt Meat', icon: '🥩', stackable: true },
+  newt_skewer: { name: 'Newt Skewer', icon: '🍢', stackable: true },
   yeti_fur: { name: 'Yeti Fur', icon: '🧣', stackable: true },
   frost_claw: { name: 'Frost Claw', icon: '🧊', stackable: true },
   yeti_hide: { name: 'Yeti Hide', icon: '🧥', stackable: true },
@@ -322,6 +324,7 @@ export interface CookRecipe {
 
 export const COOK_RECIPES: CookRecipe[] = [
   { raw: 'whisper_berries', cooked: 'berry_stew', xp: 42, level: 1, seconds: 2.2 },
+  { raw: 'newt_meat', cooked: 'newt_skewer', xp: 58, level: 5, seconds: 2.4 },
 ];
 
 /** Foods the pack can be eaten for. Heal is flat, like a bite of rations. */
@@ -329,15 +332,20 @@ export const FOOD: Record<string, { heal: number; label: string }> = {
   camp_rations: { heal: 25, label: 'camp rations' },
   boar_roast: { heal: 40, label: 'a boar roast' },
   berry_stew: { heal: 32, label: 'berry stew' },
+  newt_skewer: { heal: 38, label: 'a newt skewer' },
 };
 
 export function cookReady(save: SaveData): CookRecipe | null {
-  for (const recipe of COOK_RECIPES) {
-    if (save.skills.cooking.level < recipe.level) continue;
-    if (countItem(save.inventory, recipe.raw) <= 0) continue;
-    return recipe;
+  const ready = COOK_RECIPES.filter(
+    (recipe) => save.skills.cooking.level >= recipe.level && countItem(save.inventory, recipe.raw) > 0,
+  );
+  if (ready.length === 0) return null;
+  const needStew = save.quests.hearth_stew === 'active' && countItem(save.inventory, 'berry_stew') < 2;
+  if (needStew) {
+    const stew = ready.find((recipe) => recipe.cooked === 'berry_stew');
+    if (stew) return stew;
   }
-  return null;
+  return ready.reduce((best, recipe) => (recipe.level > best.level ? recipe : best));
 }
 
 export interface Recipe {
