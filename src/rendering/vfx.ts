@@ -233,6 +233,16 @@ export class VFX {
     );
   }
 
+  /** Green number for health gained from food. */
+  spawnHeal(world: THREE.Vector3, amount: number): void {
+    this.spawnFloatingText(
+      world.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.2, 1.85, 0)),
+      `+${amount}`,
+      '#8dce6a',
+      'heal',
+    );
+  }
+
   /** Green tick for poison, separate from a weapon hit. */
   spawnPoison(world: THREE.Vector3, amount: number): void {
     this.spawnFloatingText(

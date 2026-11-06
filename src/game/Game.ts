@@ -2196,9 +2196,12 @@ export class Game {
       this.hud.chat('You are already at full health.', 'system');
       return;
     }
+    const before = this.save.hp;
     this.consumeAt(idx, 1);
     this.save.hp = Math.min(this.save.maxHp, this.save.hp + heal);
-    this.hud.chat(`You eat ${label} and recover ${heal} health.`, 'loot');
+    const gained = Math.max(1, Math.round(this.save.hp - before));
+    this.hud.chat(`You eat ${label} and recover ${gained} health.`, 'loot');
+    this.vfx.spawnHeal(this.player.position.clone().setY(1.5), gained);
     this.refreshUI();
     this.persist();
   }
