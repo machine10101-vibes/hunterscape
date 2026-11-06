@@ -163,6 +163,7 @@ export function createItemMesh(id: string): THREE.Group {
   if (id === 'road_legs') return createRoadLegs();
   if (id === 'road_greaves') return createRoadGreaves();
   if (id === 'fox_fur') return createFoxFurItem();
+  if (id === 'lynx_pelt') return makeLynxPelt();
   if (id === 'dusk_fang') return createDuskFangItem();
   if (id === 'dusk_dagger') return createDuskDagger();
   if (id === 'dusk_cloak') return createDuskCloak();
@@ -251,6 +252,17 @@ function makeOre(color: number, dark: number): THREE.Group {
     chip.rotation.set(a, i, 0.3);
     add(g, chip);
   }
+  return g;
+}
+
+function makeLynxPelt(): THREE.Group {
+  const g = new THREE.Group();
+  const hide = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), std(0xd8c090, { roughness: 0.9 }));
+  hide.scale.set(1.3, 0.35, 1);
+  add(g, hide);
+  const ear = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.08, 4), std(0xb09868, { roughness: 0.88 }));
+  ear.position.set(0.07, 0.08, 0.03);
+  add(g, ear);
   return g;
 }
 

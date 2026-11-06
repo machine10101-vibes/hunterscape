@@ -73,6 +73,7 @@ export const PLOT_LANDMARKS: PlotLandmark[] = [
   { name: 'West berry patch', x: -31, z: 3 },
   { name: 'South berry patch', x: 3, z: -31 },
   { name: 'Frost cairn', x: 7.5, z: 42 },
+  { name: 'Cairn lynxes', x: 14.2, z: 47.4 },
   { name: 'Hunter stumps', x: -5.2, z: -41 },
   { name: 'Stream ford', x: 38, z: -8.4 },
   { name: 'Stone fold', x: -40, z: 5.5 },

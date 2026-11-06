@@ -60,7 +60,7 @@ export function getItemIcon(id: string): HTMLCanvasElement {
   if (id === 'frost_boots' || id === 'briar_boots' || id === 'dusk_boots' || id === 'delver_boots' || id === 'mire_boots' || id === 'bone_boots' || id === 'gale_boots' || id === 'stag_boots' || id === 'weir_boots' || id === 'ridge_boots' || id === 'hollow_boots') mesh.rotation.set(0.6, 0.4, 0);
   if (id === 'wolf_pelt') mesh.rotation.set(0.4, 0.6, 0.1);
   if (id === 'wolf_fang' || id === 'boar_tusk' || id === 'dusk_fang') mesh.rotation.set(0.2, 0.5, 0.6);
-  if (id === 'fox_fur') mesh.rotation.set(0.35, 0.7, 0.1);
+  if (id === 'fox_fur' || id === 'lynx_pelt') mesh.rotation.set(0.35, 0.7, 0.1);
   if (id === 'soot_feather') mesh.rotation.set(0.2, 0.5, 0.4);
   if (id === 'charcoal') mesh.rotation.set(0.4, 0.6, 0.1);
   if (id === 'beetle_shell') mesh.rotation.set(0.5, 0.4, 0.2);
