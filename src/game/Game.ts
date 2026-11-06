@@ -166,6 +166,7 @@ import {
   BARS_NEEDED,
   PELT_NEEDED,
   SKIN_NEEDED,
+  MARTEN_NEEDED,
   GALE_NEEDED,
   FEATHER_NEEDED,
   FUR_NEEDED,
@@ -496,6 +497,7 @@ export class Game {
     this.hud.chat('Ford newts sit by the stream ford and the stone fold. A skin comes off the back.', 'system');
     this.hud.chat('Wader Reed stands at the stream ford. The newt skin is his once Nia has her pelt.', 'system');
     this.hud.chat('Pine martens den at the south-west copse and the hunter stumps. A fur comes off the hide.', 'system');
+    this.hud.chat('Trapper Wynn waits at the hunter stumps. The marten fur is his once Reed has his skin.', 'system');
     this.hud.chat('Scroll, pinch, or use + / − to zoom the camera.', 'system');
 
     window.addEventListener('resize', () => this.onResize());
@@ -959,6 +961,7 @@ export class Game {
       { id: 'sable', x: 7.2, z: -13.4, rot: 0.8 },
       { id: 'nia', x: 8.4, z: 44.6, rot: 0.4 },
       { id: 'reed', x: 35.4, z: -7.2, rot: 0.6 },
+      { id: 'wynn', x: -10.4, z: -37.2, rot: 0.5 },
     ];
     for (const n of npcs) {
       const mesh = createTownNpc(n.id);
@@ -1741,6 +1744,7 @@ export class Game {
       if (obj.meta?.npc === 'sable') return 'Hermit Sable';
       if (obj.meta?.npc === 'nia') return 'Tracker Nia';
       if (obj.meta?.npc === 'reed') return 'Wader Reed';
+      if (obj.meta?.npc === 'wynn') return 'Trapper Wynn';
       return 'Shopkeep Nessa';
     }
     return obj.kind;
@@ -2489,7 +2493,29 @@ export class Game {
       }
       this.save.quests.newt_skins = 'done';
       this.grantXp('defence', 50);
-      this.hud.chat('Reed takes the skin and sets a berry stew in your pack.', 'loot');
+      this.hud.chat('Reed takes the skin and sets a berry stew in your pack. Trapper Wynn at the hunter stumps wants a marten fur.', 'loot');
+    } else if (id === 'wynn_accept') {
+      this.save.quests.marten_furs = 'active';
+      this.hud.chat('Quest started: bring Trapper Wynn 1 marten fur from the hunter stumps or the south-west copse.', 'system');
+    } else if (
+      id === 'wynn_turnin' &&
+      this.save.quests.marten_furs === 'active' &&
+      countItem(this.save.inventory, 'marten_fur') >= MARTEN_NEEDED
+    ) {
+      if (!this.consumeId('marten_fur', MARTEN_NEEDED)) {
+        this.dialogue.hide();
+        return;
+      }
+      if (!this.addItem('camp_rations', 2)) {
+        this.addItem('marten_fur', MARTEN_NEEDED);
+        this.hud.chat('Your pack is full — Wynn will not take the fur until the rations will fit.', 'system');
+        this.dialogue.hide();
+        this.refreshUI();
+        return;
+      }
+      this.save.quests.marten_furs = 'done';
+      this.grantXp('strength', 55);
+      this.hud.chat('Wynn takes the fur and sets two camp rations in your pack.', 'loot');
     } else if (id === 'nessa_accept') {
       this.save.quests.lanterns = 'active';
       this.hud.chat('Quest started: bring Shopkeep Nessa 2 tin ore.', 'system');
