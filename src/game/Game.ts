@@ -175,7 +175,7 @@ import {
   type NpcId,
 } from './quests';
 
-type InteractKind = 'tree' | 'rock' | 'bush' | 'fire' | 'dummy' | 'yeti' | 'orc' | 'wolf' | 'boar' | 'spider' | 'fox' | 'lynx' | 'newt' | 'crow' | 'beetle' | 'toad' | 'skeleton' | 'hawk' | 'stag' | 'eel' | 'goat' | 'adder' | 'forge' | 'bank' | 'npc';
+type InteractKind = 'tree' | 'rock' | 'bush' | 'fire' | 'dummy' | 'yeti' | 'orc' | 'wolf' | 'boar' | 'spider' | 'fox' | 'lynx' | 'newt' | 'marten' | 'crow' | 'beetle' | 'toad' | 'skeleton' | 'hawk' | 'stag' | 'eel' | 'goat' | 'adder' | 'forge' | 'bank' | 'npc';
 type ForgeBench = 'camp' | 'briar';
 
 interface WorldObject {
@@ -495,6 +495,7 @@ export class Game {
     this.hud.chat('Pale cairn lynxes hunt the frost cairn and the icemound. A pelt comes off the hide.', 'system');
     this.hud.chat('Ford newts sit by the stream ford and the stone fold. A skin comes off the back.', 'system');
     this.hud.chat('Wader Reed stands at the stream ford. The newt skin is his once Nia has her pelt.', 'system');
+    this.hud.chat('Pine martens den at the south-west copse and the hunter stumps. A fur comes off the hide.', 'system');
     this.hud.chat('Scroll, pinch, or use + / − to zoom the camera.', 'system');
 
     window.addEventListener('resize', () => this.onResize());
@@ -1337,10 +1338,37 @@ export class Game {
         pose: poseMireToad,
       });
     });
+
+    const martenHomes = [
+      { x: -30.2, z: -33.4 },
+      { x: -2.4, z: -35.2 },
+    ];
+    martenHomes.forEach((home, i) => {
+      const mesh = createDuskFox();
+      tintMarten(mesh);
+      this.spawnFoe('marten', mesh, home, `marten_${i}`, 16, {
+        aggroR: 3.6,
+        range: 1.35,
+        leash: 5,
+        chase: 2.3,
+        dmgMin: 1,
+        dmgMax: 4,
+        knock: 0.8,
+        respawn: 18,
+        label: 'Pine Marten',
+        snarl: 'A pine marten chirrs and lunges!',
+        engage: 'A pine marten engages you!',
+        biteLine: 'The pine marten rakes you for',
+        loseLine: 'The pine marten slips back into the brush.',
+        returnLine: 'A pine marten pads back into the brush.',
+        corpse: 'The pine marten is dead. Another will den in the brush.',
+        pose: poseDuskFox,
+      });
+    });
   }
 
   private spawnFoe(
-    kind: 'wolf' | 'boar' | 'spider' | 'fox' | 'lynx' | 'newt' | 'crow' | 'beetle' | 'toad' | 'skeleton' | 'hawk' | 'stag' | 'eel' | 'goat' | 'adder',
+    kind: 'wolf' | 'boar' | 'spider' | 'fox' | 'lynx' | 'newt' | 'marten' | 'crow' | 'beetle' | 'toad' | 'skeleton' | 'hawk' | 'stag' | 'eel' | 'goat' | 'adder',
     mesh: THREE.Group,
     home: { x: number; z: number },
     id: string,
@@ -1362,7 +1390,7 @@ export class Game {
     };
     this.objects.push(obj);
     this.foes.push({ obj, aggro: false, cd: 1.15, biteT: 0, hitDone: false, ...stats });
-    const markY = kind === 'hawk' ? 1.35 : kind === 'stag' ? 1.25 : kind === 'goat' ? 0.95 : kind === 'adder' ? 0.42 : kind === 'eel' ? 0.55 : kind === 'crow' ? 0.95 : kind === 'skeleton' ? 1.05 : kind === 'spider' ? 0.34 : kind === 'beetle' ? 0.48 : kind === 'toad' || kind === 'newt' ? 0.58 : kind === 'fox' || kind === 'lynx' ? 0.62 : 0.72;
+    const markY = kind === 'hawk' ? 1.35 : kind === 'stag' ? 1.25 : kind === 'goat' ? 0.95 : kind === 'adder' ? 0.42 : kind === 'eel' ? 0.55 : kind === 'crow' ? 0.95 : kind === 'skeleton' ? 1.05 : kind === 'spider' ? 0.34 : kind === 'beetle' ? 0.48 : kind === 'toad' || kind === 'newt' ? 0.58 : kind === 'fox' || kind === 'lynx' || kind === 'marten' ? 0.62 : 0.72;
     addWeaknessMark(mesh, monsterProfile(kind).weak, markY);
   }
 
@@ -1371,7 +1399,7 @@ export class Game {
   }
 
   private isBeast(kind: InteractKind): boolean {
-    return kind === 'wolf' || kind === 'boar' || kind === 'spider' || kind === 'fox' || kind === 'lynx' || kind === 'newt' || kind === 'crow' || kind === 'beetle' || kind === 'toad' || kind === 'skeleton' || kind === 'hawk' || kind === 'stag' || kind === 'eel' || kind === 'goat' || kind === 'adder';
+    return kind === 'wolf' || kind === 'boar' || kind === 'spider' || kind === 'fox' || kind === 'lynx' || kind === 'newt' || kind === 'marten' || kind === 'crow' || kind === 'beetle' || kind === 'toad' || kind === 'skeleton' || kind === 'hawk' || kind === 'stag' || kind === 'eel' || kind === 'goat' || kind === 'adder';
   }
 
   private bindInput(canvas: HTMLCanvasElement): void {
@@ -2141,6 +2169,8 @@ export class Game {
       this.hud.chat(`A cairn lynx. The pale pelt is the prize. ${this.foeCard('lynx')}`, 'combat');
     else if (all.kind === 'newt')
       this.hud.chat(`A ford newt. The skin on its back is the prize. ${this.foeCard('newt')}`, 'combat');
+    else if (all.kind === 'marten')
+      this.hud.chat(`A pine marten. The fur is the prize. ${this.foeCard('marten')}`, 'combat');
     else if (all.kind === 'crow')
       this.hud.chat(`A cinder crow. Soot feathers and charcoal are what Burner Holt works into the cinder patterns. ${this.foeCard('crow')}`, 'combat');
     else if (all.kind === 'beetle')
@@ -3943,6 +3973,9 @@ export class Game {
       this.hud.chat('The ford newt drops. A skin comes free of the back.', 'combat');
       if (this.addItem('newt_skin', 1)) this.hud.chat('You peel a Newt Skin.', 'loot');
       if (Math.random() < 0.45 && this.addItem('newt_meat', 1)) this.hud.chat('You cut a strip of Newt Meat.', 'loot');
+    } else if (target.kind === 'marten') {
+      this.hud.chat('The pine marten drops. A russet fur comes free.', 'combat');
+      if (this.addItem('marten_fur', 1)) this.hud.chat('You skin a Marten Fur.', 'loot');
     } else if (target.kind === 'fox') {
       this.hud.chat('The dusk fox drops. Fur and a fang come free of the hide.', 'combat');
       if (this.addItem('fox_fur', 1)) this.hud.chat('You skin a Fox Fur.', 'loot');
@@ -4713,6 +4746,7 @@ export class Game {
       else if (o.kind === 'fox') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#d07048' });
       else if (o.kind === 'lynx') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#d8c48a' });
       else if (o.kind === 'newt') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#7a9a48' });
+      else if (o.kind === 'marten') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#a06038' });
       else if (o.kind === 'crow') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#5c5348' });
       else if (o.kind === 'beetle') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#6a8a48' });
       else if (o.kind === 'toad') markers.push({ x: o.mesh.position.x, z: o.mesh.position.z, color: '#3e7a3a' });
@@ -4812,6 +4846,20 @@ function tintNewt(root: THREE.Object3D): void {
     const mat = src.clone();
     mat.color.lerp(olive, 0.35);
     if (mat.emissive) mat.emissive.multiplyScalar(0.35);
+    mesh.material = mat;
+  });
+}
+
+/** Shift a dusk-fox mesh toward the russet of a pine marten. */
+function tintMarten(root: THREE.Object3D): void {
+  const russet = new THREE.Color(0x8a4a28);
+  root.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    const src = mesh.material as THREE.MeshStandardMaterial;
+    if (!src?.color) return;
+    const mat = src.clone();
+    mat.color.lerp(russet, 0.62);
     mesh.material = mat;
   });
 }

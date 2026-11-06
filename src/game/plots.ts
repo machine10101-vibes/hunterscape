@@ -84,6 +84,7 @@ export const PLOT_LANDMARKS: PlotLandmark[] = [
   { name: 'Thicket verge', x: 34, z: -38 },
   { name: 'Ridge stones', x: -38, z: 38 },
   { name: 'South-west copse', x: -36, z: -40 },
+  { name: 'Pine martens', x: -30.2, z: -33.4 },
 ];
 
 export function plotId(col: number, row: number): string {
