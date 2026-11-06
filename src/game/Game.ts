@@ -168,6 +168,7 @@ import {
   PELT_NEEDED,
   SKIN_NEEDED,
   MARTEN_NEEDED,
+  FOOT_NEEDED,
   GALE_NEEDED,
   FEATHER_NEEDED,
   FUR_NEEDED,
@@ -500,6 +501,7 @@ export class Game {
     this.hud.chat('Pine martens den at the south-west copse and the hunter stumps. A fur comes off the hide.', 'system');
     this.hud.chat('Trapper Wynn waits at the hunter stumps. The marten fur is his once Reed has his skin.', 'system');
     this.hud.chat('Stone hares bolt around the ridge stones. A foot comes off the hide.', 'system');
+    this.hud.chat('Mason Pim waits at the ridge stones. The hare foot is his once Wynn has the fur.', 'system');
     this.hud.chat('Scroll, pinch, or use + / − to zoom the camera.', 'system');
 
     window.addEventListener('resize', () => this.onResize());
@@ -964,6 +966,7 @@ export class Game {
       { id: 'nia', x: 8.4, z: 44.6, rot: 0.4 },
       { id: 'reed', x: 35.4, z: -7.2, rot: 0.6 },
       { id: 'wynn', x: -10.4, z: -37.2, rot: 0.5 },
+      { id: 'pim', x: -36.8, z: 34.6, rot: 0.4 },
     ];
     for (const n of npcs) {
       const mesh = createTownNpc(n.id);
@@ -1775,6 +1778,7 @@ export class Game {
       if (obj.meta?.npc === 'nia') return 'Tracker Nia';
       if (obj.meta?.npc === 'reed') return 'Wader Reed';
       if (obj.meta?.npc === 'wynn') return 'Trapper Wynn';
+      if (obj.meta?.npc === 'pim') return 'Mason Pim';
       return 'Shopkeep Nessa';
     }
     return obj.kind;
@@ -2547,7 +2551,29 @@ export class Game {
       }
       this.save.quests.marten_furs = 'done';
       this.grantXp('strength', 55);
-      this.hud.chat('Wynn takes the fur and sets two camp rations in your pack.', 'loot');
+      this.hud.chat('Wynn takes the fur and sets two camp rations in your pack. Mason Pim at the ridge stones wants a hare foot.', 'loot');
+    } else if (id === 'pim_accept') {
+      this.save.quests.hare_feet = 'active';
+      this.hud.chat('Quest started: bring Mason Pim 1 hare foot from the ridge stones.', 'system');
+    } else if (
+      id === 'pim_turnin' &&
+      this.save.quests.hare_feet === 'active' &&
+      countItem(this.save.inventory, 'hare_foot') >= FOOT_NEEDED
+    ) {
+      if (!this.consumeId('hare_foot', FOOT_NEEDED)) {
+        this.dialogue.hide();
+        return;
+      }
+      if (!this.addItem('camp_rations', 2)) {
+        this.addItem('hare_foot', FOOT_NEEDED);
+        this.hud.chat('Your pack is full — Pim will not take the foot until the rations will fit.', 'system');
+        this.dialogue.hide();
+        this.refreshUI();
+        return;
+      }
+      this.save.quests.hare_feet = 'done';
+      this.grantXp('attack', 50);
+      this.hud.chat('Pim takes the foot and sets two camp rations in your pack.', 'loot');
     } else if (id === 'nessa_accept') {
       this.save.quests.lanterns = 'active';
       this.hud.chat('Quest started: bring Shopkeep Nessa 2 tin ore.', 'system');
