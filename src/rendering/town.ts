@@ -893,6 +893,16 @@ export function createTownNpc(id: NpcId): THREE.Group {
     g.add(nameplate('Sable'));
     return g;
   }
+  if (id === 'nia') {
+    const g = npcBody(0x6a5a3a, 0x3a2414, true);
+    const bow = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.012, 4, 10, Math.PI), mat(0x8a6840));
+    bow.rotation.z = Math.PI / 2;
+    bow.position.set(-0.22, 0.85, 0.04);
+    add(g, bow);
+    g.name = 'npc_nia';
+    g.add(nameplate('Nia'));
+    return g;
+  }
   if (id === 'quill') {
     const g = npcBody(0x314050, 0x6a5038, true);
     const glove = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.08), mat(0xc4a060));

@@ -1,6 +1,6 @@
 import { countItem, type SaveData } from './types';
 
-export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve' | 'calder' | 'holt' | 'odell' | 'wren' | 'marr' | 'quill' | 'pell' | 'voss' | 'ivo' | 'sable';
+export type NpcId = 'elspeth' | 'harl' | 'nessa' | 'bram' | 'maeve' | 'calder' | 'holt' | 'odell' | 'wren' | 'marr' | 'quill' | 'pell' | 'voss' | 'ivo' | 'sable' | 'nia';
 export type QuestStage = 'none' | 'active' | 'done';
 
 export interface QuestState {
@@ -21,6 +21,7 @@ export interface QuestState {
   hollow_adders: QuestStage;
   hearth_stew: QuestStage;
   bronze_bars: QuestStage;
+  lynx_pelts: QuestStage;
   wolfKills: number;
   boarKills: number;
   briarUnlocked: boolean;
@@ -56,6 +57,7 @@ export function defaultQuests(): QuestState {
     hollow_adders: 'none',
     hearth_stew: 'none',
     bronze_bars: 'none',
+    lynx_pelts: 'none',
     wolfKills: 0,
     boarKills: 0,
     briarUnlocked: false,
@@ -88,6 +90,7 @@ export const RIDGE_NEEDED = 2;
 export const HOLLOW_NEEDED = 2;
 export const STEW_NEEDED = 2;
 export const BARS_NEEDED = 2;
+export const PELT_NEEDED = 1;
 
 export interface DialogueOption {
   id: string;
@@ -190,7 +193,7 @@ export function dialogueFor(save: SaveData, npc: NpcId): DialogueScript {
     if (q.bronze_bars === 'done') {
       return {
         speaker: 'Smith Harl',
-        body: 'The anvil is yours, and the Thornrest forge still smelts bronze from one copper and one tin. Sword: 1 pelt, 2 fangs, 1 copper, 1 log. Shield: 2 pelts, 1 log. Vest: 3 pelts, 1 fang. Boots: 2 pelts, 1 log.',
+        body: 'The anvil is yours, and the Thornrest forge still smelts bronze from one copper and one tin. Tracker Nia at the frost cairn wants a lynx pelt. Sword: 1 pelt, 2 fangs, 1 copper, 1 log. Shield: 2 pelts, 1 log. Vest: 3 pelts, 1 fang. Boots: 2 pelts, 1 log.',
         options: [CLOSE],
       };
     }
@@ -591,6 +594,46 @@ export function dialogueFor(save: SaveData, npc: NpcId): DialogueScript {
     };
   }
 
+  if (npc === 'nia') {
+    const pelts = countItem(save.inventory, 'lynx_pelt');
+    if (q.bronze_bars !== 'done' && q.lynx_pelts === 'none') {
+      return {
+        speaker: 'Tracker Nia',
+        body: 'Pale lynxes hunt the frost cairn and the icemound. When Smith Harl has his bronze bars, bring me a lynx pelt from one of them.',
+        options: [CLOSE],
+      };
+    }
+    if (q.lynx_pelts === 'none') {
+      return {
+        speaker: 'Tracker Nia',
+        body: 'Harl has his bars. The pale cats are still on the stones. Bring me 1 lynx pelt.',
+        options: [
+          { id: 'nia_accept', label: 'I will bring the pelt.' },
+          { id: 'close', label: 'The cairn can wait.' },
+        ],
+      };
+    }
+    if (q.lynx_pelts === 'active' && pelts < PELT_NEEDED) {
+      return {
+        speaker: 'Tracker Nia',
+        body: `I still need ${PELT_NEEDED} lynx pelt (you have ${pelts}). They hunt just north of this cairn, and again at the icemound.`,
+        options: [CLOSE],
+      };
+    }
+    if (q.lynx_pelts === 'active') {
+      return {
+        speaker: 'Tracker Nia',
+        body: 'A pale pelt. That will do. I will set rations in your pack for the walk back.',
+        options: [{ id: 'nia_turnin', label: 'Take the pelt.' }],
+      };
+    }
+    return {
+      speaker: 'Tracker Nia',
+      body: 'The stones still have lynxes if you want another pelt. I have what I asked for.',
+      options: [CLOSE],
+    };
+  }
+
   if (npc === 'maeve') {
     const silk = countItem(save.inventory, 'spider_silk');
     if (q.silk_loom === 'none') {
@@ -678,6 +721,7 @@ const FINISHED_QUESTS: { key: keyof QuestState; name: string }[] = [
   { key: 'hollow_adders', name: 'North hollow' },
   { key: 'hearth_stew', name: 'Hearth stew' },
   { key: 'bronze_bars', name: 'Bronze bars' },
+  { key: 'lynx_pelts', name: 'Cairn pelt' },
 ];
 
 /** Every open task, including ones the corner tracker has no room to show. */
@@ -770,6 +814,12 @@ export function journalLines(save: SaveData): string[] {
   } else if (q.bronze_bars === 'active') {
     const bars = countItem(save.inventory, 'bronze_bar');
     lines.push(bars >= BARS_NEEDED ? 'Forge: return to Smith Harl.' : `Forge: bronze bars ${bars}/${BARS_NEEDED}`);
+  }
+  if (q.bronze_bars === 'done' && q.lynx_pelts === 'none') {
+    lines.push('Tracker Nia wants a lynx pelt from the frost cairn.');
+  } else if (q.lynx_pelts === 'active') {
+    const pelts = countItem(save.inventory, 'lynx_pelt');
+    lines.push(pelts >= PELT_NEEDED ? 'Cairn: return to Tracker Nia.' : `Cairn: lynx pelt ${pelts}/${PELT_NEEDED}`);
   }
   if (q.ridge_goats === 'done' && q.hollow_adders === 'none') {
     lines.push('Hermit Sable needs 2 adder fangs in the north hollow.');
