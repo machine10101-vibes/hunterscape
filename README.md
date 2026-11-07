@@ -51,7 +51,7 @@ The pixel size follows the window height. Override it with `?px=3` (any integer 
 | 1–5 | Strike, Lunge, Smash, Guard, Rend |
 | 6 | Arm the weapon special |
 | K | Skills and stance |
-| J | Quest journal. The corner list stays at six tasks and says when more are waiting. The journal counts every open task and the ones you have finished. |
+| J | Quest journal. Open tasks and finished ones live here, so the play screen stays clear. |
 | C | Gear |
 | V | Model Studio |
 | P | Plot survey (500 sections) |

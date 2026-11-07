@@ -366,9 +366,34 @@ button.forge-craft:hover, #bank-deposit-all:hover, .bank-move:hover, .dialogue-o
 }
 #studio-model-name { font-family: var(--font-display); font-size: 11px; }
 
-/* —— Chat / tracker / dialogue —— */
-#chat-log { font-size: 17px; line-height: 1; }
-.chat-line { border-left-width: 3px; padding-left: 6px; margin-bottom: 3px; }
+/* —— Chat stays as a few floating lines. The quest list lives in the journal. —— */
+#quest-tracker { display: none; }
+
+#chat.panel {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  max-height: 58px;
+}
+#chat.panel::after { display: none; }
+.chat-head { display: none; }
+#chat-log {
+  max-height: 54px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 18px;
+  background: transparent;
+}
+.chat-line {
+  border-left: none;
+  padding-left: 0;
+  margin-bottom: 2px;
+  color: #f3efe2;
+  text-shadow: 2px 2px 0 #000;
+}
+
+#key-hints { display: none; }
 .quest-line { font-size: 17px; line-height: 1; color: var(--gold); }
 #dialogue { border-color: var(--edge); }
 #dialogue-speaker { font-family: var(--font-display); font-size: 9px; letter-spacing: 0; }
@@ -415,52 +440,6 @@ button.forge-craft:hover, #bank-deposit-all:hover, .bank-move:hover, .dialogue-o
 .float-xp.heal { font-size: 12px; }
 .float-xp.miss { font-size: 9px; letter-spacing: 0; }
 
-/* —— Desktop layout: reference-style HUD (orbs flank the hotbar, minimap bottom-left, icon strip bottom-right) —— */
-@media (min-width: 721px) {
-  #hud-top-right, #orbs { display: contents; }
-
-  .ab-kicker { display: none; }
-  .ab-slot { width: 58px; height: 66px; padding: 7px 2px 4px; }
-  .ab-spec { width: 58px; min-width: 58px; }
-  #action-bar { bottom: calc(16px + var(--safe-bottom)); }
-  #hp-hearts { bottom: calc(112px + var(--safe-bottom)); }
-
-  #orbs .orb { position: absolute; bottom: calc(26px + var(--safe-bottom)); width: 56px; height: 56px; }
-  #orb-hp { left: calc(50% - 300px); }
-  #orb-pray { left: calc(50% + 252px); }
-  #orb-stam { left: calc(50% + 316px); }
-
-  #minimap-wrap {
-    position: absolute;
-    left: 14px;
-    bottom: calc(14px + var(--safe-bottom));
-    width: 150px;
-    height: 150px;
-  }
-
-  #chat { bottom: calc(190px + var(--safe-bottom)); left: 14px; width: min(340px, 40vw); }
-
-  #hud-nav {
-    top: auto;
-    left: auto;
-    right: 14px;
-    bottom: calc(16px + var(--safe-bottom));
-    flex-direction: row;
-    padding: 5px;
-  }
-  #hud-nav button { min-width: 0; padding: 4px; position: relative; }
-  #hud-nav .nav-txt { display: none; }
-  .nav-ico { width: 30px; height: 30px; font-size: 15px; }
-  #hud-nav .nav-key { position: absolute; right: -2px; bottom: -2px; font-size: 6px; padding: 1px 2px; }
-
-  #inventory { bottom: calc(86px + var(--safe-bottom)); right: 14px; }
-  #btn-inventory { right: 296px; bottom: calc(16px + var(--safe-bottom)); }
-
-  #quest-tracker { top: calc(14px + var(--safe-top)); left: auto; right: 14px; width: min(260px, 26vw); }
-  #skills-panel, #journal-panel, #gear-panel { top: calc(14px + var(--safe-top)); left: 14px; }
-  #touch-hint { top: calc(70px + var(--safe-top)); }
-}
-
 @media (max-width: 720px) {
   .orb-core { font-size: 8px; }
   .orb-label { display: none; }
@@ -470,9 +449,179 @@ button.forge-craft:hover, #bank-deposit-all:hover, .bank-move:hover, .dialogue-o
 }
 
 @media (max-width: 480px) {
+  #touch-hint { display: none; }
   #hp-hearts { display: none; }
   #hud-nav button { font-size: 8px; }
   .quest-line { font-size: 15px; }
   #chat-log { font-size: 15px; }
   #dialogue-body { font-size: 18px; }
+}
+
+/* Reference dock: one bar along the bottom. Map left, hearts over the slots,
+   focus orb on the left end, stamina orb on the right, icons bottom-right.
+   Panels stay closed until their icon is pressed. */
+@media (min-width: 900px) {
+  #hud-top-right, #orbs { display: contents; }
+  #touch-hint { display: none; }
+  .orb-label { display: none; }
+  #orb-hp { display: none; }
+
+  #minimap-wrap {
+    position: absolute;
+    left: 12px;
+    bottom: calc(10px + var(--safe-bottom));
+    width: 124px;
+    height: 124px;
+    border-width: 3px;
+    border-color: #2a241c;
+    box-shadow: 0 0 0 2px #0a0908, 0 0 0 4px #3a342c;
+  }
+  #minimap-label { display: none; }
+
+  #chat {
+    left: 12px;
+    bottom: calc(146px + var(--safe-bottom));
+    width: 280px;
+    max-height: 52px;
+  }
+
+  #action-bar {
+    bottom: calc(10px + var(--safe-bottom));
+    gap: 4px;
+    padding: 5px;
+    background: rgba(10, 12, 14, 0.92);
+    border: 2px solid #3c4650;
+    box-shadow: 0 0 0 2px #07080a, 0 3px 0 rgba(0, 0, 0, 0.45);
+  }
+  .ab-kicker, .ab-name, .ab-spec-name { display: none; }
+  .ab-slot, .ab-spec {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    padding: 2px;
+    justify-content: center;
+    gap: 0;
+  }
+  .ab-icon {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: none;
+    box-shadow: none;
+    font-size: 18px;
+  }
+  .ab-spec { border-color: #3c4650; color: #d7ecff; }
+  .ab-spec::before {
+    content: "✦";
+    font-size: 16px;
+    line-height: 1;
+    color: #f0a030;
+  }
+  .ab-spec-cost { display: none; }
+  .ab-key {
+    top: 2px;
+    right: 3px;
+    font-size: 7px;
+  }
+
+  #hp-hearts {
+    bottom: calc(76px + var(--safe-bottom));
+    gap: 3px;
+    filter: drop-shadow(1px 1px 0 #140608);
+  }
+  #hp-hearts i { width: 15px; height: 13px; }
+
+  #orbs .orb {
+    position: absolute;
+    width: 56px;
+    height: 56px;
+    bottom: calc(11px + var(--safe-bottom));
+  }
+  #orbs #orb-pray { left: calc(50% - 201px); }
+  #orbs #orb-stam {
+    left: calc(50% + 148px);
+    width: 70px;
+    height: 70px;
+    bottom: calc(10px + var(--safe-bottom));
+  }
+  #orbs .orb-core {
+    font-family: var(--font-ui);
+    font-size: 18px;
+    font-weight: 400;
+    border: none;
+    box-shadow: inset 3px 3px 0 rgba(255, 255, 255, 0.28), inset -3px -3px 0 rgba(0, 0, 0, 0.35);
+  }
+  #orbs #orb-stam .orb-core { font-size: 22px; }
+  .pray-core { background: radial-gradient(circle at 35% 30%, #7ee0ea, #1a7e92 46%, #0c3c48); }
+  .stam-core { background: radial-gradient(circle at 35% 30%, #ffd27a, #f08a22 48%, #8a3e08); }
+  .pray-fill { stroke: #7ee0ea; }
+  .stam-fill { stroke: #ffb03a; }
+
+  #hud-nav {
+    top: auto;
+    left: auto;
+    right: 58px;
+    bottom: calc(12px + var(--safe-bottom));
+    flex-direction: row;
+    gap: 4px;
+    padding: 0;
+    background: none;
+    border: none;
+    box-shadow: none;
+  }
+  #hud-nav button {
+    width: 42px;
+    height: 42px;
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    justify-content: center;
+    gap: 0;
+  }
+  #hud-nav .nav-txt, #hud-nav .nav-key { display: none; }
+  #hud-nav .nav-ico {
+    width: 26px;
+    height: 26px;
+    border: none;
+    background: none;
+    box-shadow: none;
+    font-size: 16px;
+  }
+
+  #btn-inventory {
+    right: 12px;
+    bottom: calc(12px + var(--safe-bottom));
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    font-size: 18px;
+    box-shadow: 0 0 0 2px #07080a;
+  }
+
+  #key-hints {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    position: absolute;
+    right: 14px;
+    bottom: calc(64px + var(--safe-bottom));
+    pointer-events: none;
+    font-family: var(--font-display);
+    font-size: 8px;
+    line-height: 1.6;
+    color: #c8c4b8;
+    text-shadow: 1px 1px 0 #000, -1px 0 0 #000, 0 -1px 0 #000;
+  }
+  #key-hints kbd { font-family: inherit; color: #fff; }
+
+  #inventory {
+    right: 12px;
+    bottom: calc(88px + var(--safe-bottom));
+    width: 220px;
+  }
+  #skills-panel, #journal-panel, #gear-panel {
+    top: calc(14px + var(--safe-top));
+    left: 14px;
+  }
 }

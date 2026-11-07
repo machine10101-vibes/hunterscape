@@ -236,7 +236,7 @@ export class HUD {
       this.setInventoryOpen(false);
     } else if (!this.desktopInvInited) {
       this.desktopInvInited = true;
-      this.setInventoryOpen(true);
+      this.setInventoryOpen(false);
     }
   }
 
@@ -698,7 +698,7 @@ export class HUD {
     const scale = 3.2;
     const ox = Math.floor(playerX * scale);
     const oz = Math.floor(playerZ * scale);
-    const palette = ['#2c4a2a', '#34562f', '#3d6335', '#27431f'];
+    const palette = ['#1a2c1c', '#223826', '#142016', '#2a4030'];
     const cols = Math.ceil(w / cell) + 1;
     const rows = Math.ceil(h / cell) + 1;
     const gx0 = Math.floor((ox - cx) / cell);
@@ -726,20 +726,13 @@ export class HUD {
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate(Math.round(playerRotY / (Math.PI / 4)) * (Math.PI / 4));
-    ctx.fillStyle = '#0b0e12';
-    ctx.fillRect(-6, -10, 12, 18);
-    ctx.fillStyle = '#ffd866';
-    ctx.fillRect(-2, -8, 4, 4);
-    ctx.fillRect(-4, -4, 8, 4);
-    ctx.fillRect(-4, 0, 8, 6);
+    ctx.fillStyle = '#041208';
+    ctx.fillRect(-5, -9, 10, 16);
+    ctx.fillStyle = '#e8ffe8';
+    ctx.fillRect(-2, -7, 4, 4);
+    ctx.fillRect(-4, -3, 8, 4);
+    ctx.fillRect(-2, 1, 4, 4);
     ctx.restore();
-
-    ctx.fillStyle = '#0b0e12';
-    ctx.fillRect(cx - 8, 2, 16, 14);
-    ctx.fillStyle = '#ffd866';
-    ctx.fillRect(cx - 2, 4, 4, 2);
-    ctx.fillRect(cx - 4, 8, 8, 2);
-    ctx.fillRect(cx - 6, 12, 12, 2);
   }
 }
 
