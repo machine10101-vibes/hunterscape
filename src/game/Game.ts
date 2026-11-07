@@ -4795,6 +4795,11 @@ export class Game {
     this.lookSmooth.set(lookX, this.player.position.y + 1.05 + pull * 0.55, lookZ);
     this.camLook.lerp(this.lookSmooth, follow);
     this.camera.lookAt(this.camLook);
+    // Density falls as the camera pulls back, so the camp does not bleach into the fog.
+    if (this.scene.fog instanceof THREE.FogExp2) {
+      this.scene.fog.density = 0.016 / Math.max(0.85, z);
+    }
+    this.post.setZoom(z);
     this.sun.position.set(this.player.position.x + 18, 28, this.player.position.z + 10);
     this.rim.position.set(this.player.position.x - 14, 10, this.player.position.z - 16);
     const sky = this.scene.getObjectByName('sky');

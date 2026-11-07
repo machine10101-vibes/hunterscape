@@ -46,9 +46,9 @@ const FRAG = /* glsl */ `
     col = mix(vec3(luma), col, 1.2);
     col = pow(col, vec3(1.06));
 
-    float bands = 6.0;
+    float bands = 8.0;
     float banded = floor(luma * bands + 0.5) / bands;
-    col *= mix(1.0, (banded + 0.04) / (luma + 0.04), 0.28);
+    col *= mix(1.0, (banded + 0.04) / (luma + 0.04), 0.14);
 
     col = mix(col, col * vec3(0.12, 0.15, 0.2), edge * 0.9);
 
@@ -61,7 +61,7 @@ const FRAG = /* glsl */ `
     #endif
     gl_FragColor = linearToOutputTexel( gl_FragColor );
 
-    float levels = 28.0;
+    float levels = 48.0;
     vec3 dith = gl_FragColor.rgb + bayer4(gl_FragCoord.xy) / levels;
     gl_FragColor.rgb = floor(dith * levels + 0.5) / levels;
   }
@@ -72,6 +72,9 @@ export class PixelPost {
   private material: THREE.ShaderMaterial;
   private quad: FullScreenQuad;
   private override: number;
+  private zoom = 1;
+  private builtW = 0;
+  private builtH = 0;
 
   constructor(
     private renderer: THREE.WebGLRenderer,
@@ -105,13 +108,31 @@ export class PixelPost {
     return Math.min(2, Math.max(1.4, Math.round(scaled * 20) / 20));
   }
 
+  /** Pull-back uses a finer grid so the far view stays sharp. 1 is native. */
+  setZoom(zoom: number): void {
+    this.zoom = Math.max(0.7, Math.min(3, zoom));
+    this.resize();
+  }
+
+  private pixelScale(vh: number): number {
+    const base = this.override || this.autoScale(vh);
+    const z = Math.max(1, this.zoom);
+    const ps = z < 1.2 ? base : z < 1.75 ? base / 1.4 : 1;
+    return Math.max(1, ps);
+  }
+
   resize(): void {
     const vv = window.visualViewport;
     const vw = Math.max(1, Math.floor(vv?.width || window.innerWidth));
     const vh = Math.max(1, Math.floor(vv?.height || window.innerHeight));
-    const ps = this.override || this.autoScale(vh);
+    const ps = this.pixelScale(vh);
     const w = Math.max(64, Math.floor(vw / ps));
     const h = Math.max(64, Math.floor(vh / ps));
+    this.material.uniforms.far.value = this.camera.far;
+    this.material.uniforms.near.value = this.camera.near;
+    if (w === this.builtW && h === this.builtH && this.rt) return;
+    this.builtW = w;
+    this.builtH = h;
     this.renderer.setPixelRatio(1);
     this.renderer.setSize(w, h, false);
     const el = this.renderer.domElement;
@@ -124,8 +145,6 @@ export class PixelPost {
       depthTexture: new THREE.DepthTexture(w, h),
     });
     this.material.uniforms.res.value.set(w, h);
-    this.material.uniforms.far.value = this.camera.far;
-    this.material.uniforms.near.value = this.camera.near;
   }
 
   render(scene: THREE.Scene, camera: THREE.PerspectiveCamera): void {
