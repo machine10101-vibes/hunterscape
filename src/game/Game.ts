@@ -32,6 +32,7 @@ import { createWhisperBush } from '../rendering/wildDress';
 import { createBriarAnvil } from '../rendering/briarGear';
 import { briarfordProps, createBankBooth, createTownNpc } from '../rendering/town';
 import { createBriarWolf, poseBriarWolf, WOLF_HOMES } from '../rendering/wolf';
+import { PixelPost } from '../rendering/pixelPost';
 import { createDuskFox, FOX_HOMES, poseDuskFox } from '../rendering/duskFox';
 import { CROW_HOMES, createCinderCrow, poseCinderCrow } from '../rendering/cinderCrow';
 import { BEETLE_HOMES, createOreBeetle, poseOreBeetle } from '../rendering/oreBeetle';
@@ -290,6 +291,7 @@ const SKILL_SHORT: Record<SkillId, string> = {
 
 export class Game {
   private renderer: THREE.WebGLRenderer;
+  private post!: PixelPost;
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private player: THREE.Group;
@@ -389,9 +391,8 @@ export class Game {
     this.hud = new HUD();
     this.dialogue = new Dialogue();
 
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: 'high-performance' });
+    this.renderer.setPixelRatio(1);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -403,6 +404,7 @@ export class Game {
     this.scene.fog = new THREE.FogExp2(0xc2d6e8, 0.012);
 
     this.camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 140);
+    this.post = new PixelPost(this.renderer, this.camera);
 
     this.setupLights();
     this.setupReflectionEnv();
@@ -4933,7 +4935,7 @@ export class Game {
   private onResize(): void {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.post.resize();
     this.studio.resize(window.innerWidth, window.innerHeight);
   }
 
@@ -4943,11 +4945,11 @@ export class Game {
     const dt = Math.min(0.05, this.clock.getDelta());
     if (this.studio.isOpen()) {
       this.studio.tick(dt);
-      this.studio.render(this.renderer);
+      this.studio.render(this.post);
       return;
     }
     this.update(dt);
-    this.renderer.render(this.scene, this.camera);
+    this.post.render(this.scene, this.camera);
   };
 }
 

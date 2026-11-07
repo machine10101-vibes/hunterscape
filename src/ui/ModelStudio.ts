@@ -220,10 +220,8 @@ export class ModelStudio {
     this.updateCamera();
   }
 
-  render(renderer: THREE.WebGLRenderer): void {
-    renderer.setClearColor(0x6e746c);
-    renderer.render(this.scene, this.camera);
-    renderer.setClearColor(0x9ec6e4);
+  render(post: { render(scene: THREE.Scene, camera: THREE.PerspectiveCamera): void }): void {
+    post.render(this.scene, this.camera);
   }
 
   private buildScene(): void {
