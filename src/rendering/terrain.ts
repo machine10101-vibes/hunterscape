@@ -268,98 +268,43 @@ function makeGrassBumpTexture(): THREE.CanvasTexture {
   return tex;
 }
 
-function makeBladeTexture(): THREE.CanvasTexture {
-  const c = document.createElement('canvas');
-  c.width = 32;
-  c.height = 64;
-  const g = c.getContext('2d')!;
-  const grd = g.createLinearGradient(16, 64, 16, 0);
-  grd.addColorStop(0, 'rgba(70, 130, 28, 0)');
-  grd.addColorStop(0.1, 'rgba(96, 168, 40, 255)');
-  grd.addColorStop(0.5, 'rgba(168, 220, 64, 255)');
-  grd.addColorStop(1, 'rgba(232, 255, 120, 240)');
-  g.fillStyle = grd;
-  g.beginPath();
-  g.moveTo(16, 2);
-  g.quadraticCurveTo(5, 36, 9, 64);
-  g.lineTo(23, 64);
-  g.quadraticCurveTo(27, 36, 16, 2);
-  g.fill();
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 4;
-  return tex;
+function pushBox(out: number[], cx: number, cz: number, w: number, y0: number, y1: number, d = w): void {
+  const x0 = cx - w / 2;
+  const x1 = cx + w / 2;
+  const z0 = cz - d / 2;
+  const z1 = cz + d / 2;
+  const quad = (p: number[], q: number[], r: number[], t: number[]) => {
+    out.push(...p, ...q, ...r, ...p, ...r, ...t);
+  };
+  quad([x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]);
+  quad([x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0]);
+  quad([x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1]);
+  quad([x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]);
+  quad([x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0]);
 }
 
+function boxGeometry(positions: number[]): THREE.BufferGeometry {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/** Three square columns, bottoms left off. Reads as a pixel-art grass tuft. */
 function grassTuftGeometry(): THREE.BufferGeometry {
   const positions: number[] = [];
-  const uvs: number[] = [];
-  const blades = 5;
-  for (let i = 0; i < blades; i++) {
-    const a = (i / blades) * Math.PI;
-    const ca = Math.cos(a);
-    const sa = Math.sin(a);
-    const w = 0.085 + (i % 3) * 0.02;
-    const h = 0.26 + (i % 4) * 0.07;
-    const corners: [number, number, number][] = [
-      [-w, 0, 0],
-      [w, 0, 0],
-      [w, h, 0],
-      [-w, h, 0],
-    ];
-    const idx = [0, 1, 2, 0, 2, 3];
-    for (const k of idx) {
-      const [lx, ly] = corners[k];
-      positions.push(lx * ca, ly, lx * sa);
-      uvs.push(k === 0 || k === 3 ? 0 : 1, ly / h);
-    }
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-  geo.computeVertexNormals();
-  return geo;
+  pushBox(positions, 0, 0, 0.1, 0, 0.32);
+  pushBox(positions, 0.1, 0.04, 0.085, 0, 0.21);
+  pushBox(positions, -0.085, -0.06, 0.075, 0, 0.14);
+  return boxGeometry(positions);
 }
 
+/** A stem with a square bloom on top. */
 function flowerGeometry(): THREE.BufferGeometry {
   const positions: number[] = [];
-  const uvs: number[] = [];
-  // Stem
-  const sw = 0.012;
-  const sh = 0.16;
-  const stem = [
-    [-sw, 0, 0],
-    [sw, 0, 0],
-    [sw, sh, 0],
-    [-sw, sh, 0],
-  ];
-  for (const k of [0, 1, 2, 0, 2, 3]) {
-    const [x, y, z] = stem[k];
-    positions.push(x, y, z);
-    uvs.push(k === 0 || k === 3 ? 0.45 : 0.55, y / sh);
-  }
-  // Petals as a small cross
-  const pr = 0.09;
-  for (const a of [0, Math.PI / 2]) {
-    const ca = Math.cos(a);
-    const sa = Math.sin(a);
-    const corners: [number, number][] = [
-      [-pr, sh - 0.01],
-      [pr, sh - 0.01],
-      [pr, sh + 0.07],
-      [-pr, sh + 0.07],
-    ];
-    for (const k of [0, 1, 2, 0, 2, 3]) {
-      const [lx, ly] = corners[k];
-      positions.push(lx * ca, ly, lx * sa);
-      uvs.push(k === 0 || k === 3 ? 0 : 1, (ly - sh + 0.01) / 0.08);
-    }
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-  geo.computeVertexNormals();
-  return geo;
+  pushBox(positions, 0, 0, 0.035, 0, 0.16);
+  pushBox(positions, 0, 0, 0.17, 0.16, 0.235);
+  return boxGeometry(positions);
 }
 
 function addWind(mat: THREE.MeshLambertMaterial, amount: number): void {
@@ -395,10 +340,8 @@ export function createTerrainFoliage(): THREE.Group {
   const dummy = new THREE.Object3D();
   // Do not set vertexColors — with no geometry color attr it multiplies instanceColor by 0 (black blades).
   const grassMat = new THREE.MeshLambertMaterial({
-    map: makeBladeTexture(),
     color: 0xeaff98,
-    side: THREE.DoubleSide,
-    alphaTest: 0.18,
+    flatShading: true,
   });
   addWind(grassMat, 0.55);
 
@@ -564,10 +507,8 @@ export function createPlotFoliage(
   const dummy = new THREE.Object3D();
 
   const grassMat = new THREE.MeshLambertMaterial({
-    map: makeBladeTexture(),
     color: 0xeaff98,
-    side: THREE.DoubleSide,
-    alphaTest: 0.18,
+    flatShading: true,
   });
   addWind(grassMat, 0.55);
   const gColA = new THREE.Color(0xb4e05a);

@@ -43,7 +43,8 @@ const FRAG = /* glsl */ `
 
     vec3 col = c.rgb;
     float luma = dot(col, vec3(0.2126, 0.7152, 0.0722));
-    col = mix(vec3(luma), col, 1.18);
+    col = mix(vec3(luma), col, 1.2);
+    col = pow(col, vec3(1.06));
 
     float bands = 6.0;
     float banded = floor(luma * bands + 0.5) / bands;
