@@ -559,9 +559,9 @@ button.forge-craft:hover, #bank-deposit-all:hover, .bank-move:hover, .dialogue-o
     bottom: calc(90px + var(--safe-bottom));
     z-index: 31;
   }
-  #orbs #orb-pray { left: calc(50% - 158px); }
+  #orbs #orb-pray { left: calc(var(--bar-left, 8px) - 34px); }
   #orbs #orb-stam {
-    left: calc(50% + 122px);
+    left: calc(var(--bar-right, 80%) - 6px);
     width: 48px;
     height: 48px;
     bottom: calc(86px + var(--safe-bottom));
@@ -614,8 +614,7 @@ button.forge-craft:hover, #bank-deposit-all:hover, .bank-move:hover, .dialogue-o
   #hud-nav button { width: 36px; height: 36px; min-height: 36px; flex-basis: 36px; }
   #btn-inventory { width: 36px; height: 36px; }
   .ab-slot, .ab-spec { width: 34px; height: 34px; min-width: 34px; }
-  #orbs #orb-pray { left: calc(50% - 140px); }
-  #orbs #orb-stam { left: calc(50% + 104px); width: 42px; height: 42px; }
+  #orbs #orb-stam { width: 42px; height: 42px; }
 }
 
 /* Reference dock: one bar along the bottom. Map left, hearts over the slots,
@@ -698,9 +697,9 @@ button.forge-craft:hover, #bank-deposit-all:hover, .bank-move:hover, .dialogue-o
     height: 56px;
     bottom: calc(11px + var(--safe-bottom));
   }
-  #orbs #orb-pray { left: calc(50% - 201px); }
+  #orbs #orb-pray { left: calc(var(--bar-left, 40%) - 50px); }
   #orbs #orb-stam {
-    left: calc(50% + 148px);
+    left: calc(var(--bar-right, 60%) - 6px);
     width: 70px;
     height: 70px;
     bottom: calc(10px + var(--safe-bottom));
@@ -795,7 +794,7 @@ button.forge-craft:hover, #bank-deposit-all:hover, .bank-move:hover, .dialogue-o
   .ab-kicker, .ab-name, .ab-spec-name, .ab-spec-cost, .ab-key,
   #hud-nav .nav-txt, #hud-nav .nav-key { display: none; }
 
-  :root { --dock-shift: max(92px, calc(50vw - 168px)); }
+  :root { --dock-shift: clamp(84px, calc(50vw - 140px), calc(100vw - 460px)); }
 
   #minimap-wrap {
     position: absolute;
@@ -828,8 +827,8 @@ button.forge-craft:hover, #bank-deposit-all:hover, .bank-move:hover, .dialogue-o
 
   #hp-hearts {
     display: flex;
-    left: calc(var(--dock-shift) + 46px);
-    transform: none;
+    left: calc((var(--bar-left, 0px) + var(--bar-right, 100vw)) / 2);
+    transform: translateX(-50%);
     bottom: calc(56px + var(--safe-bottom));
     z-index: 30;
   }
@@ -837,7 +836,7 @@ button.forge-craft:hover, #bank-deposit-all:hover, .bank-move:hover, .dialogue-o
 
   #orbs .orb, #orbs #orb-pray {
     position: absolute;
-    left: calc(var(--dock-shift) - 30px);
+    left: calc(var(--bar-left, 80px) - 30px);
     right: auto;
     width: 36px;
     height: 36px;
@@ -845,7 +844,7 @@ button.forge-craft:hover, #bank-deposit-all:hover, .bank-move:hover, .dialogue-o
     z-index: 31;
   }
   #orbs #orb-stam {
-    left: calc(var(--dock-shift) + 196px);
+    left: calc(var(--bar-right, 60%) - 6px);
     right: auto;
     width: 42px;
     height: 42px;
@@ -905,4 +904,14 @@ button.forge-craft:hover, #bank-deposit-all:hover, .bank-move:hover, .dialogue-o
     max-height: none;
     transform: none;
   }
+}
+
+/* Narrow landscape: smaller slots so the stamina orb clears the icon row. */
+@media (max-height: 500px) and (max-width: 720px) {
+  .ab-slot, .ab-spec { width: 30px; height: 30px; min-width: 30px; }
+  #hud-nav { right: 36px; }
+  #hud-nav button { width: 30px; height: 30px; min-height: 30px; flex-basis: 30px; }
+  #btn-inventory { width: 30px; height: 30px; }
+  #orbs .orb, #orbs #orb-pray { width: 32px; height: 32px; left: calc(var(--bar-left, 80px) - 26px); }
+  #orbs #orb-stam { width: 36px; height: 36px; }
 }

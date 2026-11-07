@@ -157,9 +157,27 @@ export class HUD {
     }
     this.syncInventoryForViewport();
     this.buildSkillBar();
+    this.watchDock();
     el('btn-spec').addEventListener('click', () => this.onSpec?.());
 
     setTimeout(() => this.touchHint.classList.add('fade'), 8000);
+  }
+
+  /** Keep the orbs on the ends of the ability bar instead of on top of the slots. */
+  private watchDock(): void {
+    const bar = document.getElementById('action-bar');
+    if (!bar) return;
+    const sync = () => {
+      const b = bar.getBoundingClientRect();
+      const root = document.documentElement;
+      root.style.setProperty('--bar-left', `${b.left}px`);
+      root.style.setProperty('--bar-right', `${b.right}px`);
+    };
+    sync();
+    requestAnimationFrame(sync);
+    window.addEventListener('resize', sync);
+    window.addEventListener('orientationchange', () => requestAnimationFrame(sync));
+    void document.fonts?.ready?.then(sync);
   }
 
   private buildSkillBar(): void {
