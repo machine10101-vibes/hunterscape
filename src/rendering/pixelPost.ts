@@ -96,9 +96,13 @@ export class PixelPost {
     this.resize();
   }
 
-  /** Whole CSS pixels per rendered pixel. Phones and desktops land on 2 or 3. */
+  /**
+   * CSS pixels per rendered pixel. About 1.5 on a laptop, rising slowly,
+   * and never coarser than 2. A strict 2–4 block read as too soft.
+   */
   private autoScale(h: number): number {
-    return Math.max(2, Math.round(h / 340));
+    const scaled = 1.45 + Math.max(0, h - 720) / 1600;
+    return Math.min(2, Math.max(1.4, Math.round(scaled * 20) / 20));
   }
 
   resize(): void {
