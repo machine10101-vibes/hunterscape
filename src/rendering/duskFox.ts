@@ -8,13 +8,15 @@ export const FOX_HOMES: { x: number; z: number }[] = [
 ];
 
 function mat(color: number, extra: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({
+  const m = new THREE.MeshStandardMaterial({
     color,
     roughness: extra.roughness ?? 0.84,
     metalness: extra.metalness ?? 0.03,
     flatShading: extra.flatShading ?? true,
     ...extra,
   });
+  m.userData.voxelSoft = true;
+  return m;
 }
 
 function add(parent: THREE.Object3D, mesh: THREE.Mesh): THREE.Mesh {
@@ -70,11 +72,17 @@ export function createDuskFox(): THREE.Group {
     inner.rotation.z = sx * -0.25;
     add(head, inner);
     const eye = new THREE.Mesh(
-      new THREE.SphereGeometry(0.016, 6, 5),
-      mat(0x1a140c, { roughness: 0.3, flatShading: false }),
+      new THREE.SphereGeometry(0.022, 6, 5),
+      mat(0xe0a030, { emissive: 0x8a5a10, emissiveIntensity: 0.45, roughness: 0.3, flatShading: false }),
     );
-    eye.position.set(sx * 0.05, 0.02, 0.08);
+    eye.position.set(sx * 0.052, 0.028, 0.095);
     add(head, eye);
+    const pupil = new THREE.Mesh(
+      new THREE.SphereGeometry(0.008, 4, 3),
+      mat(0x140e08, { roughness: 0.4, flatShading: false }),
+    );
+    pupil.position.set(sx * 0.052, 0.028, 0.112);
+    add(head, pupil);
   }
 
   const tail = new THREE.Group();

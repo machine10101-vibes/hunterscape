@@ -8,13 +8,15 @@ export const TOAD_HOMES: { x: number; z: number }[] = [
 ];
 
 function mat(color: number, extra: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({
+  const m = new THREE.MeshStandardMaterial({
     color,
     roughness: extra.roughness ?? 0.72,
     metalness: extra.metalness ?? 0.04,
     flatShading: extra.flatShading ?? true,
     ...extra,
   });
+  m.userData.voxelSoft = true;
+  return m;
 }
 
 function add(parent: THREE.Object3D, mesh: THREE.Mesh): THREE.Mesh {

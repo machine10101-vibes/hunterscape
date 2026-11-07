@@ -8,13 +8,15 @@ export const GOAT_HOMES: { x: number; z: number }[] = [
 ];
 
 function mat(color: number, extra: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({
+  const m = new THREE.MeshStandardMaterial({
     color,
     roughness: extra.roughness ?? 0.78,
     metalness: extra.metalness ?? 0.04,
     flatShading: extra.flatShading ?? true,
     ...extra,
   });
+  m.userData.voxelSoft = true;
+  return m;
 }
 
 function add(parent: THREE.Object3D, mesh: THREE.Mesh): THREE.Mesh {
@@ -66,11 +68,11 @@ export function createChalkGoat(): THREE.Group {
   const beard = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.1, 5), mat(0x8a8074));
   beard.position.set(0, -0.1, 0.04);
   add(head, beard);
-  const eye = new THREE.Mesh(new THREE.SphereGeometry(0.014, 5, 4), mat(0x2a241c, { roughness: 0.4 }));
-  eye.position.set(0.05, 0.03, 0.06);
+  const eye = new THREE.Mesh(new THREE.SphereGeometry(0.022, 6, 5), mat(0x2a241c, { roughness: 0.4 }));
+  eye.position.set(0.052, 0.035, 0.078);
   add(head, eye);
   const eyeL = eye.clone();
-  eyeL.position.x = -0.05;
+  eyeL.position.x = -0.052;
   head.add(eyeL);
   const horn = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.16, 5), mat(0xe6d2a8, { roughness: 0.42 }));
   horn.position.set(0.05, 0.1, -0.01);

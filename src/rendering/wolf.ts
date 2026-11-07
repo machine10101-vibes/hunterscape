@@ -9,13 +9,15 @@ export const WOLF_HOMES: { x: number; z: number }[] = [
 ];
 
 function mat(color: number, extra: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({
+  const m = new THREE.MeshStandardMaterial({
     color,
     roughness: extra.roughness ?? 0.86,
     metalness: extra.metalness ?? 0.02,
     flatShading: extra.flatShading ?? true,
     ...extra,
   });
+  m.userData.voxelSoft = true;
+  return m;
 }
 
 function add(parent: THREE.Object3D, mesh: THREE.Mesh): THREE.Mesh {
@@ -101,11 +103,17 @@ export function createBriarWolf(): THREE.Group {
     ear.rotation.z = sx * -0.25;
     add(head, ear);
     const eye = new THREE.Mesh(
-      new THREE.SphereGeometry(0.022, 6, 5),
-      mat(0xf0b040, { emissive: 0xff8800, emissiveIntensity: 0.7, roughness: 0.3, flatShading: false }),
+      new THREE.SphereGeometry(0.032, 7, 6),
+      mat(0xf0b040, { emissive: 0xff8800, emissiveIntensity: 0.85, roughness: 0.3, flatShading: false }),
     );
-    eye.position.set(sx * 0.07, 0.03, 0.12);
+    eye.position.set(sx * 0.072, 0.035, 0.145);
     add(head, eye);
+    const pupil = new THREE.Mesh(
+      new THREE.SphereGeometry(0.009, 5, 4),
+      mat(0x140e08, { roughness: 0.4, flatShading: false }),
+    );
+    pupil.position.set(sx * 0.072, 0.035, 0.17);
+    add(head, pupil);
   }
 
   const tail = new THREE.Group();

@@ -8,13 +8,15 @@ export const ADDER_HOMES: { x: number; z: number }[] = [
 ];
 
 function mat(color: number, extra: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({
+  const m = new THREE.MeshStandardMaterial({
     color,
     roughness: extra.roughness ?? 0.62,
     metalness: extra.metalness ?? 0.06,
     flatShading: extra.flatShading ?? true,
     ...extra,
   });
+  m.userData.voxelSoft = true;
+  return m;
 }
 
 function add(parent: THREE.Object3D, mesh: THREE.Mesh): THREE.Mesh {
@@ -62,11 +64,14 @@ export function createHollowAdder(): THREE.Group {
   fangL.position.x = -0.012;
   head.add(fangL);
   const eye = new THREE.Mesh(
-    new THREE.SphereGeometry(0.01, 5, 4),
-    mat(0xf2e27a, { roughness: 0.3, emissive: 0x6a5a10, emissiveIntensity: 0.35 }),
+    new THREE.SphereGeometry(0.016, 5, 4),
+    mat(0xf2e27a, { roughness: 0.3, emissive: 0x6a5a10, emissiveIntensity: 0.5 }),
   );
-  eye.position.set(0.03, 0.015, 0.03);
+  eye.position.set(0.032, 0.018, 0.04);
   add(head, eye);
+  const eyeL = eye.clone();
+  eyeL.position.x = -0.032;
+  head.add(eyeL);
 
   const tail = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.2, 5), mat(0x1a241c));
   tail.name = 'adderTail';

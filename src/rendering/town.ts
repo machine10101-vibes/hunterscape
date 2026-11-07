@@ -199,6 +199,24 @@ function npcBody(tunic: number, hair: number, hood: boolean): THREE.Group {
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), skin);
   head.position.y = 1.22;
   add(g, head);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.02, 6, 5), skin);
+  nose.scale.set(0.85, 0.7, 1);
+  nose.position.set(0, 1.2, 0.122);
+  add(g, nose);
+  for (const sx of [-1, 1]) {
+    const eye = new THREE.Mesh(
+      new THREE.SphereGeometry(0.016, 6, 5),
+      mat(0xf4efe6, { roughness: 0.4, flatShading: false }),
+    );
+    eye.position.set(sx * 0.046, 1.24, 0.112);
+    add(g, eye);
+    const pupil = new THREE.Mesh(
+      new THREE.SphereGeometry(0.008, 5, 4),
+      mat(0x1a120c, { roughness: 0.4, flatShading: false }),
+    );
+    pupil.position.set(sx * 0.046, 1.24, 0.124);
+    add(g, pupil);
+  }
   if (hood) {
     const cowl = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.6), cloth);
     cowl.position.y = 1.28;
@@ -222,6 +240,13 @@ function npcBody(tunic: number, hair: number, hood: boolean): THREE.Group {
   tap.position.y = 0.9;
   tap.name = 'npcHit';
   g.add(tap);
+  // Town buildings share this file's material helper and keep the fine texel.
+  // A person is a curved surface, so the same hash only dirties the face.
+  g.traverse((obj) => {
+    const mesh = obj as THREE.Mesh;
+    if (!mesh.isMesh || Array.isArray(mesh.material)) return;
+    mesh.material.userData.voxelSoft = true;
+  });
   return g;
 }
 

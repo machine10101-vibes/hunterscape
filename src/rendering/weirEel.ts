@@ -8,13 +8,15 @@ export const EEL_HOMES: { x: number; z: number }[] = [
 ];
 
 function mat(color: number, extra: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({
+  const m = new THREE.MeshStandardMaterial({
     color,
     roughness: extra.roughness ?? 0.62,
     metalness: extra.metalness ?? 0.08,
     flatShading: extra.flatShading ?? true,
     ...extra,
   });
+  m.userData.voxelSoft = true;
+  return m;
 }
 
 function add(parent: THREE.Object3D, mesh: THREE.Mesh): THREE.Mesh {
@@ -61,9 +63,12 @@ export function createWeirEel(): THREE.Group {
   const fangL = fang.clone();
   fangL.position.x = -0.015;
   head.add(fangL);
-  const eye = new THREE.Mesh(new THREE.SphereGeometry(0.012, 5, 4), mat(0xf2e27a, { roughness: 0.3, emissive: 0x6a5a10, emissiveIntensity: 0.35 }));
-  eye.position.set(0.04, 0.02, 0.04);
+  const eye = new THREE.Mesh(new THREE.SphereGeometry(0.018, 6, 5), mat(0xf2e27a, { roughness: 0.3, emissive: 0x6a5a10, emissiveIntensity: 0.5 }));
+  eye.position.set(0.042, 0.022, 0.05);
   add(head, eye);
+  const eyeL = eye.clone();
+  eyeL.position.x = -0.042;
+  head.add(eyeL);
 
   const tail = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.22, 5), mat(0x1e3326));
   tail.name = 'eelTail';

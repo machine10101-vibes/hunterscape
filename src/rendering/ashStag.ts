@@ -8,13 +8,15 @@ export const STAG_HOMES: { x: number; z: number }[] = [
 ];
 
 function mat(color: number, extra: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({
+  const m = new THREE.MeshStandardMaterial({
     color,
     roughness: extra.roughness ?? 0.78,
     metalness: extra.metalness ?? 0.04,
     flatShading: extra.flatShading ?? true,
     ...extra,
   });
+  m.userData.voxelSoft = true;
+  return m;
 }
 
 function add(parent: THREE.Object3D, mesh: THREE.Mesh): THREE.Mesh {
@@ -59,11 +61,14 @@ export function createAshStag(): THREE.Group {
   nose.position.set(0, -0.02, 0.14);
   add(head, nose);
   const eye = new THREE.Mesh(
-    new THREE.SphereGeometry(0.014, 5, 4),
+    new THREE.SphereGeometry(0.02, 6, 5),
     mat(0x1a120c, { roughness: 0.3 }),
   );
-  eye.position.set(0.05, 0.02, 0.06);
+  eye.position.set(0.052, 0.028, 0.075);
   add(head, eye);
+  const eyeL = eye.clone();
+  eyeL.position.x = -0.052;
+  head.add(eyeL);
 
   for (const side of [-1, 1] as const) {
     const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.018, 0.22, 5), mat(0xe6d2a8, { roughness: 0.45 }));

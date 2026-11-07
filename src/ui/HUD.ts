@@ -41,6 +41,7 @@ export class HUD {
   private targetInfo: HTMLElement;
   private targetName: HTMLElement;
   private targetHp: HTMLElement;
+  private hearts: HTMLElement[] = [];
   private hpText: HTMLElement;
   private prayText: HTMLElement;
   private stamText: HTMLElement;
@@ -91,6 +92,14 @@ export class HUD {
     this.targetInfo = el('target-info');
     this.targetName = el('target-name');
     this.targetHp = el('target-hp');
+    const heartRow = document.getElementById('hp-hearts');
+    if (heartRow) {
+      for (let i = 0; i < 10; i++) {
+        const heart = document.createElement('i');
+        heartRow.appendChild(heart);
+        this.hearts.push(heart);
+      }
+    }
     this.hpText = el('hp-text');
     this.prayText = el('pray-text');
     this.stamText = el('stam-text');
@@ -148,9 +157,27 @@ export class HUD {
     }
     this.syncInventoryForViewport();
     this.buildSkillBar();
+    this.watchDock();
     el('btn-spec').addEventListener('click', () => this.onSpec?.());
 
     setTimeout(() => this.touchHint.classList.add('fade'), 8000);
+  }
+
+  /** Keep the orbs on the ends of the ability bar instead of on top of the slots. */
+  private watchDock(): void {
+    const bar = document.getElementById('action-bar');
+    if (!bar) return;
+    const sync = () => {
+      const b = bar.getBoundingClientRect();
+      const root = document.documentElement;
+      root.style.setProperty('--bar-left', `${b.left}px`);
+      root.style.setProperty('--bar-right', `${b.right}px`);
+    };
+    sync();
+    requestAnimationFrame(sync);
+    window.addEventListener('resize', sync);
+    window.addEventListener('orientationchange', () => requestAnimationFrame(sync));
+    void document.fonts?.ready?.then(sync);
   }
 
   private buildSkillBar(): void {
@@ -227,7 +254,7 @@ export class HUD {
       this.setInventoryOpen(false);
     } else if (!this.desktopInvInited) {
       this.desktopInvInited = true;
-      this.setInventoryOpen(true);
+      this.setInventoryOpen(false);
     }
   }
 
@@ -526,6 +553,10 @@ export class HUD {
     this.prayText.textContent = String(Math.round(focus));
     this.stamText.textContent = String(Math.round(stamina));
     this.setRing(this.hpRing, hp / maxHp);
+    const heartFill = Math.max(0, Math.min(1, hp / maxHp)) * this.hearts.length;
+    this.hearts.forEach((heart, i) => {
+      heart.style.setProperty('--f', String(Math.max(0, Math.min(1, heartFill - i))));
+    });
     this.setRing(this.prayRing, focus / 100);
     this.setRing(this.stamRing, stamina / 100);
   }
@@ -678,83 +709,48 @@ export class HUD {
     const h = this.minimap.height;
     const cx = w / 2;
     const cy = h / 2;
-    const radius = Math.min(w, h) / 2 - 1;
-
+    const cell = 8;
+    ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, w, h);
 
-    // Circular clip
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-    ctx.clip();
-
-    // Soft grass gradient fill
-    const grad = ctx.createRadialGradient(cx, cy, 4, cx, cy, radius);
-    grad.addColorStop(0, '#4a7a30');
-    grad.addColorStop(0.65, '#2c4e20');
-    grad.addColorStop(1, '#1a3014');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, w, h);
-
-    for (let i = 0; i < 36; i++) {
-      ctx.fillStyle = i % 2 ? '#3a6828' : '#2e5420';
-      ctx.fillRect((i * 41) % w, (i * 59) % h, 7, 7);
-    }
-
     const scale = 3.2;
-    for (const m of markers) {
-      const mx = cx + (m.x - playerX) * scale;
-      const my = cy + (m.z - playerZ) * scale;
-      const dx = mx - cx;
-      const dy = my - cy;
-      if (dx * dx + dy * dy > (radius - 4) * (radius - 4)) continue;
-      ctx.fillStyle = m.color;
-      ctx.beginPath();
-      ctx.arc(mx, my, 3, 0, Math.PI * 2);
-      ctx.fill();
+    const ox = Math.floor(playerX * scale);
+    const oz = Math.floor(playerZ * scale);
+    const palette = ['#1a2c1c', '#223826', '#142016', '#2a4030'];
+    const cols = Math.ceil(w / cell) + 1;
+    const rows = Math.ceil(h / cell) + 1;
+    const gx0 = Math.floor((ox - cx) / cell);
+    const gz0 = Math.floor((oz - cy) / cell);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const gx = gx0 + c;
+        const gz = gz0 + r;
+        const hsh = Math.abs((gx * 73856093) ^ (gz * 19349663)) % 7;
+        ctx.fillStyle = palette[hsh < 4 ? hsh : (hsh + gx) & 1];
+        ctx.fillRect(gx * cell - (ox - cx), gz * cell - (oz - cy), cell, cell);
+      }
     }
 
-    // Player arrow (facing)
+    for (const m of markers) {
+      const mx = Math.round((cx + (m.x - playerX) * scale) / 2) * 2;
+      const my = Math.round((cy + (m.z - playerZ) * scale) / 2) * 2;
+      if (mx < 6 || my < 6 || mx > w - 6 || my > h - 6) continue;
+      ctx.fillStyle = '#0b0e12';
+      ctx.fillRect(mx - 4, my - 4, 8, 8);
+      ctx.fillStyle = m.color;
+      ctx.fillRect(mx - 3, my - 3, 6, 6);
+    }
+
     ctx.save();
     ctx.translate(cx, cy);
-    ctx.rotate(playerRotY);
-    ctx.fillStyle = '#f0d070';
-    ctx.beginPath();
-    ctx.moveTo(0, -6);
-    ctx.lineTo(4, 5);
-    ctx.lineTo(0, 2);
-    ctx.lineTo(-4, 5);
-    ctx.closePath();
-    ctx.fill();
+    ctx.rotate(Math.round(playerRotY / (Math.PI / 4)) * (Math.PI / 4));
+    ctx.fillStyle = '#041208';
+    ctx.fillRect(-5, -9, 10, 16);
+    ctx.fillStyle = '#e8ffe8';
+    ctx.fillRect(-2, -7, 4, 4);
+    ctx.fillRect(-4, -3, 8, 4);
+    ctx.fillRect(-2, 1, 4, 4);
     ctx.restore();
-
-    ctx.restore();
-
-    // Compass ring + N accent (outside clip)
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius - 0.5, 0, Math.PI * 2);
-    ctx.strokeStyle = '#8a6a28';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius - 3, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(212,168,75,0.35)';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    // North pip
-    ctx.fillStyle = '#e8c060';
-    ctx.beginPath();
-    ctx.moveTo(cx, 6);
-    ctx.lineTo(cx + 5, 14);
-    ctx.lineTo(cx - 5, 14);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#f0d070';
-    ctx.font = 'bold 11px Liberation Sans, Noto Sans, DejaVu Sans, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('N', cx, 26);
   }
 }
 

@@ -17,13 +17,15 @@ export const SPIDER_HOMES: { x: number; z: number }[] = [
 ];
 
 function mat(color: number, extra: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({
+  const m = new THREE.MeshStandardMaterial({
     color,
     roughness: extra.roughness ?? 0.86,
     metalness: extra.metalness ?? 0.04,
     flatShading: extra.flatShading ?? true,
     ...extra,
   });
+  m.userData.voxelSoft = true;
+  return m;
 }
 
 function add(parent: THREE.Object3D, mesh: THREE.Mesh): THREE.Mesh {
@@ -83,11 +85,17 @@ export function createBriarBoar(): THREE.Group {
     ear.rotation.z = sx * -0.8;
     add(head, ear);
     const eye = new THREE.Mesh(
-      new THREE.SphereGeometry(0.018, 6, 5),
-      mat(0x1a1008, { roughness: 0.3, flatShading: false }),
+      new THREE.SphereGeometry(0.026, 6, 5),
+      mat(0xf2e6c8, { roughness: 0.4, flatShading: false }),
     );
-    eye.position.set(sx * 0.08, 0.04, 0.1);
+    eye.position.set(sx * 0.082, 0.048, 0.125);
     add(head, eye);
+    const pupil = new THREE.Mesh(
+      new THREE.SphereGeometry(0.012, 5, 4),
+      mat(0x1a1008, { roughness: 0.35, flatShading: false }),
+    );
+    pupil.position.set(sx * 0.082, 0.048, 0.146);
+    add(head, pupil);
   }
 
   const tail = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.015, 5, 8, Math.PI), mat(0x4a3020));
@@ -161,7 +169,7 @@ export function createThornSpider(): THREE.Group {
     [0.02, 0.07],
   ] as const) {
     const eye = new THREE.Mesh(
-      new THREE.SphereGeometry(0.016, 6, 5),
+      new THREE.SphereGeometry(0.024, 6, 5),
       mat(0xe05040, { emissive: 0xff2200, emissiveIntensity: 0.45, roughness: 0.3, flatShading: false }),
     );
     eye.position.set(x, y, 0.22);

@@ -8,13 +8,15 @@ export const BEETLE_HOMES: { x: number; z: number }[] = [
 ];
 
 function mat(color: number, extra: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({
+  const m = new THREE.MeshStandardMaterial({
     color,
     roughness: extra.roughness ?? 0.62,
     metalness: extra.metalness ?? 0.28,
     flatShading: extra.flatShading ?? true,
     ...extra,
   });
+  m.userData.voxelSoft = true;
+  return m;
 }
 
 function add(parent: THREE.Object3D, mesh: THREE.Mesh): THREE.Mesh {
@@ -54,8 +56,8 @@ export function createOreBeetle(): THREE.Group {
   const skull = new THREE.Mesh(new THREE.SphereGeometry(0.07, 7, 6), mat(0x2e3428, { roughness: 0.8, metalness: 0.1 }));
   add(head, skull);
   for (const x of [-0.04, 0.04]) {
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.018, 5, 4), mat(0xe6c878, { emissive: 0xc4a050, emissiveIntensity: 0.4 }));
-    eye.position.set(x, 0.03, 0.05);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.026, 6, 5), mat(0xe6c878, { emissive: 0xc4a050, emissiveIntensity: 0.55 }));
+    eye.position.set(x, 0.032, 0.062);
     add(head, eye);
     const jaw = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.08, 4), mat(0xd8d0c0, { roughness: 0.4 }));
     jaw.rotation.x = Math.PI / 2;

@@ -65,7 +65,7 @@ export function createTree(seed = 0): THREE.Group {
   const h = 1.55 + (seed % 5) * 0.18;
   const trunkTint = seed % 3 === 0 ? 0x4a3218 : seed % 3 === 1 ? 0x5a3a1a : 0x3e2a12;
   const trunk = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.16, 0.28, h, 8),
+    new THREE.BoxGeometry(0.4, h, 0.4),
     mat(trunkTint, { roughness: 0.95 }),
   );
   trunk.position.y = h / 2;
@@ -77,20 +77,19 @@ export function createTree(seed = 0): THREE.Group {
   for (let i = 0; i < 3; i++) {
     const a = (i / 3) * Math.PI * 2 + seed * 0.3;
     const ridge = new THREE.Mesh(
-      new THREE.BoxGeometry(0.05, h * (0.55 + (i % 2) * 0.15), 0.07),
+      new THREE.BoxGeometry(0.07, h * (0.55 + (i % 2) * 0.15), 0.07),
       mat(0x2a1808, { roughness: 1 }),
     );
-    ridge.position.set(Math.cos(a) * 0.15, h * 0.45, Math.sin(a) * 0.15);
-    ridge.rotation.y = a;
+    ridge.position.set(Math.cos(a) * 0.2, h * 0.45, Math.sin(a) * 0.2);
+    ridge.rotation.y = 0;
     stand.add(ridge);
   }
   // Horizontal bark rings
   for (let i = 0; i < 3; i++) {
     const ring = new THREE.Mesh(
-      new THREE.TorusGeometry(0.18 + i * 0.02, 0.02, 4, 10),
+      new THREE.BoxGeometry(0.44, 0.05, 0.44),
       mat(0x2e1c0c, { roughness: 1 }),
     );
-    ring.rotation.x = Math.PI / 2;
     ring.position.y = 0.35 + i * (h * 0.28);
     stand.add(ring);
   }
@@ -102,26 +101,26 @@ export function createTree(seed = 0): THREE.Group {
     const r = 0.9 - i * 0.12;
     const col = i % 3 === 0 ? canopyA : i % 3 === 1 ? canopyB : canopyC;
     const leaf = new THREE.Mesh(
-      new THREE.ConeGeometry(r, 1.0 - i * 0.1, 9),
+      new THREE.BoxGeometry(r * 2.1, 0.5 - i * 0.02, r * 2.1),
       mat(col, { roughness: 0.88 }),
     );
-    leaf.position.y = h + 0.22 + i * 0.42;
-    leaf.rotation.y = (seed + i) * 0.45;
+    leaf.position.y = h + 0.3 + i * 0.42;
+    leaf.rotation.y = i % 2 ? 0.0 : Math.PI / 4;
     leaf.castShadow = true;
     stand.add(leaf);
     // Inner darker canopy for depth
     if (i < 3) {
       const inner = new THREE.Mesh(
-        new THREE.ConeGeometry(r * 0.55, 0.55, 7),
+        new THREE.BoxGeometry(r * 1.2, 0.7, r * 1.2),
         mat(0x143818, { roughness: 0.95 }),
       );
-      inner.position.y = h + 0.35 + i * 0.42;
+      inner.position.y = h + 0.3 + i * 0.42;
       stand.add(inner);
     }
   }
 
   // Root flare
-  const roots = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.44, 0.2, 7), mat(0x3a2810, { roughness: 1 }));
+  const roots = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.2, 0.72), mat(0x3a2810, { roughness: 1 }));
   roots.position.y = 0.08;
   roots.receiveShadow = true;
   g.add(roots);
@@ -151,11 +150,11 @@ export function createRock(kind: 'copper' | 'tin', seed = 0): THREE.Group {
   ore.name = 'ore';
   g.add(ore);
   const base = new THREE.Mesh(
-    new THREE.DodecahedronGeometry(0.55 + (seed % 3) * 0.06, 0),
+    new THREE.BoxGeometry(1.0 + (seed % 3) * 0.1, 0.78, 0.9 + (seed % 2) * 0.1),
     mat(seed % 2 === 0 ? 0x5e6268 : 0x4e5258, { roughness: 0.9 }),
   );
-  base.position.y = 0.4;
-  base.rotation.set(0.2, seed, 0.1);
+  base.position.y = 0.39;
+  base.rotation.set(0, seed * 0.7, 0);
   base.castShadow = true;
   base.receiveShadow = true;
   ore.add(base);
@@ -170,18 +169,18 @@ export function createRock(kind: 'copper' | 'tin', seed = 0): THREE.Group {
   g.add(ao);
 
   const chunk = new THREE.Mesh(
-    new THREE.DodecahedronGeometry(0.28, 0),
+    new THREE.BoxGeometry(0.5, 0.42, 0.46),
     mat(0x4a4e52),
   );
-  chunk.position.set(0.35, 0.22, -0.15);
-  chunk.rotation.set(0.4, seed * 0.5, 0.2);
+  chunk.position.set(0.5, 0.21, -0.2);
+  chunk.rotation.set(0, seed * 0.5, 0);
   chunk.castShadow = true;
   ore.add(chunk);
 
   const veinColor = kind === 'copper' ? 0xb87333 : 0xc0c0c8;
   for (let i = 0; i < 4; i++) {
     const vein = new THREE.Mesh(
-      new THREE.SphereGeometry(0.1 + (i % 2) * 0.03, 6, 4),
+      new THREE.BoxGeometry(0.2 + (i % 2) * 0.06, 0.2 + (i % 2) * 0.06, 0.2 + (i % 2) * 0.06),
       mat(veinColor, {
         metalness: 0.55,
         roughness: 0.4,
@@ -195,11 +194,10 @@ export function createRock(kind: 'copper' | 'tin', seed = 0): THREE.Group {
   }
 
   const moss = new THREE.Mesh(
-    new THREE.SphereGeometry(0.14, 5, 4),
+    new THREE.BoxGeometry(0.42, 0.12, 0.34),
     mat(0x3a6a30, { roughness: 1 }),
   );
-  moss.position.set(-0.25, 0.55, 0.2);
-  moss.scale.set(1.2, 0.5, 1);
+  moss.position.set(-0.22, 0.8, 0.12);
   ore.add(moss);
 
   const rubble = new THREE.Group();
@@ -207,12 +205,12 @@ export function createRock(kind: 'copper' | 'tin', seed = 0): THREE.Group {
   rubble.visible = false;
   for (let i = 0; i < 4; i++) {
     const chip = new THREE.Mesh(
-      new THREE.DodecahedronGeometry(0.12 + (i % 2) * 0.04, 0),
+      new THREE.BoxGeometry(0.22 + (i % 2) * 0.08, 0.14, 0.2 + (i % 2) * 0.06),
       mat(kind === 'copper' ? 0x6a5344 : 0x6a6e76, { roughness: 0.95 }),
     );
     const a = (i / 4) * Math.PI * 2 + seed;
-    chip.position.set(Math.cos(a) * 0.22, 0.08, Math.sin(a) * 0.22);
-    chip.rotation.set(0.4, a, 0.2);
+    chip.position.set(Math.cos(a) * 0.26, 0.07, Math.sin(a) * 0.26);
+    chip.rotation.set(0, a, 0);
     chip.castShadow = true;
     rubble.add(chip);
   }
@@ -578,7 +576,7 @@ export function createGodRays(): THREE.Group {
   const matRay = new THREE.MeshBasicMaterial({
     color: 0xfff0c8,
     transparent: true,
-    opacity: 0.09,
+    opacity: 0.04,
     depthWrite: false,
     side: THREE.DoubleSide,
   });

@@ -8,13 +8,15 @@ export const SKELETON_HOMES: { x: number; z: number }[] = [
 ];
 
 function mat(color: number, extra: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({
+  const m = new THREE.MeshStandardMaterial({
     color,
     roughness: extra.roughness ?? 0.72,
     metalness: extra.metalness ?? 0.05,
     flatShading: extra.flatShading ?? true,
     ...extra,
   });
+  m.userData.voxelSoft = true;
+  return m;
 }
 
 function add(parent: THREE.Object3D, mesh: THREE.Mesh): THREE.Mesh {
@@ -65,7 +67,7 @@ export function createBarrowSkeleton(): THREE.Group {
     const hole = new THREE.Mesh(new THREE.SphereGeometry(0.022, 6, 5), socket);
     hole.position.set(x, 0.02, 0.08);
     add(head, hole);
-    const glow = new THREE.Mesh(new THREE.SphereGeometry(0.012, 5, 4), eye);
+    const glow = new THREE.Mesh(new THREE.SphereGeometry(0.018, 6, 5), eye);
     glow.position.set(x, 0.02, 0.095);
     add(head, glow);
   }

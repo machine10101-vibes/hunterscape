@@ -32,6 +32,7 @@ import { createWhisperBush } from '../rendering/wildDress';
 import { createBriarAnvil } from '../rendering/briarGear';
 import { briarfordProps, createBankBooth, createTownNpc } from '../rendering/town';
 import { createBriarWolf, poseBriarWolf, WOLF_HOMES } from '../rendering/wolf';
+import { PixelPost } from '../rendering/pixelPost';
 import { createDuskFox, FOX_HOMES, poseDuskFox } from '../rendering/duskFox';
 import { CROW_HOMES, createCinderCrow, poseCinderCrow } from '../rendering/cinderCrow';
 import { BEETLE_HOMES, createOreBeetle, poseOreBeetle } from '../rendering/oreBeetle';
@@ -290,6 +291,7 @@ const SKILL_SHORT: Record<SkillId, string> = {
 
 export class Game {
   private renderer: THREE.WebGLRenderer;
+  private post!: PixelPost;
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private player: THREE.Group;
@@ -389,20 +391,20 @@ export class Game {
     this.hud = new HUD();
     this.dialogue = new Dialogue();
 
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: 'high-performance' });
+    this.renderer.setPixelRatio(1);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.42;
-    this.renderer.setClearColor(0x9ec6e4);
+    this.renderer.toneMappingExposure = 1.02;
+    this.renderer.setClearColor(0x7fb0b8);
 
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2(0xc2d6e8, 0.012);
+    this.scene.fog = new THREE.FogExp2(0x86b0b4, 0.016);
 
     this.camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 140);
+    this.post = new PixelPost(this.renderer, this.camera);
 
     this.setupLights();
     this.setupReflectionEnv();
@@ -509,10 +511,10 @@ export class Game {
   }
 
   private setupLights(): void {
-    const hemi = new THREE.HemisphereLight(0xf2f7ff, 0x5a7a32, 1.08);
+    const hemi = new THREE.HemisphereLight(0xcfe6f0, 0x3e5a2a, 0.82);
     this.scene.add(hemi);
 
-    this.sun = new THREE.DirectionalLight(0xfff6e0, 2.08);
+    this.sun = new THREE.DirectionalLight(0xffe9c0, 2.3);
     this.sun.position.set(18, 28, 10);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(2048, 2048);
@@ -538,7 +540,7 @@ export class Game {
     fill.position.set(-6, 6, 4);
     this.scene.add(fill);
 
-    this.scene.add(new THREE.AmbientLight(0x6a7c88, 0.44));
+    this.scene.add(new THREE.AmbientLight(0x56707c, 0.3));
   }
 
   /** Soft studio IBL so leather, metal, and skin read like an RS3 character. */
@@ -4793,6 +4795,11 @@ export class Game {
     this.lookSmooth.set(lookX, this.player.position.y + 1.05 + pull * 0.55, lookZ);
     this.camLook.lerp(this.lookSmooth, follow);
     this.camera.lookAt(this.camLook);
+    // Density falls as the camera pulls back, so the camp does not bleach into the fog.
+    if (this.scene.fog instanceof THREE.FogExp2) {
+      this.scene.fog.density = 0.016 / Math.max(0.85, z);
+    }
+    this.post.setZoom(z);
     this.sun.position.set(this.player.position.x + 18, 28, this.player.position.z + 10);
     this.rim.position.set(this.player.position.x - 14, 10, this.player.position.z - 16);
     const sky = this.scene.getObjectByName('sky');
@@ -4933,7 +4940,7 @@ export class Game {
   private onResize(): void {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.post.resize();
     this.studio.resize(window.innerWidth, window.innerHeight);
   }
 
@@ -4943,11 +4950,11 @@ export class Game {
     const dt = Math.min(0.05, this.clock.getDelta());
     if (this.studio.isOpen()) {
       this.studio.tick(dt);
-      this.studio.render(this.renderer);
+      this.studio.render(this.post);
       return;
     }
     this.update(dt);
-    this.renderer.render(this.scene, this.camera);
+    this.post.render(this.scene, this.camera);
   };
 }
 
