@@ -8,13 +8,15 @@ export const CROW_HOMES: { x: number; z: number }[] = [
 ];
 
 function mat(color: number, extra: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({
+  const m = new THREE.MeshStandardMaterial({
     color,
     roughness: extra.roughness ?? 0.84,
     metalness: extra.metalness ?? 0.04,
     flatShading: extra.flatShading ?? true,
     ...extra,
   });
+  m.userData.voxelSoft = true;
+  return m;
 }
 
 function add(parent: THREE.Object3D, mesh: THREE.Mesh): THREE.Mesh {
@@ -50,9 +52,18 @@ export function createCinderCrow(): THREE.Group {
   beak.rotation.x = Math.PI / 2;
   beak.position.set(0, -0.01, 0.1);
   add(head, beak);
-  const eye = new THREE.Mesh(new THREE.SphereGeometry(0.016, 6, 5), mat(0xf4efe4, { roughness: 0.3 }));
-  eye.position.set(0.04, 0.02, 0.05);
+  const eye = new THREE.Mesh(new THREE.SphereGeometry(0.022, 6, 5), mat(0xf4efe4, { roughness: 0.3 }));
+  eye.position.set(0.042, 0.022, 0.058);
   add(head, eye);
+  const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.008, 4, 3), mat(0x100c0a, { roughness: 0.4 }));
+  pupil.position.set(0.046, 0.022, 0.074);
+  add(head, pupil);
+  const eyeL = eye.clone();
+  eyeL.position.x = -0.042;
+  head.add(eyeL);
+  const pupilL = pupil.clone();
+  pupilL.position.x = -0.046;
+  head.add(pupilL);
 
   const tail = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.16, 4), mat(0x1a1716));
   tail.name = 'crowTail';

@@ -37,7 +37,7 @@ Production base path is `/hunterscape/` for GitHub Pages.
 
 ## Pixel look
 
-The whole game renders through a low-resolution, nearest-filtered pass with a depth ink outline, a gentle colour grade and a Bayer dither (`src/rendering/pixelPost.ts`). Grass, flowers, trees and rocks are built from blocks, and a global shader patch (`src/rendering/voxelStyle.ts`) adds per-texel colour jitter. The HUD is a pixel skin (`src/pixelui.css`) with bundled Press Start 2P and VT323 fonts.
+The whole game renders through a low-resolution, nearest-filtered pass with a depth ink outline, a gentle colour grade and a Bayer dither (`src/rendering/pixelPost.ts`). Grass, flowers, trees and rocks are built from blocks, and a global shader patch (`src/rendering/voxelStyle.ts`) adds per-texel colour jitter. People and beasts use a softer, broader variation of that jitter so faces stay clean, and the frost yeti's coat is solid clumps rather than paper-thin fur. The HUD is a pixel skin (`src/pixelui.css`) with bundled Press Start 2P and VT323 fonts.
 
 The pixel size follows the window height: about one and a half screen pixels on a laptop, and never coarser than two. Zooming out draws finer and eases the fog so the far view stays sharp and keeps its colour. Override it with `?px=2` (1 to 8) or `localStorage.hunterscape_px`. On a phone the same dock fits portrait (bar above a map and icon row) and landscape (one row). Only graphics changed; gameplay, saves and data are untouched.
 

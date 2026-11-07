@@ -39,6 +39,7 @@ function mat(color: number, opts: PhysOpts = {}): THREE.MeshPhysicalMaterial {
       flatShading: opts.flatShading ?? false,
       ...opts,
     });
+    m.userData.voxelSoft = true;
     matCache.set(key, m);
   }
   return m;
@@ -180,7 +181,7 @@ function skinMaps() {
 
 function leatherMat(tint: number, extra: PhysOpts = {}): THREE.MeshPhysicalMaterial {
   const t = leatherMaps();
-  return new THREE.MeshPhysicalMaterial({
+  const m = new THREE.MeshPhysicalMaterial({
     color: tint,
     map: t.map,
     roughnessMap: t.roughnessMap,
@@ -197,11 +198,13 @@ function leatherMat(tint: number, extra: PhysOpts = {}): THREE.MeshPhysicalMater
     flatShading: false,
     ...extra,
   });
+  m.userData.voxelSoft = true;
+  return m;
 }
 
 function clothMat(tint: number): THREE.MeshPhysicalMaterial {
   const t = clothMaps();
-  return new THREE.MeshPhysicalMaterial({
+  const m = new THREE.MeshPhysicalMaterial({
     color: tint,
     map: t.map,
     roughnessMap: t.roughnessMap,
@@ -215,11 +218,13 @@ function clothMat(tint: number): THREE.MeshPhysicalMaterial {
     envMapIntensity: 0.4,
     flatShading: false,
   });
+  m.userData.voxelSoft = true;
+  return m;
 }
 
 function skinMat(tint: number, extra: PhysOpts = {}): THREE.MeshPhysicalMaterial {
   const t = skinMaps();
-  return new THREE.MeshPhysicalMaterial({
+  const m = new THREE.MeshPhysicalMaterial({
     color: tint,
     map: t.map,
     roughnessMap: t.roughnessMap,
@@ -236,6 +241,8 @@ function skinMat(tint: number, extra: PhysOpts = {}): THREE.MeshPhysicalMaterial
     flatShading: false,
     ...extra,
   });
+  m.userData.voxelSoft = true;
+  return m;
 }
 
 function addPart(mesh: THREE.Mesh, parent: THREE.Object3D): THREE.Mesh {
@@ -294,6 +301,7 @@ function squareBuckle(size: number, thick: number, _hole: number, metal: THREE.M
     new THREE.BoxGeometry(size * 0.42, size * 0.42, thick + 0.008),
     new THREE.MeshPhysicalMaterial({ color: 0x2a2418, roughness: 0.7, metalness: 0.2, flatShading: false }),
   );
+  (inner.material as THREE.Material).userData.voxelSoft = true;
   mesh.add(inner);
   return mesh;
 }
@@ -350,7 +358,7 @@ function makeFinger(
   const root = new THREE.Group();
   // Capsules overlap the next joint. The joint groups themselves stay put so
   // the closed grip still encloses the same handle.
-  const prox = new THREE.Mesh(new THREE.CapsuleGeometry(rad, len * 0.46, 3, 8), leather);
+  const prox = new THREE.Mesh(new THREE.CapsuleGeometry(rad, len * 0.46, 3, 8), skin);
   prox.position.y = -len * 0.22;
   addPart(prox, root);
 
@@ -437,14 +445,14 @@ function makeHand(
   const fingers: FingerChain[] = [];
   for (let i = 0; i < 4; i++) {
     const len = 0.074 - Math.abs(i - 1.1) * 0.007;
-    const f = makeFinger(skin, leather, len, 0.0134 - i * 0.0007);
+    const f = makeFinger(skin, leather, len, 0.0168 - i * 0.0006);
     f.root.position.set(-0.031 + i * 0.0207, 0, 0.012 - Math.abs(i - 1.5) * 0.005);
     gripGroup.add(f.root);
     fingers.push(f);
   }
 
   // Thumb sits on +X and lies back along the handle, pinning it against the fingers.
-  const thumb = makeFinger(skin, leather, 0.064, 0.015);
+  const thumb = makeFinger(skin, leather, 0.064, 0.018);
   thumb.root.position.set(0.04, 0.014, 0.03);
   thumb.root.rotation.z = -1.18;
   gripGroup.add(thumb.root);
@@ -809,6 +817,13 @@ export function createPlayerMesh(): THREE.Group {
     arm.name = side < 0 ? 'armL' : 'armR';
     arm.position.set(side * (SHOULDER_X - 0.2), 0, 0);
 
+    // Stays on the clavicle so a raised arm still leaves the shoulder. Without
+    // this cap the sleeve starts clear of the vest and the arm looks detached.
+    const deltoid = new THREE.Mesh(new THREE.SphereGeometry(0.108, 14, 12), skin);
+    deltoid.scale.set(1.12, 0.92, 0.88);
+    deltoid.position.set(side * (SHOULDER_X - 0.2), 0.02, 0.01);
+    addPart(deltoid, clav);
+
     // Short ridge under the vest. A longer one left a round cap on the chest.
     // The capsule is symmetric, so the same Z spin lays it along local X.
     const clavicle = new THREE.Mesh(new THREE.CapsuleGeometry(0.044, 0.07, 4, 8), skin);
@@ -985,27 +1000,29 @@ export function createPlayerMesh(): THREE.Group {
 
     // Eye: white ball set into the mask under the brow, iris and pupil on its
     // front, and an upper lid so it does not stare.
-    const eyeball = new THREE.Mesh(new THREE.SphereGeometry(0.021, 14, 11), mat(0xe6dccd, { roughness: 0.3 }));
-    eyeball.position.set(sx * 0.051, 0.018, 0.128);
+    // Big enough, and far enough forward, that the white and pupil survive
+    // the pixel grid. The old eye sat inside the face mask and read as a speck.
+    const eyeball = new THREE.Mesh(new THREE.SphereGeometry(0.028, 14, 11), mat(0xf4ecdf, { roughness: 0.28 }));
+    eyeball.position.set(sx * 0.052, 0.03, 0.146);
     head.add(eyeball);
     const iris = new THREE.Mesh(
-      new THREE.SphereGeometry(0.0122, 10, 8),
-      mat(0x4a3a22, { roughness: 0.3, clearcoat: 0.6, clearcoatRoughness: 0.1 }),
+      new THREE.SphereGeometry(0.0155, 10, 8),
+      mat(0x3d2c18, { roughness: 0.32, emissive: 0x2a1c0c, emissiveIntensity: 0.4 }),
     );
-    iris.position.set(sx * 0.051, 0.018, 0.1445);
+    iris.position.set(sx * 0.052, 0.03, 0.168);
     head.add(iris);
-    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.0058, 8, 6), mat(0x0a0806, { roughness: 0.25 }));
-    pupil.position.set(sx * 0.051, 0.018, 0.153);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.0075, 8, 6), mat(0x0c0908, { roughness: 0.2 }));
+    pupil.position.set(sx * 0.052, 0.03, 0.18);
     head.add(pupil);
-    const lid = new THREE.Mesh(new THREE.SphereGeometry(0.024, 12, 9, 0, Math.PI * 2, 0, Math.PI * 0.5), skin);
-    lid.scale.set(1.06, 1, 0.92);
-    lid.rotation.x = -0.5;
-    lid.position.set(sx * 0.051, 0.024, 0.126);
+    const lid = new THREE.Mesh(new THREE.SphereGeometry(0.032, 12, 9, 0, Math.PI * 2, 0, Math.PI * 0.48), skin);
+    lid.scale.set(1.05, 1, 0.9);
+    lid.rotation.x = -0.55;
+    lid.position.set(sx * 0.052, 0.04, 0.14);
     head.add(lid);
-    const lowerLid = new THREE.Mesh(new THREE.SphereGeometry(0.023, 12, 9, 0, Math.PI * 2, Math.PI * 0.62, Math.PI * 0.38), skinDark);
-    lowerLid.scale.set(1.06, 1, 0.9);
-    lowerLid.rotation.x = 0.35;
-    lowerLid.position.set(sx * 0.051, 0.014, 0.126);
+    const lowerLid = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 9, 0, Math.PI * 2, Math.PI * 0.64, Math.PI * 0.36), skinDark);
+    lowerLid.scale.set(1.05, 1, 0.88);
+    lowerLid.rotation.x = 0.4;
+    lowerLid.position.set(sx * 0.052, 0.02, 0.14);
     head.add(lowerLid);
 
     const ear = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), skin);

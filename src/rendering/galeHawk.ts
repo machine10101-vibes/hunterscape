@@ -8,13 +8,15 @@ export const HAWK_HOMES: { x: number; z: number }[] = [
 ];
 
 function mat(color: number, extra: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({
+  const m = new THREE.MeshStandardMaterial({
     color,
     roughness: extra.roughness ?? 0.72,
     metalness: extra.metalness ?? 0.06,
     flatShading: extra.flatShading ?? true,
     ...extra,
   });
+  m.userData.voxelSoft = true;
+  return m;
 }
 
 function add(parent: THREE.Object3D, mesh: THREE.Mesh): THREE.Mesh {
@@ -55,11 +57,14 @@ export function createGaleHawk(): THREE.Group {
   hook.position.set(0, -0.045, 0.14);
   add(head, hook);
   const eye = new THREE.Mesh(
-    new THREE.SphereGeometry(0.016, 6, 5),
-    mat(0xe0a030, { emissive: 0x8a5a10, emissiveIntensity: 0.35, roughness: 0.3 }),
+    new THREE.SphereGeometry(0.022, 6, 5),
+    mat(0xe0a030, { emissive: 0x8a5a10, emissiveIntensity: 0.55, roughness: 0.3 }),
   );
-  eye.position.set(0.045, 0.02, 0.045);
+  eye.position.set(0.048, 0.022, 0.058);
   add(head, eye);
+  const eyeL = eye.clone();
+  eyeL.position.x = -0.048;
+  head.add(eyeL);
 
   const tail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.012, 0.18), mat(0x5c6570));
   tail.name = 'hawkTail';

@@ -12,7 +12,7 @@ function phys(
   color: number,
   opts: Partial<THREE.MeshPhysicalMaterialParameters> = {},
 ): THREE.MeshPhysicalMaterial {
-  return new THREE.MeshPhysicalMaterial({
+  const m = new THREE.MeshPhysicalMaterial({
     color,
     roughness: opts.roughness ?? 0.88,
     metalness: opts.metalness ?? 0.02,
@@ -20,16 +20,9 @@ function phys(
     envMapIntensity: opts.envMapIntensity ?? 0.55,
     ...opts,
   });
-}
-
-function addOutline(target: THREE.Mesh, scale = 1.07, color = 0x0a1520): void {
-  const outline = new THREE.Mesh(
-    target.geometry,
-    new THREE.MeshBasicMaterial({ color, side: THREE.BackSide, depthWrite: false }),
-  );
-  outline.scale.setScalar(scale);
-  outline.name = 'outline';
-  target.add(outline);
+  // Faces and fur sit on curves. The world texel hash turns those into acne.
+  m.userData.voxelSoft = true;
+  return m;
 }
 
 function lathe(radii: [number, number][], segs = 10): THREE.LatheGeometry {
@@ -40,13 +33,27 @@ function lathe(radii: [number, number][], segs = 10): THREE.LatheGeometry {
 }
 
 /**
- * One layer of shag: a continuous ring of triangles whose tips hang below the
- * band they spring from, with uneven lengths so the hem reads ragged.
- *
- * Scattering separate tufts around a body looks like confetti stuck to it —
- * a joined skirt keeps the silhouette while the overlap between layers does
- * the work of depth. `flare` > 1 kicks the tips outward, away from the hide.
+ * One layer of shag. Each tuft is a solid cone, not a paper triangle.
+ * Zero-thickness skirts become a scribble once the pixel outline traces
+ * every edge; a cone has a readable clump and a clean outer silhouette.
+ * `flare` > 1 kicks the tips outward, away from the hide.
  */
+const FUR_UP = new THREE.Vector3(0, 1, 0);
+const furDir = new THREE.Vector3();
+const furRoot = new THREE.Vector3();
+const furTip = new THREE.Vector3();
+let furCone: THREE.CylinderGeometry | null = null;
+
+function furGeometry(): THREE.CylinderGeometry {
+  if (!furCone) {
+    // Blunt clump: a needle reads as an icicle once the pixel outline traces it.
+    // Base on the origin, tip along +Y.
+    furCone = new THREE.CylinderGeometry(0.45, 1, 1, 5);
+    furCone.translate(0, 0.5, 0);
+  }
+  return furCone;
+}
+
 function addFurSkirt(
   parent: THREE.Object3D,
   cy: number,
@@ -58,26 +65,29 @@ function addFurSkirt(
   cz = 0,
   phase = 0,
 ): void {
-  const pos: number[] = [];
-  const push = (a: number, y: number, r: number) => {
-    pos.push(Math.cos(a) * r, y, cz + Math.sin(a) * r);
-  };
+  mat.polygonOffset = true;
+  mat.polygonOffsetFactor = -1;
+  mat.polygonOffsetUnits = -1;
+  const girth = (Math.PI * 2 * radius) / Math.max(1, count);
+  const baseR = girth * 0.68;
   for (let i = 0; i < count; i++) {
-    const a0 = ((i + phase) / count) * Math.PI * 2;
-    const a1 = ((i + 1 + phase) / count) * Math.PI * 2;
-    const am = (a0 + a1) / 2;
+    const a = ((i + 0.5 + phase) / count) * Math.PI * 2;
     const jitter = ((i * 7) % 5) / 5;
-    const d = drop * (0.7 + jitter * 0.55);
-    push(a0, cy, radius);
-    push(a1, cy, radius);
-    push(am, cy - d, radius * flare);
+    const d = drop * (0.72 + jitter * 0.48);
+    const ox = Math.cos(a);
+    const oz = Math.sin(a);
+    furRoot.set(ox * radius, cy, cz + oz * radius);
+    furTip.set(ox * radius * flare, cy - d, cz + oz * radius * flare);
+    furDir.copy(furTip).sub(furRoot);
+    const len = Math.max(0.02, furDir.length());
+    furDir.multiplyScalar(1 / len);
+    const tuft = new THREE.Mesh(furGeometry(), mat);
+    tuft.scale.set(baseR, len, baseR);
+    tuft.position.copy(furRoot);
+    tuft.quaternion.setFromUnitVectors(FUR_UP, furDir);
+    tuft.castShadow = false;
+    parent.add(tuft);
   }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  geo.computeVertexNormals();
-  const skirt = new THREE.Mesh(geo, mat);
-  skirt.castShadow = true;
-  parent.add(skirt);
 }
 
 /**
@@ -388,7 +398,6 @@ export function createFrostYeti(): THREE.Group {
   );
   torso.scale.set(1.24, 1, 0.9);
   torso.castShadow = true;
-  addOutline(torso, 1.04, 0x121c26);
   body.add(torso);
 
   const chest = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 12), fur);
@@ -823,10 +832,9 @@ export function createOrcScout(): THREE.Group {
   const tusk = phys(0xf3eee2, { roughness: 0.38, flatShading: false });
   const paint = phys(0x2a1c10, { roughness: 0.92, flatShading: true });
 
-  const addPart = (mesh: THREE.Mesh, parent: THREE.Object3D, outlineScale?: number) => {
+  const addPart = (mesh: THREE.Mesh, parent: THREE.Object3D) => {
     mesh.castShadow = true;
     mesh.receiveShadow = true;
-    if (outlineScale) addOutline(mesh, outlineScale, 0x0a1208);
     parent.add(mesh);
     return mesh;
   };
@@ -914,7 +922,7 @@ export function createOrcScout(): THREE.Group {
       leatherMid,
     );
     boot.position.set(0, -0.12, 0.01);
-    addPart(boot, shin, 1.04);
+    addPart(boot, shin);
     for (const t of [-0.08, -0.18, -0.26]) {
       const wrap = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.018, 0.016), leatherDark);
       wrap.position.set(0, t - 0.12, 0.02);
@@ -960,7 +968,7 @@ export function createOrcScout(): THREE.Group {
     ),
     leather,
   );
-  addPart(tunic, body, 1.06);
+  addPart(tunic, body);
 
   const panel = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.34, 0.05), leatherMid);
   panel.position.set(0, 0.04, 0.22);
@@ -1041,7 +1049,7 @@ export function createOrcScout(): THREE.Group {
       ),
       leather,
     );
-    addPart(gauntlet, forearm, 1.03);
+    addPart(gauntlet, forearm);
     addSpikeFur(forearm, 0, 0.0, 0, 0.082, 10, 0.05, 0.05);
 
     const hand = new THREE.Group();
@@ -1078,7 +1086,7 @@ export function createOrcScout(): THREE.Group {
 
   const skull = new THREE.Mesh(new THREE.SphereGeometry(0.185, 12, 10), skin);
   skull.scale.set(1.02, 1.06, 0.92);
-  addPart(skull, head, 1.08);
+  addPart(skull, head);
 
   const brow = new THREE.Mesh(new THREE.SphereGeometry(0.145, 10, 8), skinDark);
   brow.scale.set(1.18, 0.38, 0.72);
@@ -1125,16 +1133,22 @@ export function createOrcScout(): THREE.Group {
     socket.scale.set(1.1, 0.8, 0.55);
     socket.position.set(sx * 0.068, 0.03, 0.145);
     head.add(socket);
-    const sclera = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 6), phys(0xe4dcc4, { roughness: 0.4, flatShading: false }));
-    sclera.scale.set(1.1, 0.8, 0.65);
-    sclera.position.set(sx * 0.068, 0.03, 0.158);
+    const sclera = new THREE.Mesh(new THREE.SphereGeometry(0.032, 8, 6), phys(0xf3ead8, { roughness: 0.35, flatShading: false }));
+    sclera.scale.set(1.05, 0.82, 0.72);
+    sclera.position.set(sx * 0.072, 0.034, 0.168);
     head.add(sclera);
     const iris = new THREE.Mesh(
-      new THREE.SphereGeometry(0.012, 7, 5),
-      phys(0x3a2210, { roughness: 0.35, flatShading: false }),
+      new THREE.SphereGeometry(0.017, 7, 5),
+      phys(0x6a3a12, { roughness: 0.32, emissive: 0x3a220c, emissiveIntensity: 0.35, flatShading: false }),
     );
-    iris.position.set(sx * 0.069, 0.03, 0.17);
+    iris.position.set(sx * 0.074, 0.034, 0.19);
     head.add(iris);
+    const pupil = new THREE.Mesh(
+      new THREE.SphereGeometry(0.008, 6, 5),
+      phys(0x100c08, { roughness: 0.3, flatShading: false }),
+    );
+    pupil.position.set(sx * 0.074, 0.034, 0.202);
+    head.add(pupil);
   }
 
   for (const sx of [-1, 1]) {
