@@ -440,21 +440,182 @@ button.forge-craft:hover, #bank-deposit-all:hover, .bank-move:hover, .dialogue-o
 .float-xp.heal { font-size: 12px; }
 .float-xp.miss { font-size: 9px; letter-spacing: 0; }
 
-@media (max-width: 720px) {
-  .orb-core { font-size: 8px; }
-  .orb-label { display: none; }
-  #orbs { padding-bottom: 0; }
-  #hp-hearts { bottom: calc(86px + var(--safe-bottom)); }
-  #hp-hearts i { width: 13px; height: 12px; }
+/* Phones and narrow windows: icon dock, no labeled rail.
+   Portrait stacks the bar above a map + icon row.
+   Short viewports (landscape phones) collapse to one row — see the block after the wide-screen dock. */
+@media (max-width: 899px) {
+  #hud-top-right, #orbs { display: contents; }
+  #touch-hint, #key-hints, #minimap-label, #orb-hp, .orb-label,
+  .ab-kicker, .ab-name, .ab-spec-name, .ab-spec-cost, .ab-key,
+  #hud-nav .nav-txt, #hud-nav .nav-key { display: none; }
+
+  #minimap-wrap {
+    position: absolute;
+    left: 8px;
+    bottom: calc(8px + var(--safe-bottom));
+    width: 72px;
+    height: 72px;
+    border-width: 3px;
+    border-color: #2a241c;
+    box-shadow: 0 0 0 2px #0a0908;
+    z-index: 30;
+  }
+
+  #hud-nav {
+    top: auto;
+    left: 88px;
+    right: 56px;
+    bottom: calc(8px + var(--safe-bottom));
+    height: 44px;
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 4px;
+    padding: 0;
+    background: none;
+    border: none;
+    box-shadow: none;
+    z-index: 30;
+  }
+  #hud-nav button {
+    width: 44px;
+    height: 44px;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0;
+    justify-content: center;
+    gap: 0;
+    flex: 0 0 44px;
+  }
+  #hud-nav .nav-ico {
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: none;
+    box-shadow: none;
+    font-size: 15px;
+  }
+  #btn-inventory {
+    right: 8px;
+    bottom: calc(8px + var(--safe-bottom));
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    font-size: 18px;
+    box-shadow: 0 0 0 2px #07080a;
+    z-index: 31;
+  }
+
+  #action-bar {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: max-content;
+    bottom: calc(88px + var(--safe-bottom));
+    gap: 3px;
+    padding: 4px;
+    background: rgba(10, 12, 14, 0.92);
+    border: 2px solid #3c4650;
+    box-shadow: 0 0 0 2px #07080a;
+    z-index: 30;
+  }
+  .ab-slot, .ab-spec {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    padding: 2px;
+    justify-content: center;
+    gap: 0;
+  }
+  .ab-icon {
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: none;
+    box-shadow: none;
+    font-size: 15px;
+  }
+  .ab-spec { border-color: #3c4650; }
+  .ab-spec::before {
+    content: "✦";
+    font-size: 14px;
+    line-height: 1;
+    color: #f0a030;
+  }
+
+  #hp-hearts {
+    display: flex;
+    bottom: calc(152px + var(--safe-bottom));
+    gap: 2px;
+    filter: drop-shadow(1px 1px 0 #140608);
+    z-index: 30;
+  }
+  #hp-hearts i { width: 11px; height: 10px; }
+
+  #orbs .orb {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    bottom: calc(90px + var(--safe-bottom));
+    z-index: 31;
+  }
+  #orbs #orb-pray { left: calc(50% - 158px); }
+  #orbs #orb-stam {
+    left: calc(50% + 122px);
+    width: 48px;
+    height: 48px;
+    bottom: calc(86px + var(--safe-bottom));
+  }
+  #orbs .orb-core {
+    font-family: var(--font-ui);
+    font-size: 16px;
+    font-weight: 400;
+    border: none;
+    box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.28), inset -2px -2px 0 rgba(0, 0, 0, 0.35);
+  }
+  #orbs #orb-stam .orb-core { font-size: 18px; }
+  .pray-core { background: radial-gradient(circle at 35% 30%, #7ee0ea, #1a7e92 46%, #0c3c48); }
+  .stam-core { background: radial-gradient(circle at 35% 30%, #ffd27a, #f08a22 48%, #8a3e08); }
+
+  #chat {
+    top: calc(8px + var(--safe-top));
+    left: 8px;
+    right: auto;
+    bottom: auto;
+    width: min(220px, 56vw);
+    max-height: 34px;
+    z-index: 18;
+  }
+  #chat-log { max-height: 34px; font-size: 14px; line-height: 16px; }
+
+  #inventory, #skills-panel, #journal-panel, #gear-panel, #forge-panel, #bank-panel {
+    top: calc(8px + var(--safe-top));
+    left: 8px;
+    right: 8px;
+    width: auto;
+    bottom: calc(176px + var(--safe-bottom));
+    max-height: none;
+    transform: none;
+    overflow: auto;
+    z-index: 28;
+  }
+  #dialogue {
+    bottom: calc(176px + var(--safe-bottom));
+    width: min(480px, calc(100vw - 16px));
+  }
+  #gear-hero { height: 160px; }
+  #gear-body { grid-template-columns: 56px 1fr 56px; }
+  .gear-slot { width: 56px; height: 60px; }
 }
 
-@media (max-width: 480px) {
-  #touch-hint { display: none; }
-  #hp-hearts { display: none; }
-  #hud-nav button { font-size: 8px; }
-  .quest-line { font-size: 15px; }
-  #chat-log { font-size: 15px; }
-  #dialogue-body { font-size: 18px; }
+@media (max-width: 380px) {
+  #minimap-wrap { width: 56px; height: 56px; }
+  #hud-nav { left: 70px; right: 46px; }
+  #hud-nav button { width: 36px; height: 36px; min-height: 36px; flex-basis: 36px; }
+  #btn-inventory { width: 36px; height: 36px; }
+  .ab-slot, .ab-spec { width: 34px; height: 34px; min-width: 34px; }
+  #orbs #orb-pray { left: calc(50% - 140px); }
+  #orbs #orb-stam { left: calc(50% + 104px); width: 42px; height: 42px; }
 }
 
 /* Reference dock: one bar along the bottom. Map left, hearts over the slots,
@@ -623,5 +784,125 @@ button.forge-craft:hover, #bank-deposit-all:hover, .bank-move:hover, .dialogue-o
   #skills-panel, #journal-panel, #gear-panel {
     top: calc(14px + var(--safe-top));
     left: 14px;
+  }
+}
+
+/* Landscape phones and any short window: one row along the bottom.
+   Comes last so it overrides both the portrait stack and the wide dock. */
+@media (max-height: 500px) {
+  #hud-top-right, #orbs { display: contents; }
+  #touch-hint, #key-hints, #minimap-label, #orb-hp, .orb-label,
+  .ab-kicker, .ab-name, .ab-spec-name, .ab-spec-cost, .ab-key,
+  #hud-nav .nav-txt, #hud-nav .nav-key { display: none; }
+
+  :root { --dock-shift: max(92px, calc(50vw - 168px)); }
+
+  #minimap-wrap {
+    position: absolute;
+    left: 6px;
+    bottom: calc(6px + var(--safe-bottom));
+    width: 52px;
+    height: 52px;
+    border-width: 3px;
+    z-index: 30;
+  }
+
+  #action-bar {
+    left: var(--dock-shift);
+    right: auto;
+    bottom: calc(8px + var(--safe-bottom));
+    transform: none;
+    width: max-content;
+    margin: 0;
+    gap: 3px;
+    padding: 3px;
+    z-index: 30;
+  }
+  .ab-slot, .ab-spec {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    flex: none;
+    padding: 1px;
+  }
+
+  #hp-hearts {
+    display: flex;
+    left: calc(var(--dock-shift) + 46px);
+    transform: none;
+    bottom: calc(56px + var(--safe-bottom));
+    z-index: 30;
+  }
+  #hp-hearts i { width: 10px; height: 9px; }
+
+  #orbs .orb, #orbs #orb-pray {
+    position: absolute;
+    left: calc(var(--dock-shift) - 30px);
+    right: auto;
+    width: 36px;
+    height: 36px;
+    bottom: calc(8px + var(--safe-bottom));
+    z-index: 31;
+  }
+  #orbs #orb-stam {
+    left: calc(var(--dock-shift) + 196px);
+    right: auto;
+    width: 42px;
+    height: 42px;
+    bottom: calc(6px + var(--safe-bottom));
+  }
+  #orbs .orb-core { font-size: 14px; }
+  #orbs #orb-stam .orb-core { font-size: 16px; }
+
+  #hud-nav {
+    top: auto;
+    left: auto;
+    right: 42px;
+    bottom: calc(8px + var(--safe-bottom));
+    width: max-content;
+    height: 36px;
+    flex-direction: row;
+    justify-content: flex-end;
+    gap: 3px;
+    padding: 0;
+    background: none;
+    border: none;
+    box-shadow: none;
+    z-index: 30;
+  }
+  #hud-nav button {
+    width: 34px;
+    height: 34px;
+    min-width: 0;
+    min-height: 34px;
+    flex: 0 0 34px;
+    padding: 0;
+    justify-content: center;
+  }
+  #btn-inventory {
+    right: 6px;
+    bottom: calc(8px + var(--safe-bottom));
+    width: 34px;
+    height: 34px;
+    z-index: 31;
+  }
+
+  #chat {
+    top: calc(6px + var(--safe-top));
+    left: 8px;
+    right: auto;
+    bottom: auto;
+    width: min(200px, 36vw);
+    max-height: 32px;
+  }
+
+  #inventory, #skills-panel, #journal-panel, #gear-panel, #forge-panel, #bank-panel, #dialogue {
+    top: calc(6px + var(--safe-top));
+    bottom: calc(74px + var(--safe-bottom));
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-height: none;
+    transform: none;
   }
 }

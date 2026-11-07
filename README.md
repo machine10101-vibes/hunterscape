@@ -39,7 +39,7 @@ Production base path is `/hunterscape/` for GitHub Pages.
 
 The whole game renders through a low-resolution, nearest-filtered pass with a depth ink outline, a gentle colour grade and a Bayer dither (`src/rendering/pixelPost.ts`). Grass, flowers, trees and rocks are built from blocks, and a global shader patch (`src/rendering/voxelStyle.ts`) adds per-texel colour jitter. The HUD is a pixel skin (`src/pixelui.css`) with bundled Press Start 2P and VT323 fonts.
 
-The pixel size follows the window height. Override it with `?px=3` (any integer 1 to 8) or `localStorage.hunterscape_px`. Only graphics changed; gameplay, saves and data are untouched.
+The pixel size follows the window height. Override it with `?px=3` (any integer 1 to 8) or `localStorage.hunterscape_px`. On a phone the same dock fits portrait (bar above a map and icon row) and landscape (one row). Only graphics changed; gameplay, saves and data are untouched.
 
 ## Controls
 
